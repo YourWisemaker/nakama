@@ -31,17 +31,15 @@ export function SidebarUserMenu({ collapsed }: { collapsed: boolean }) {
   const initial = (user.name?.trim()?.[0] ?? user.email[0] ?? "?").toUpperCase();
 
   const trigger = collapsed ? (
-    <Button
+    <button
       type="button"
-      variant="ghost"
-      size="icon-sm"
       aria-label="Account menu"
-      className="shrink-0 text-muted-foreground/70 hover:text-foreground"
+      className="sidebar-nav-link sidebar-nav-link--collapsed"
     >
       <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
         {initial}
       </span>
-    </Button>
+    </button>
   ) : (
     <Button
       type="button"

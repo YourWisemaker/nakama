@@ -175,7 +175,7 @@ export function Layout() {
           <div
             className={cn(
               "sidebar-nav-footer flex shrink-0 flex-col border-t border-border/50",
-              collapsed ? "justify-center px-2 py-2.5" : "px-3 py-3",
+              collapsed ? "p-2" : "px-3 py-3",
             )}
           >
             <SidebarUserMenu collapsed={collapsed} />

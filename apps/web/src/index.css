@@ -492,6 +492,10 @@
     @apply mt-1;
   }
 
+  aside[data-collapsed] .sidebar-nav-footer {
+    @apply mt-0 border-border/40;
+  }
+
   .scope-item {
     @apply w-full cursor-pointer rounded-md border border-border px-3 py-2.5 text-left transition;
   }
