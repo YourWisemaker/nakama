@@ -15,6 +15,7 @@ import {
 import { client } from "@/lib/client";
 import { ARTIFACT_HTML_IFRAME_SANDBOX } from "@/lib/artifact-html-preview";
 import { cn } from "@/lib/utils";
+import { Download } from "lucide-react";
 
 export function PublicArtifactSharePage() {
   const { token = "" } = useParams();
@@ -77,19 +78,17 @@ export function PublicArtifactSharePage() {
         isHtml ? "flex h-svh flex-col overflow-hidden" : "min-h-svh",
       )}
     >
-      <header className="border-b border-border px-4 py-3">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {metadata?.filename ?? "Shared artifact"}
-            </p>
-            <p className="text-xs text-muted-foreground">Nakama shared artifact</p>
-          </div>
+      <header className="border-b border-border px-3 py-1.5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="truncate text-xs font-medium">
+            {metadata?.filename ?? "Shared artifact"}
+          </p>
           {token ? (
             <a
               href={downloadUrl}
-              className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+              className="shrink-0 rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-muted inline-flex items-center gap-1.5"
             >
+              <Download className="h-3 w-3" />
               Download
             </a>
           ) : null}

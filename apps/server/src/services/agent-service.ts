@@ -97,6 +97,8 @@ import {
   listArtifacts,
   buildToolExecutionContext,
   composeKnowledgeBaseCatalog,
+  composeOrgMemorySummary,
+  appendOrgMemorySection,
   composeSoulSystemPrompt,
   createId,
   nanoid,
@@ -188,6 +190,7 @@ import {
   toProviderInstanceSummary,
 } from "./provider-instance-helpers";
 import { createSuperBotTools } from "../tools/super-bot-tools";
+import { createOrgMemoryTools } from "../tools/org-memory-tools";
 import { createAskUserQuestionTools } from "../tools/ask-user-question-tool";
 import { createTodoTools } from "../tools/todo-tools";
 import { SUB_AGENT_TOOL_NAME } from "../tools/sub-agent-tool";
@@ -238,6 +241,7 @@ import {
 import type { ComposioService } from "./composio-service";
 import type { McpClientManager } from "./mcp-client-manager";
 import type { McpService } from "./mcp-service";
+import { OrgMemoryService } from "./org-memory-service";
 import { ProfileService } from "./profile-service";
 import type { SkillsService } from "./skills-service";
 import { SessionTitleService } from "./session-title-service";
@@ -290,6 +294,7 @@ export class AgentService {
   private readonly agentTodoState: AgentTodoState;
   private readonly agentQuestionnaireState: AgentQuestionnaireState;
   private readonly superBotTools: ToolDefinition[];
+  private readonly orgMemoryTools: ToolDefinition[];
   private automationTools: ToolDefinition[] = [];
   private automationRunHistoryTools: ToolDefinition[] = [];
   private questionTools: ToolDefinition[] = [];
@@ -300,6 +305,7 @@ export class AgentService {
   private mcpService: McpService | null = null;
   private composioService: ComposioService | null = null;
   private skillsService: SkillsService | null = null;
+  private orgMemoryService: OrgMemoryService | null = null;
   private readonly sessions = new Map<string, StoredSession>();
   private readonly sessionTitleService: SessionTitleService;
   private _providerConfigured: boolean;
@@ -321,6 +327,7 @@ export class AgentService {
     this.questionTools = createAskUserQuestionTools(this.agentQuestionnaireState);
     this.todoTools = createTodoTools(this.agentTodoState);
     this.superBotTools = createSuperBotTools(this.profileService, this.superBotSessionState);
+    this.orgMemoryTools = createOrgMemoryTools(this.getOrgMemoryService());
     this._providerConfigured = isProviderConfigured(userConfig) && provider !== null;
     const activeInstance = getActiveProviderInstance(userConfig);
     this.harness = this.createHarness({
@@ -333,6 +340,24 @@ export class AgentService {
 
   get profiles(): ProfileService {
     return this.profileService;
+  }
+
+  private getOrgMemoryService(): OrgMemoryService {
+    if (!this.orgMemoryService) {
+      this.orgMemoryService = new OrgMemoryService();
+    }
+    return this.orgMemoryService;
+  }
+
+  private async resolveOrgRole(
+    orgId: string | null | undefined,
+    userId: string | null | undefined,
+  ): Promise<OrgRole | null> {
+    if (!orgId || !userId) {
+      return null;
+    }
+    const member = await this.db.getOrgMember(orgId, userId);
+    return member?.role ?? null;
   }
 
   setAutomationTools(tools: ToolDefinition[]): void {
@@ -959,6 +984,7 @@ export class AgentService {
       orgId,
       profileId,
       profile.systemPrompt,
+      "member",
     );
     const userTimezone = await this.getUserTimezone();
     const userContext = await this.loadUserContextForUser(orgId, undefined);
@@ -977,6 +1003,7 @@ export class AgentService {
         automationRunId,
         orgId,
         profileId,
+        orgRole: "member",
       }),
     });
 
@@ -1009,6 +1036,7 @@ export class AgentService {
       input.orgId,
       input.profileId,
       profile.systemPrompt,
+      "member",
     );
     const childSystemPrompt = [
       systemPrompt.trim(),
@@ -1036,6 +1064,7 @@ export class AgentService {
         userId: input.userId,
         clientOrigin: input.clientOrigin,
         agentDepth: input.agentDepth,
+        orgRole: "member",
       }),
     });
 
@@ -1111,7 +1140,9 @@ export class AgentService {
       }
     }
 
-    const sessionId = await this.createSession(orgId, "task", profileId);
+    const sessionId = await this.createSession(orgId, "task", profileId, undefined, {
+      orgRole: "member",
+    });
 
     await this.db.upsertTask({
       ...record,
@@ -1249,6 +1280,7 @@ export class AgentService {
       resolvedProfileId,
       sessionId,
       userId ?? null,
+      access?.orgRole,
     );
 
     this.sessions.set(sessionId, { channel, profileId: resolvedProfileId, session });
@@ -1356,12 +1388,14 @@ export class AgentService {
 
     const { orgId } = await this.requireProfileRecord(record.profileId);
 
+    const branchOrgRole = await this.resolveOrgRole(orgId, record.userId);
     const session = await this.buildChatSession(
       channel,
       orgId,
       record.profileId,
       nextSessionId,
       record.userId ?? null,
+      branchOrgRole,
     );
     this.sessions.set(nextSessionId, {
       channel,
@@ -1435,12 +1469,14 @@ export class AgentService {
 
     const { orgId } = await this.requireProfileRecord(record.profileId);
 
+    const resumeOrgRole = await this.resolveOrgRole(orgId, record.userId);
     const session = await this.buildChatSession(
       channel,
       orgId,
       record.profileId,
       sessionId,
       record.userId ?? null,
+      resumeOrgRole,
     );
 
     this.sessions.set(sessionId, {
@@ -2481,6 +2517,8 @@ export class AgentService {
       resolved = [...resolved, ...this.superBotTools];
     }
 
+    resolved = [...resolved, ...this.orgMemoryTools];
+
     if (!includeSubAgentTool) {
       resolved = resolved.filter((tool) => tool.name !== SUB_AGENT_TOOL_NAME);
     }
@@ -2494,6 +2532,7 @@ export class AgentService {
     profileId: string,
     sessionId: string,
     userId?: string | null,
+    orgRole?: OrgRole | null,
   ): Promise<AgentChatSession> {
     await this.ensureVisionSettingsLoaded();
     const profile = await this.requireProfile(orgId, profileId);
@@ -2502,6 +2541,7 @@ export class AgentService {
       orgId,
       profileId,
       profile.systemPrompt,
+      orgRole,
     );
     const resolvedSystemPrompt = profile.isSuper
       ? `${systemPrompt.trim()}\n\n${SUPER_BOT_TOOL_AUTHORING_RULES}`
@@ -2534,6 +2574,7 @@ export class AgentService {
         profileId,
         sessionId,
         userId: userId ?? undefined,
+        orgRole: orgRole ?? undefined,
       }),
       resolvePromptContext: async (context) => {
         const parts: string[] = [];
@@ -2710,6 +2751,7 @@ export class AgentService {
     orgId: string,
     profileId: string,
     profilePrompt: string,
+    orgRole?: OrgRole | null,
   ): Promise<{ systemPrompt: string; soulActive: boolean }> {
     const stack = await resolveSoulStackForProfile(orgId, profileId);
     let systemPrompt = stack
@@ -2735,6 +2777,11 @@ export class AgentService {
 
     if (kbCatalog.trim()) {
       systemPrompt = `${systemPrompt.trim()}\n\n${kbCatalog.trim()}`;
+    }
+
+    if (orgRole !== "viewer") {
+      const orgMemorySummary = await this.getOrgMemoryService().getSummary(orgId);
+      systemPrompt = appendOrgMemorySection(systemPrompt, orgMemorySummary, orgRole);
     }
 
     return {

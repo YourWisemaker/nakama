@@ -366,6 +366,52 @@ export interface UpdateOrgMemberRequest {
   role?: OrgRole;
 }
 
+export interface OrgMemoryResponse {
+  content: string;
+}
+
+export interface UpdateOrgMemoryRequest {
+  content: string;
+}
+
+export interface AddOrgMemoryFactRequest {
+  bullet: string;
+  pin?: boolean;
+}
+
+export interface OrgMemorySearchRequest {
+  query: string;
+}
+
+export interface OrgMemorySearchMatchEntry {
+  source: string;
+  bullet: string;
+}
+
+export interface OrgMemorySearchResponse {
+  query: string;
+  matches: OrgMemorySearchMatchEntry[];
+}
+
+export interface ArchiveOrgMemoryRequest {
+  entries: string[];
+  reason?: string;
+}
+
+export interface ArchiveOrgMemoryResponse {
+  archived: number;
+  activeBytes: number;
+  archivePath: string;
+}
+
+export interface PinOrgMemoryRequest {
+  bullet: string;
+}
+
+export interface UnpinOrgMemoryRequest {
+  bullet: string;
+}
+
 export interface InviteOrgMemberRequest {
   email: string;
   role: OrgRole;
@@ -1671,6 +1717,8 @@ export interface ToolContext {
   clientOrigin?: string;
   /** Profile workspace root (~/.nakama/orgs/{orgId}/profiles/{profileId}/). */
   workspaceRoot?: string;
+  /** Org role of the invoking user. Org-memory tools gate on this; undefined means deny-by-default. */
+  orgRole?: OrgRole;
 }
 
 export interface ToolDefinition<Input = unknown, Output = unknown> {
