@@ -19,7 +19,6 @@ apps/data/*
 docs/plans/*
 docs/brainstorms/*
 .worktrees/
-scripts/*
 outputs/
 pitch-deck.pdf
 pitch-deck.md
