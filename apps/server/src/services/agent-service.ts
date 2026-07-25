@@ -190,6 +190,7 @@ import {
   toProviderInstanceSummary,
 } from "./provider-instance-helpers";
 import { createSuperBotTools } from "../tools/super-bot-tools";
+import { createOrgMemoryTools } from "../tools/org-memory-tools";
 import { createAskUserQuestionTools } from "../tools/ask-user-question-tool";
 import { createTodoTools } from "../tools/todo-tools";
 import { SUB_AGENT_TOOL_NAME } from "../tools/sub-agent-tool";
@@ -293,6 +294,7 @@ export class AgentService {
   private readonly agentTodoState: AgentTodoState;
   private readonly agentQuestionnaireState: AgentQuestionnaireState;
   private readonly superBotTools: ToolDefinition[];
+  private readonly orgMemoryTools: ToolDefinition[];
   private automationTools: ToolDefinition[] = [];
   private automationRunHistoryTools: ToolDefinition[] = [];
   private questionTools: ToolDefinition[] = [];
@@ -325,6 +327,7 @@ export class AgentService {
     this.questionTools = createAskUserQuestionTools(this.agentQuestionnaireState);
     this.todoTools = createTodoTools(this.agentTodoState);
     this.superBotTools = createSuperBotTools(this.profileService, this.superBotSessionState);
+    this.orgMemoryTools = createOrgMemoryTools(this.getOrgMemoryService());
     this._providerConfigured = isProviderConfigured(userConfig) && provider !== null;
     const activeInstance = getActiveProviderInstance(userConfig);
     this.harness = this.createHarness({
@@ -347,10 +350,10 @@ export class AgentService {
   }
 
   private async resolveOrgRole(
-    orgId: string,
+    orgId: string | null | undefined,
     userId: string | null | undefined,
   ): Promise<OrgRole | null> {
-    if (!userId) {
+    if (!orgId || !userId) {
       return null;
     }
     const member = await this.db.getOrgMember(orgId, userId);
@@ -2513,6 +2516,8 @@ export class AgentService {
     if (profile.isSuper) {
       resolved = [...resolved, ...this.superBotTools];
     }
+
+    resolved = [...resolved, ...this.orgMemoryTools];
 
     if (!includeSubAgentTool) {
       resolved = resolved.filter((tool) => tool.name !== SUB_AGENT_TOOL_NAME);
