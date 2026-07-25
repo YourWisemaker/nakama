@@ -163,7 +163,6 @@
   .skeleton-shimmer {
     @apply relative overflow-hidden bg-muted;
   }
-
   .skeleton-shimmer::after {
     content: "";
     position: absolute;
@@ -181,6 +180,27 @@
   @keyframes skeleton-shimmer {
     to {
       translate: 100% 0;
+    }
+  }
+
+  @keyframes chat-tip-slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .chat-tip-slide-up {
+    animation: chat-tip-slide-up 0.45s ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chat-tip-slide-up {
+      animation: none;
     }
   }
 

@@ -58,7 +58,7 @@ export function ChatPageContent(state: ChatPageState) {
     <PromptInputProvider key={composerDraft || "empty"} initialInput={composerDraft}>
       {readOnlyBanner}
       <ChatComposer
-        className={isEmptyState && !error ? "py-0 [&>p:first-child]:min-h-0" : "py-0"}
+        className={isEmptyState && !error ? "py-0 [&>p:first-child]:min-h-0 z-10" : "py-0 z-10"}
         chatStatus={chatStatus}
         busy={busy}
         canStop={canStop}
@@ -70,6 +70,7 @@ export function ChatPageContent(state: ChatPageState) {
         availableSkills={availableSkills}
         onProfileSwitch={handleProfileSwitch}
         showProfileSwitch={!isEmptyState}
+        showTips={isEmptyState}
         showOfflineHint={showOfflineHint}
         providerConfigured={health?.providerConfigured}
         onNavigateSetup={navigateSetup}

@@ -80,6 +80,7 @@ import {
   replaceSlashRangeWithSkillInvocation,
   type SkillSlashRange,
 } from "@/lib/chat-composer-skills";
+import { ChatTips } from "./chat-tips";
 
 interface ChatComposerBaseProps {
   chatStatus: ChatStatus;
@@ -123,6 +124,7 @@ interface ChatComposerFullProps extends ChatComposerBaseProps {
   availableSkills?: SkillSummary[];
   onModelChange: (selection: string) => void;
   renderModelLabel: (selection: string | null) => string | null;
+  showTips?: boolean;
 }
 
 export type ChatComposerProps = ChatComposerMinimalProps | ChatComposerFullProps;
@@ -150,6 +152,7 @@ export function ChatComposer(props: ChatComposerProps) {
   } = props;
 
   const isMinimal = props.variant === "minimal";
+  const showTips = !isMinimal && props.showTips === true;
   const hasTodos = hasActiveAgentTodos(todos);
   const hasQuestionnaire = Boolean(questionnaire && questionnaire.questions.length > 0);
   const hasQueuedMessages = queuedMessages.length > 0;
@@ -160,7 +163,7 @@ export function ChatComposer(props: ChatComposerProps) {
   const displayError = error ?? attachmentError;
 
   return (
-    <div className={cn("w-full shrink-0 space-y-2", className)}>
+    <div className={cn("w-full shrink-0", className)}>
       <p
         className={`min-h-5 px-2 text-sm ${displayError ? "text-destructive" : "invisible"}`}
         role={displayError ? "alert" : undefined}
@@ -243,70 +246,73 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         </div>
       ) : (
-      <PromptInput
-        accept={isMinimal ? undefined : ALL_ATTACHMENT_ACCEPT}
-        multiple={!isMinimal}
-        maxFiles={isMinimal ? undefined : 5}
-        maxFileSize={isMinimal ? undefined : MAX_IMAGE_BYTES}
-        prepareFiles={isMinimal ? undefined : prepareChatUploadFiles}
-        onError={
-          isMinimal
-            ? undefined
-            : (attachmentErr) => setAttachmentError(attachmentErr.message)
-        }
-        className={shellClass}
-        inputGroupClassName={composerInputGroupClass}
-        onSubmit={({ text, files }) => {
-          setAttachmentError(null);
-          onSubmit(text.trim(), files);
-        }}
-      >
-        {!isMinimal ? (
-          <ChatAttachmentHeader primarySupportsVision={props.primarySupportsVision} />
-        ) : null}
-        <PromptInputBody>
-          <ChatComposerTextarea
-            key={skillPickerKey}
-            className={
+        <>
+          {showTips ? <ChatTips /> : null}
+          <PromptInput
+            accept={isMinimal ? undefined : ALL_ATTACHMENT_ACCEPT}
+            multiple={!isMinimal}
+            maxFiles={isMinimal ? undefined : 5}
+            maxFileSize={isMinimal ? undefined : MAX_IMAGE_BYTES}
+            prepareFiles={isMinimal ? undefined : prepareChatUploadFiles}
+            onError={
               isMinimal
-                ? "min-h-10 max-h-32 px-1 py-1.5 text-sm leading-relaxed placeholder:text-muted-foreground"
-                : "min-h-11 max-h-36 px-1 py-1.5 text-base leading-relaxed placeholder:text-muted-foreground sm:min-h-10 sm:text-sm"
+                ? undefined
+                : (attachmentErr) => setAttachmentError(attachmentErr.message)
             }
-            placeholder={placeholder}
-            disabled={disabled}
-            availableSkills={availableSkills}
-            longPasteWordThreshold={isMinimal ? undefined : LONG_PASTE_WORD_THRESHOLD}
-          />
-        </PromptInputBody>
-        <PromptInputFooter
-          className={cn(
-            "w-full border-0 px-0 pb-0",
-            isMinimal
-              ? "justify-end pt-2"
-              : "flex-wrap items-center gap-2 pt-2.5",
-            footerClassName,
-          )}
-        >
-          {isMinimal ? (
-            <ChatComposerSubmitButton
-              chatStatus={chatStatus}
-              busy={busy}
-              canStop={canStop}
-              disabled={disabled}
-              onStop={onStop}
-            />
-          ) : (
-            <ChatComposerFullFooter
-              props={props}
-              chatStatus={chatStatus}
-              busy={busy}
-              canStop={canStop}
-              disabled={disabled}
-              onStop={onStop}
-            />
-          )}
-        </PromptInputFooter>
-      </PromptInput>
+            className={shellClass}
+            inputGroupClassName={composerInputGroupClass}
+            onSubmit={({ text, files }) => {
+              setAttachmentError(null);
+              onSubmit(text.trim(), files);
+            }}
+          >
+            {!isMinimal ? (
+              <ChatAttachmentHeader primarySupportsVision={props.primarySupportsVision} />
+            ) : null}
+            <PromptInputBody>
+              <ChatComposerTextarea
+                key={skillPickerKey}
+                className={
+                  isMinimal
+                    ? "min-h-10 max-h-32 px-1 py-1.5 text-sm leading-relaxed placeholder:text-muted-foreground"
+                    : "min-h-11 max-h-36 px-1 py-1.5 text-base leading-relaxed placeholder:text-muted-foreground sm:min-h-10 sm:text-sm"
+                }
+                placeholder={placeholder}
+                disabled={disabled}
+                availableSkills={availableSkills}
+                longPasteWordThreshold={isMinimal ? undefined : LONG_PASTE_WORD_THRESHOLD}
+              />
+            </PromptInputBody>
+            <PromptInputFooter
+              className={cn(
+                "w-full border-0 px-0 pb-0",
+                isMinimal
+                  ? "justify-end pt-2"
+                  : "flex-wrap items-center gap-2 pt-2.5",
+                footerClassName,
+              )}
+            >
+              {isMinimal ? (
+                <ChatComposerSubmitButton
+                  chatStatus={chatStatus}
+                  busy={busy}
+                  canStop={canStop}
+                  disabled={disabled}
+                  onStop={onStop}
+                />
+              ) : (
+                <ChatComposerFullFooter
+                  props={props}
+                  chatStatus={chatStatus}
+                  busy={busy}
+                  canStop={canStop}
+                  disabled={disabled}
+                  onStop={onStop}
+                />
+              )}
+            </PromptInputFooter>
+          </PromptInput>
+        </>
       )}
     </div>
   );
@@ -507,9 +513,9 @@ function ChatComposerFullFooter({
               )}
             >
               {props.profileModelId &&
-              !props.providerModelGroups.some((group) =>
-                group.models.some((model) => model.id === props.profileModelId),
-              ) ? (
+                !props.providerModelGroups.some((group) =>
+                  group.models.some((model) => model.id === props.profileModelId),
+                ) ? (
                 <PromptInputSelectItem
                   value={encodeModelSelection("__unknown__", props.profileModelId)}
                   label={props.profileModelId}

@@ -264,7 +264,7 @@ function SidebarSearchInput({
         aria-label="Search navigation"
         className="h-8 w-full rounded-md border border-border/60 bg-background/60 pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       />
-      {isSearching ? (
+      {isSearching && (
         <button
           type="button"
           aria-label="Clear search"
@@ -273,13 +273,6 @@ function SidebarSearchInput({
         >
           <XIcon className="size-3.5" strokeWidth={1.75} aria-hidden />
         </button>
-      ) : (
-        <kbd
-          className="pointer-events-none absolute right-2 hidden h-4 select-none items-center rounded border border-border/60 bg-muted/60 px-1 text-[10px] font-medium text-muted-foreground/70 sm:inline-flex"
-          aria-hidden
-        >
-          /
-        </kbd>
       )}
     </div>
   );
