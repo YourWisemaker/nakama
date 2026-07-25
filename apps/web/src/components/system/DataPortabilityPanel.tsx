@@ -87,7 +87,7 @@ export function DataPortabilityPanel() {
         <section className="flex flex-col gap-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-foreground">Export local data</p>
+              <p className="text-sm font-medium text-foreground">Export</p>
               <p className="text-xs text-muted-foreground">
                 Download a ZIP backup of the configured Nakama data root.
               </p>
@@ -106,15 +106,14 @@ export function DataPortabilityPanel() {
         <section className="flex flex-col gap-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-foreground">Import from ZIP</p>
+              <p className="text-sm font-medium text-foreground">Import</p>
               <p className="text-xs text-muted-foreground">
-                Choose a backup ZIP to review before restoring.
+                Upload a ZIP backup of the configured Nakama data root to review before restoring.
               </p>
             </div>
             <Button
               type="button"
               size="sm"
-              variant="outline"
               disabled={isBusy}
               onClick={() => inputRef.current?.click()}
             >
@@ -123,7 +122,7 @@ export function DataPortabilityPanel() {
               ) : (
                 <UploadIcon className="size-3.5" aria-hidden />
               )}
-              Choose ZIP
+              Import ZIP
             </Button>
             <input
               ref={inputRef}
@@ -131,7 +130,7 @@ export function DataPortabilityPanel() {
               accept=".zip,application/zip"
               disabled={isBusy}
               className="sr-only"
-              aria-label="Choose backup ZIP file"
+              aria-label="Import backup ZIP file"
               onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
             />
           </div>
