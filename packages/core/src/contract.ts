@@ -366,6 +366,52 @@ export interface UpdateOrgMemberRequest {
   role?: OrgRole;
 }
 
+export interface OrgMemoryResponse {
+  content: string;
+}
+
+export interface UpdateOrgMemoryRequest {
+  content: string;
+}
+
+export interface AddOrgMemoryFactRequest {
+  bullet: string;
+  pin?: boolean;
+}
+
+export interface OrgMemorySearchRequest {
+  query: string;
+}
+
+export interface OrgMemorySearchMatchEntry {
+  source: string;
+  bullet: string;
+}
+
+export interface OrgMemorySearchResponse {
+  query: string;
+  matches: OrgMemorySearchMatchEntry[];
+}
+
+export interface ArchiveOrgMemoryRequest {
+  entries: string[];
+  reason?: string;
+}
+
+export interface ArchiveOrgMemoryResponse {
+  archived: number;
+  activeBytes: number;
+  archivePath: string;
+}
+
+export interface PinOrgMemoryRequest {
+  bullet: string;
+}
+
+export interface UnpinOrgMemoryRequest {
+  bullet: string;
+}
+
 export interface InviteOrgMemberRequest {
   email: string;
   role: OrgRole;

@@ -20,6 +20,7 @@ import { registerAutomationRoutes } from "./routes/automations";
 import { registerTaskRoutes } from "./routes/tasks";
 import { registerPlatformOrgRoutes } from "./routes/platform-orgs";
 import { registerOrgMemberRoutes } from "./routes/org-members";
+import { registerOrgMemoryRoutes } from "./routes/org-memory";
 import { registerInferenceGatewayRoutes } from "./routes/inference-gateway";
 import { registerCodingAgentRoutes } from "./routes/coding-agents";
 import { registerInternalAutomationRoutes } from "./routes/internal-automations";
@@ -83,6 +84,7 @@ export function createHonoApp(options: ServerOptions) {
   registerPlatformOrgRoutes(app, options);
   registerDataPortabilityRoutes(app, options);
   registerOrgMemberRoutes(app, options);
+  registerOrgMemoryRoutes(app, options);
   registerInferenceGatewayRoutes(app, options);
   registerCodingAgentRoutes(app, options);
 
