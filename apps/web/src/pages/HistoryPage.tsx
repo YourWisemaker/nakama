@@ -6,10 +6,6 @@ import { usePurgeSessionMutation, useHistorySessionsQuery } from "@/hooks/use-re
 import { formatError } from "@/lib/client";
 import { useAppNavigation } from "@/hooks/use-app-navigation";
 import { HistoryDeleteDialog } from "@/pages/history-delete-dialog";
-import {
-  HistoryPageShell,
-} from "@/pages/history-page-shell";
-import { HistoryProfileSidebar } from "@/pages/history-profile-sidebar";
 import { HistorySessionsPanel } from "@/pages/history-sessions-panel";
 
 export function HistoryPage() {
@@ -74,6 +70,20 @@ export function HistoryPage() {
 
     setProfileId(defaultProfile.id);
   }, [profiles, searchParams, setProfileId]);
+
+  // Sync from URL when the profile rail switches the active profile after init.
+  useEffect(() => {
+    if (!profileInitializedRef.current) {
+      return;
+    }
+    const fromUrl = searchParams.get("profile");
+    if (!fromUrl || fromUrl === profileId) {
+      return;
+    }
+    if (profiles.some((profile) => profile.id === fromUrl)) {
+      setProfileIdState(fromUrl);
+    }
+  }, [searchParams, profileId, profiles]);
 
   const filteredSessions = useMemo(() => {
     const query = trimmedSearch.toLowerCase();
@@ -142,15 +152,7 @@ export function HistoryPage() {
         </p>
       ) : null}
 
-      <HistoryPageShell>
-        <HistoryProfileSidebar
-          profiles={profiles}
-          profileId={profileId}
-          busy={busy}
-          onProfileSelect={setProfileId}
-          onGoToProfiles={() => navigateToPage("profiles")}
-        />
-
+      <section className="overflow-hidden rounded-md border border-border bg-card">
         <HistorySessionsPanel
           profiles={profiles}
           profileId={profileId}
@@ -169,7 +171,7 @@ export function HistoryPage() {
           onOpenSession={handleOpen}
           onDeleteSession={setDeleteTarget}
         />
-      </HistoryPageShell>
+      </section>
 
       <HistoryDeleteDialog
         deleteTarget={deleteTarget}
