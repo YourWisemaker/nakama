@@ -131,6 +131,7 @@ export function DataPortabilityPanel() {
               accept=".zip,application/zip"
               disabled={isBusy}
               className="sr-only"
+              aria-label="Choose backup ZIP file"
               onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
             />
           </div>
