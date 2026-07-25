@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
+  appendOrgMemorySection,
   composeOrgMemorySummary,
   ORG_MEMORY_PREAMBLE,
   parseOrgMemoryContent,
@@ -65,5 +66,40 @@ describe("composeOrgMemorySummary", () => {
     expect(summary).toContain("# Org Memory");
     expect(summary).toContain("org_memory_search");
     expect(summary).not.toContain(huge);
+  });
+});
+
+describe("appendOrgMemorySection", () => {
+  const base = "# Identity\n\nYou are helpful.";
+
+  test("appends the summary for a member", () => {
+    const summary = "# Org Memory\n\n- fact one";
+    expect(appendOrgMemorySection(base, summary, "member")).toBe(
+      `${base}\n\n${summary}`,
+    );
+  });
+
+  test("appends the summary for an admin", () => {
+    const summary = "# Org Memory\n\n- fact one";
+    expect(appendOrgMemorySection(base, summary, "admin")).toBe(
+      `${base}\n\n${summary}`,
+    );
+  });
+
+  test("appends the summary when orgRole is undefined (system runners)", () => {
+    const summary = "# Org Memory\n\n- fact one";
+    expect(appendOrgMemorySection(base, summary, undefined)).toBe(
+      `${base}\n\n${summary}`,
+    );
+  });
+
+  test("does NOT append for a viewer", () => {
+    const summary = "# Org Memory\n\n- secret fact";
+    expect(appendOrgMemorySection(base, summary, "viewer")).toBe(base);
+  });
+
+  test("does not append an empty summary (no empty header)", () => {
+    expect(appendOrgMemorySection(base, "", "member")).toBe(base);
+    expect(appendOrgMemorySection(base, "   \n  ", "member")).toBe(base);
   });
 });

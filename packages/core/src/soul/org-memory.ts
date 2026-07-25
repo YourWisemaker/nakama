@@ -80,6 +80,27 @@ export interface OrgMemorySummaryOptions {
 }
 
 /**
+ * Append the org memory section to a system prompt, gated by org role.
+ * Viewers never receive the section; everyone else gets it appended when
+ * non-empty. Returns the unchanged `systemPrompt` when the section is empty
+ * or the role is viewer.
+ */
+export function appendOrgMemorySection(
+  systemPrompt: string,
+  summary: string,
+  orgRole?: string | null,
+): string {
+  if (orgRole === "viewer") {
+    return systemPrompt;
+  }
+  const trimmed = summary.trim();
+  if (trimmed.length === 0) {
+    return systemPrompt;
+  }
+  return `${systemPrompt.trim()}\n\n${trimmed}`;
+}
+
+/**
  * Render the `# Org Memory` section string injected into a profile's system
  * prompt. v1: pinned bullets only. When the rendered section exceeds
  * `byteCap`, bullets are dropped from the end and an overflow hint is appended

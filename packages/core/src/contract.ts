@@ -1671,6 +1671,8 @@ export interface ToolContext {
   clientOrigin?: string;
   /** Profile workspace root (~/.nakama/orgs/{orgId}/profiles/{profileId}/). */
   workspaceRoot?: string;
+  /** Org role of the invoking user. Org-memory tools gate on this; undefined means deny-by-default. */
+  orgRole?: OrgRole;
 }
 
 export interface ToolDefinition<Input = unknown, Output = unknown> {
