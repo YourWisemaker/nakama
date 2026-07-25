@@ -78,17 +78,19 @@ export function Layout() {
     if (!query) {
       return navGroups;
     }
-    return navGroups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter(
-          (item) =>
-            item.label.toLowerCase().includes(query) ||
-            item.description.toLowerCase().includes(query) ||
-            group.label.toLowerCase().includes(query),
-        ),
-      }))
-      .filter((group) => group.items.length > 0);
+    const filtered: typeof navGroups = [];
+    for (const group of navGroups) {
+      const items = group.items.filter(
+        (item) =>
+          item.label.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query) ||
+          group.label.toLowerCase().includes(query),
+      );
+      if (items.length > 0) {
+        filtered.push({ ...group, items });
+      }
+    }
+    return filtered;
   }, [navGroups, search]);
 
   return (
