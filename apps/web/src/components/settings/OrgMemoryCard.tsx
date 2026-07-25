@@ -88,7 +88,10 @@ export function OrgMemoryCard() {
             ) : sections.length > 0 ? (
               <div className="space-y-4">
                 {sections.map((section, i) => (
-                  <div key={i} className="space-y-1.5">
+                  <div
+                    key={section.title || `section-${i}`}
+                    className="space-y-1.5"
+                  >
                     {section.title ? (
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {section.title}
@@ -97,7 +100,10 @@ export function OrgMemoryCard() {
                     {section.bullets.length > 0 ? (
                       <ul className="space-y-2">
                         {section.bullets.map((bullet, j) => (
-                          <li key={j} className="flex items-start gap-2 text-sm text-foreground">
+                          <li
+                            key={`${bullet}-${j}`}
+                            className="flex items-start gap-2 text-sm text-foreground"
+                          >
                             <span
                               className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/50"
                               aria-hidden
@@ -110,7 +116,7 @@ export function OrgMemoryCard() {
                     {section.text.length > 0 ? (
                       <div className="space-y-1 text-sm text-muted-foreground">
                         {section.text.map((line, j) => (
-                          <p key={j} className="min-w-0">
+                          <p key={`${line}-${j}`} className="min-w-0">
                             {line}
                           </p>
                         ))}
