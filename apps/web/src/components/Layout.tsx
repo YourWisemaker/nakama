@@ -1,10 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
+  PanelLeftIcon,
+  SearchIcon,
+  XIcon,
 } from "lucide-react";
-import type { SVGProps } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
 import { useAppContext } from "@/context/use-app-context";
 import { useAuth } from "@/context/use-auth";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { ProfileRail } from "@/components/ProfileRail";
 import { SidebarUserMenu } from "@/components/SidebarUserMenu";
 import { usePrefetchAppData } from "@/hooks/use-app-queries";
 import { useAutomationUnreadTotal } from "@/hooks/use-automations";
@@ -35,8 +36,6 @@ import {
   type NavItem,
 } from "@/lib/navigation";
 
-const GITHUB_REPO_URL = "https://github.com/ahmadrosid/nakama";
-
 export function Layout() {
   const location = useLocation();
   const page = pageIdFromPath(location.pathname) ?? "chat";
@@ -46,6 +45,7 @@ export function Layout() {
   const prefetchAppData = usePrefetchAppData();
   const { data: automationUnreadTotal = 0 } = useAutomationUnreadTotal();
   const { collapsed, toggle } = useSidebarCollapsed();
+  const [search, setSearch] = useState("");
   const activeNav = findNavItem(page);
   const navGroups = useMemo(() => {
     const groups: typeof NAV_GROUPS = [];
@@ -73,9 +73,29 @@ export function Layout() {
     return groups;
   }, [activeOrg?.role, user?.isPlatformAdmin]);
 
+  const filteredNavGroups = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return navGroups;
+    }
+    return navGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) =>
+            item.label.toLowerCase().includes(query) ||
+            item.description.toLowerCase().includes(query) ||
+            group.label.toLowerCase().includes(query),
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [navGroups, search]);
+
   return (
     <TooltipProvider delay={0}>
       <div className="flex h-svh overflow-hidden bg-background">
+        <ProfileRail />
+
         <aside
           aria-label="Main navigation"
           data-collapsed={collapsed || undefined}
@@ -90,21 +110,17 @@ export function Layout() {
               collapsed ? "h-auto min-h-14 flex-col gap-2 px-2 py-3" : "gap-2.5 px-3",
             )}
           >
-            <img
-              src="/nakama.png"
-              alt="Nakama"
-              className="size-8 shrink-0 rounded-lg object-contain"
-            />
-            {!collapsed ? (
-              <p className="type-brand min-w-0 flex-1 truncate">Nakama</p>
-            ) : null}
-            {!collapsed ? <GitHubRepoButton /> : null}
+            <div className={cn("min-w-0", collapsed ? "hidden" : "flex-1")}>
+              <OrgSwitcher collapsed={collapsed} />
+            </div>
             <SidebarCollapseButton collapsed={collapsed} onToggle={toggle} />
           </div>
 
-          <div className={cn("shrink-0 pt-4", collapsed ? "px-2 pb-2" : "px-3 pb-3")}>
-            <OrgSwitcher collapsed={collapsed} />
-          </div>
+          {collapsed ? null : (
+            <div className="shrink-0 px-3 pb-2 pt-3">
+              <SidebarSearchInput value={search} onChange={setSearch} />
+            </div>
+          )}
 
           <nav
             className={cn(
@@ -112,7 +128,7 @@ export function Layout() {
               collapsed ? "p-2" : "p-3",
             )}
           >
-            {navGroups.map((group, groupIndex) => (
+            {filteredNavGroups.map((group, groupIndex) => (
               <div key={group.id}>
                 {groupIndex > 0 ? (
                   <div className="sidebar-nav-divider" aria-hidden="true" />
@@ -148,6 +164,9 @@ export function Layout() {
                 </div>
               </div>
             ))}
+            {!collapsed && filteredNavGroups.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">No matches.</p>
+            ) : null}
           </nav>
 
           <div
@@ -191,29 +210,6 @@ export function Layout() {
   );
 }
 
-function GitHubRepoButton() {
-  return (
-    <a
-      href={GITHUB_REPO_URL}
-      target="_blank"
-      rel="noreferrer"
-      aria-label="Open GitHub repository"
-      title="Open GitHub repository"
-      className="inline-flex size-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
-    >
-      <GitHubMark className="sidebar-nav-icon" aria-hidden="true" />
-    </a>
-  );
-}
-
-function GitHubMark(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.11.79-.25.79-.56v-2.02c-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.69 1.25 3.34.96.1-.75.4-1.25.72-1.54-2.56-.29-5.24-1.28-5.24-5.71 0-1.26.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.19 1.18a11.1 11.1 0 0 1 5.8 0c2.22-1.49 3.18-1.18 3.18-1.18.64 1.58.24 2.75.12 3.04.74.8 1.19 1.82 1.19 3.08 0 4.44-2.69 5.42-5.25 5.71.41.36.77 1.07.77 2.16v3.2c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-    </svg>
-  );
-}
-
 function SidebarCollapseButton({
   collapsed,
   onToggle,
@@ -221,8 +217,6 @@ function SidebarCollapseButton({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-  const CollapseIcon = collapsed ? ChevronsRightIcon : ChevronsLeftIcon;
-
   return (
     <Button
       type="button"
@@ -232,14 +226,55 @@ function SidebarCollapseButton({
       aria-expanded={!collapsed}
       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       onClick={onToggle}
-      className={cn(
-        "shrink-0 text-muted-foreground/70 hover:text-foreground",
-        collapsed && "size-9 rounded-md hover:bg-sidebar-accent/60",
-        !collapsed && "ml-auto",
-      )}
+      className="shrink-0 text-muted-foreground/70 hover:text-foreground"
     >
-      <CollapseIcon className="sidebar-nav-icon" strokeWidth={1.75} />
+      <PanelLeftIcon className="size-4" strokeWidth={1.75} />
     </Button>
+  );
+}
+
+function SidebarSearchInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const isSearching = value.trim().length > 0;
+
+  return (
+    <div className="relative flex items-center">
+      <SearchIcon
+        className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground/60"
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Search anything..."
+        aria-label="Search navigation"
+        className="h-8 w-full rounded-md border border-border/60 bg-background/60 pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      />
+      {isSearching ? (
+        <button
+          type="button"
+          aria-label="Clear search"
+          onClick={() => onChange("")}
+          className="absolute right-2 flex size-4 items-center justify-center text-muted-foreground hover:text-foreground"
+        >
+          <XIcon className="size-3.5" strokeWidth={1.75} aria-hidden />
+        </button>
+      ) : (
+        <kbd
+          className="pointer-events-none absolute right-2 hidden h-4 select-none items-center rounded border border-border/60 bg-muted/60 px-1 text-[10px] font-medium text-muted-foreground/70 sm:inline-flex"
+          aria-hidden
+        >
+          /
+        </kbd>
+      )}
+    </div>
   );
 }
 
