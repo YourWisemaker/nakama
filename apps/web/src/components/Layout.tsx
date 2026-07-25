@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  PanelLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
@@ -230,7 +231,11 @@ function SidebarCollapseButton({
       onClick={onToggle}
       className="shrink-0 text-muted-foreground/70 hover:text-foreground"
     >
-      <PanelLeftIcon className="size-4" strokeWidth={1.75} />
+      {collapsed ? (
+        <ChevronRightIcon className="size-4" strokeWidth={1.75} />
+      ) : (
+        <ChevronLeftIcon className="size-4" strokeWidth={1.75} />
+      )}
     </Button>
   );
 }

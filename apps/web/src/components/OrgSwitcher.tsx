@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Building2Icon,
-  ChevronsUpDownIcon,
+  ChevronDownIcon,
   PencilIcon,
   PlusIcon,
 } from "lucide-react";
@@ -146,11 +145,10 @@ export function OrgSwitcher({ collapsed = false }: OrgSwitcherProps) {
       )}
       aria-label={collapsed ? `Current organization: ${label}` : undefined}
     >
-      <Building2Icon className="size-4 shrink-0 text-muted-foreground" />
       {!collapsed ? (
         <>
           <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
-          <ChevronsUpDownIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+          <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
         </>
       ) : null}
     </Button>
@@ -162,6 +160,9 @@ export function OrgSwitcher({ collapsed = false }: OrgSwitcherProps) {
         <DropdownMenuTrigger render={trigger} />
 
         <DropdownMenuContent align="start" className="w-64 p-0">
+          <div className="border-b border-border/50 px-2 py-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Select organization</p>
+          </div>
           <div className="p-1">
             {orgs.map((org) => (
               <DropdownMenuItem
@@ -201,7 +202,7 @@ export function OrgSwitcher({ collapsed = false }: OrgSwitcherProps) {
           {user.isPlatformAdmin ? (
             <div className="border-t border-border/50 bg-muted/30 p-1">
               <DropdownMenuItem
-                className="text-muted-foreground"
+                className="cursor-pointer text-muted-foreground"
                 onClick={() => {
                   setError(null);
                   setName("");

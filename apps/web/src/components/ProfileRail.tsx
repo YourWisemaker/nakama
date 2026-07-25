@@ -101,10 +101,8 @@ export function ProfileRail() {
             </Tooltip>
           );
         })}
-      </div>
 
-      {user?.isPlatformAdmin ? (
-        <div className="flex shrink-0 flex-col items-center gap-1">
+        {user?.isPlatformAdmin ? (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -125,8 +123,8 @@ export function ProfileRail() {
               Manage profiles
             </TooltipContent>
           </Tooltip>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
