@@ -16,6 +16,26 @@ export function getArtifactSharesDir(orgId: string): string {
   return join(getUserConfigDir(), "orgs", orgId, "artifact-shares");
 }
 
+/** Org-level memory dir: ~/.nakama/orgs/{orgId}/ (sibling of the profile dirs). */
+export function getOrgMemoryDir(orgId: string): string {
+  return join(getUserConfigDir(), "orgs", orgId);
+}
+
+/** Live org memory file: ~/.nakama/orgs/{orgId}/MEMORY.md */
+export function getOrgMemoryFilePath(orgId: string): string {
+  return join(getOrgMemoryDir(orgId), "MEMORY.md");
+}
+
+/** Org memory archive dir: ~/.nakama/orgs/{orgId}/memory-archive/ */
+export function getOrgMemoryArchiveDir(orgId: string): string {
+  return join(getOrgMemoryDir(orgId), "memory-archive");
+}
+
+/** Org memory archive file for a given year-month: ~/.nakama/orgs/{orgId}/memory-archive/YYYY-MM.md */
+export function getOrgMemoryArchiveFilePath(orgId: string, yearMonth: string): string {
+  return join(getOrgMemoryArchiveDir(orgId), `${yearMonth}.md`);
+}
+
 export async function resolveSoulStackForProfile(
   orgId: string,
   profileId: string,
