@@ -153,6 +153,15 @@ import type {
   UpdateNotificationDestinationRequest,
   OrganizationResponse,
   OrgMemberResponse,
+  OrgMemoryResponse,
+  UpdateOrgMemoryRequest,
+  AddOrgMemoryFactRequest,
+  OrgMemorySearchRequest,
+  OrgMemorySearchResponse,
+  ArchiveOrgMemoryRequest,
+  ArchiveOrgMemoryResponse,
+  PinOrgMemoryRequest,
+  UnpinOrgMemoryRequest,
   StoredTask,
   TaskRunRecord,
   WorkerLogsResponse,
@@ -1567,6 +1576,78 @@ export class NakamaClient {
     await this.request(
       `/v1/orgs/${encodeURIComponent(orgId)}/members/${encodeURIComponent(userId)}`,
       { method: "DELETE" },
+    );
+  }
+
+  async getOrgMemory(orgId: string): Promise<OrgMemoryResponse> {
+    return this.request<OrgMemoryResponse>(`/v1/orgs/${encodeURIComponent(orgId)}/memory`, {
+      headers: { "X-Org-Id": orgId },
+    });
+  }
+
+  async updateOrgMemory(orgId: string, request: UpdateOrgMemoryRequest): Promise<OrgMemoryResponse> {
+    return this.request<OrgMemoryResponse>(`/v1/orgs/${encodeURIComponent(orgId)}/memory`, {
+      method: "PUT",
+      body: JSON.stringify(request),
+      headers: { "X-Org-Id": orgId },
+    });
+  }
+
+  async addOrgMemoryFact(
+    orgId: string,
+    request: AddOrgMemoryFactRequest,
+  ): Promise<OrgMemoryResponse> {
+    return this.request<OrgMemoryResponse>(`/v1/orgs/${encodeURIComponent(orgId)}/memory/facts`, {
+      method: "POST",
+      body: JSON.stringify(request),
+      headers: { "X-Org-Id": orgId },
+    });
+  }
+
+  async searchOrgMemory(
+    orgId: string,
+    request: OrgMemorySearchRequest,
+  ): Promise<OrgMemorySearchResponse> {
+    return this.request<OrgMemorySearchResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/search`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async pinOrgMemoryFact(orgId: string, request: PinOrgMemoryRequest): Promise<OrgMemoryResponse> {
+    return this.request<OrgMemoryResponse>(`/v1/orgs/${encodeURIComponent(orgId)}/memory/pin`, {
+      method: "POST",
+      body: JSON.stringify(request),
+      headers: { "X-Org-Id": orgId },
+    });
+  }
+
+  async unpinOrgMemoryFact(
+    orgId: string,
+    request: UnpinOrgMemoryRequest,
+  ): Promise<OrgMemoryResponse> {
+    return this.request<OrgMemoryResponse>(`/v1/orgs/${encodeURIComponent(orgId)}/memory/unpin`, {
+      method: "POST",
+      body: JSON.stringify(request),
+      headers: { "X-Org-Id": orgId },
+    });
+  }
+
+  async archiveOrgMemory(
+    orgId: string,
+    request: ArchiveOrgMemoryRequest,
+  ): Promise<ArchiveOrgMemoryResponse> {
+    return this.request<ArchiveOrgMemoryResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/archive`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+        headers: { "X-Org-Id": orgId },
+      },
     );
   }
 

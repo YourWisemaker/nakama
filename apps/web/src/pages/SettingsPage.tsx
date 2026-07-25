@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ProviderSettingsCard } from "@/components/settings/ProviderSettingsCard";
 import { OrgMembersCard } from "@/components/settings/OrgMembersCard";
+import { OrgMemoryCard } from "@/components/settings/OrgMemoryCard";
 import { VisionSettingsCard } from "@/components/settings/VisionSettingsCard";
 import { TranscriptionSettingsCard } from "@/components/settings/TranscriptionSettingsCard";
 import { WebPublicUrlSettingsRow } from "@/components/settings/WebPublicUrlSettingsRow";
@@ -51,6 +52,8 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <OrgMembersCard />
+
+      <OrgMemoryCard />
 
       <Card className="w-full shadow-none">
         <CardContent className="divide-y divide-border p-0">
