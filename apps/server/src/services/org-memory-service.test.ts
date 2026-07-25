@@ -40,7 +40,7 @@ describe("OrgMemoryService", () => {
     const content = await service.getMemory("org_a");
     const parsed = parseOrgMemoryContent(content);
     expect(parsed.pinned).toEqual(["deploys ship on Tuesdays"]);
-    expect(content).toContain("# Org Memory");
+    expect(content).toContain("## Org Memory");
     expect(content).toContain("## Pinned");
   });
 
@@ -57,7 +57,7 @@ describe("OrgMemoryService", () => {
     await service.addFact("org_a", "fact one", { pin: true });
     await service.addFact("org_a", "fact two", { pin: true });
     const summary = await service.getSummary("org_a");
-    expect(summary).toContain("# Org Memory");
+    expect(summary).toContain("## Org Memory");
     expect(summary).toContain("- fact one");
     expect(summary).toContain("- fact two");
   });

@@ -6,7 +6,7 @@
  * testable and lets the service layer own all filesystem access.
  */
 
-export const ORG_MEMORY_PREAMBLE = `# Org Memory
+export const ORG_MEMORY_PREAMBLE = `## Org Memory
 
 ## Pinned`;
 
@@ -101,7 +101,7 @@ export function appendOrgMemorySection(
 }
 
 /**
- * Render the `# Org Memory` section string injected into a profile's system
+ * Render the `## Org Memory` section string injected into a profile's system
  * prompt. v1: pinned bullets only. When the rendered section exceeds
  * `byteCap`, bullets are dropped from the end and an overflow hint is appended
  * pointing the agent at the `org_memory_search` tool.
@@ -118,7 +118,7 @@ export function composeOrgMemorySummary(
     return "";
   }
 
-  const header = "# Org Memory";
+  const header = "## Org Memory";
   const lines: string[] = [header, ""];
 
   let bytes = Buffer.byteLength(lines.join("\n") + "\n", "utf8");

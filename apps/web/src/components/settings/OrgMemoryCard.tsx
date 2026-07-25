@@ -1,5 +1,6 @@
 import { PencilIcon, SaveIcon } from "lucide-react";
 import { useState } from "react";
+import { MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/use-auth";
 import { useOrgMemory, useUpdateOrgMemory } from "@/hooks/use-org-memory";
 import { formatError } from "@/lib/client";
-import { parseOrgMemorySections } from "@/lib/org-memory-bullets";
 import { toast } from "@/lib/toast";
 
 const MAX_BODY_BYTES = 256_000;
@@ -33,7 +33,6 @@ export function OrgMemoryCard() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const liveContent = data?.content ?? "";
-  const sections = parseOrgMemorySections(liveContent);
   const draftBytes = new TextEncoder().encode(draft).byteLength;
 
   if (!isAdmin) {
@@ -85,46 +84,8 @@ export function OrgMemoryCard() {
           <div className="px-4 py-3">
             {isLoading ? (
               <p className="text-xs text-muted-foreground">Loading…</p>
-            ) : sections.length > 0 ? (
-              <div className="space-y-4">
-                {sections.map((section, i) => (
-                  <div
-                    key={section.title || `section-${i}`}
-                    className="space-y-1.5"
-                  >
-                    {section.title ? (
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {section.title}
-                      </p>
-                    ) : null}
-                    {section.bullets.length > 0 ? (
-                      <ul className="space-y-2">
-                        {section.bullets.map((bullet, j) => (
-                          <li
-                            key={`${bullet}-${j}`}
-                            className="flex items-start gap-2 text-sm text-foreground"
-                          >
-                            <span
-                              className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/50"
-                              aria-hidden
-                            />
-                            <span className="min-w-0">{bullet}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {section.text.length > 0 ? (
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        {section.text.map((line, j) => (
-                          <p key={`${line}-${j}`} className="min-w-0">
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
+            ) : liveContent.trim() ? (
+              <MessageResponse className="text-sm">{liveContent}</MessageResponse>
             ) : (
               <p className="text-xs text-muted-foreground">No pinned facts yet.</p>
             )}
@@ -150,11 +111,11 @@ export function OrgMemoryCard() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90dvh,85vh)] w-[calc(100%-1.5rem)] flex-col gap-4 p-4 sm:max-w-3xl sm:gap-6 sm:p-6">
+          <DialogHeader className="pr-8">
             <DialogTitle>Edit org memory</DialogTitle>
             <DialogDescription>
-              Raw Markdown. Keep the # Org Memory / ## Pinned structure.
+              Raw Markdown. Keep the ## Org Memory / ## Pinned structure.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -162,19 +123,19 @@ export function OrgMemoryCard() {
               e.preventDefault();
               void handleSave();
             }}
-            className="space-y-4"
+            className="flex min-h-0 flex-1 flex-col gap-4"
           >
             <Textarea
               value={draft}
               disabled={busy}
               onChange={(e) => setDraft(e.target.value)}
               rows={12}
-              className="font-mono text-xs"
-              placeholder={"# Org Memory\n\n## Pinned\n- ..."}
+              className="field-sizing-fixed min-h-[min(52dvh,22rem)] flex-1 resize-none overflow-y-auto font-mono text-xs leading-relaxed sm:min-h-[min(58dvh,26rem)]"
+              placeholder={"## Org Memory\n\n## Pinned\n- ..."}
               autoFocus
             />
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-            <DialogFooter>
+            <DialogFooter className="mx-0 mb-0 shrink-0 border-t border-border bg-transparent p-0 pt-4">
               <div className="flex w-full items-center justify-between gap-3">
                 <span className="text-xs text-muted-foreground">{draftBytes} bytes</span>
                 <Button type="submit" size="sm" disabled={busy || !dirty}>

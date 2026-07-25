@@ -150,7 +150,7 @@ describe("org memory routes (v1)", () => {
       new Request(`${BASE}/v1/orgs/${orgId}/memory`, {
         method: "PUT",
         headers: memberSession.headers({ "X-CSRF-Token": memberSession.csrfToken }, orgId),
-        body: JSON.stringify({ content: "# Org Memory\n\n## Pinned\n\n- x\n" }),
+        body: JSON.stringify({ content: "## Org Memory\n\n## Pinned\n\n- x\n" }),
       }),
     );
     expect(putResp.status).toBe(403);

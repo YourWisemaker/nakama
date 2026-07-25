@@ -43,7 +43,7 @@ export class OrgMemoryService {
     return existing ?? `${ORG_MEMORY_PREAMBLE}\n`;
   }
 
-  /** Render the `# Org Memory` section injected into profile system prompts. */
+  /** Render the `## Org Memory` section injected into profile system prompts. */
   async getSummary(orgId: string): Promise<string> {
     const content = await this.getMemory(orgId);
     return composeOrgMemorySummary(content, { byteCap: SUMMARY_BYTE_CAP });

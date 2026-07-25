@@ -11,7 +11,7 @@ describe("org memory parse/rebuild", () => {
   test("parses a pinned-only MEMORY.md", () => {
     const content = `${ORG_MEMORY_PREAMBLE}\n\n- deploys ship on Tuesdays\n- prefer Bun over Node\n`;
     const parsed = parseOrgMemoryContent(content);
-    expect(parsed.preamble).toBe("# Org Memory");
+    expect(parsed.preamble).toBe("## Org Memory");
     expect(parsed.pinned).toEqual(["deploys ship on Tuesdays", "prefer Bun over Node"]);
   });
 
@@ -44,7 +44,7 @@ describe("composeOrgMemorySummary", () => {
   test("returns header + pinned bullets", () => {
     const content = `${ORG_MEMORY_PREAMBLE}\n\n- fact one\n- fact two\n`;
     const summary = composeOrgMemorySummary(content);
-    expect(summary).toContain("# Org Memory");
+    expect(summary).toContain("## Org Memory");
     expect(summary).toContain("- fact one");
     expect(summary).toContain("- fact two");
   });
@@ -63,7 +63,7 @@ describe("composeOrgMemorySummary", () => {
     const huge = "x".repeat(3000);
     const content = `${ORG_MEMORY_PREAMBLE}\n\n- ${huge}\n`;
     const summary = composeOrgMemorySummary(content, { byteCap: 256 });
-    expect(summary).toContain("# Org Memory");
+    expect(summary).toContain("## Org Memory");
     expect(summary).toContain("org_memory_search");
     expect(summary).not.toContain(huge);
   });
@@ -73,28 +73,28 @@ describe("appendOrgMemorySection", () => {
   const base = "# Identity\n\nYou are helpful.";
 
   test("appends the summary for a member", () => {
-    const summary = "# Org Memory\n\n- fact one";
+    const summary = "## Org Memory\n\n- fact one";
     expect(appendOrgMemorySection(base, summary, "member")).toBe(
       `${base}\n\n${summary}`,
     );
   });
 
   test("appends the summary for an admin", () => {
-    const summary = "# Org Memory\n\n- fact one";
+    const summary = "## Org Memory\n\n- fact one";
     expect(appendOrgMemorySection(base, summary, "admin")).toBe(
       `${base}\n\n${summary}`,
     );
   });
 
   test("appends the summary when orgRole is undefined (system runners)", () => {
-    const summary = "# Org Memory\n\n- fact one";
+    const summary = "## Org Memory\n\n- fact one";
     expect(appendOrgMemorySection(base, summary, undefined)).toBe(
       `${base}\n\n${summary}`,
     );
   });
 
   test("does NOT append for a viewer", () => {
-    const summary = "# Org Memory\n\n- secret fact";
+    const summary = "## Org Memory\n\n- secret fact";
     expect(appendOrgMemorySection(base, summary, "viewer")).toBe(base);
   });
 
