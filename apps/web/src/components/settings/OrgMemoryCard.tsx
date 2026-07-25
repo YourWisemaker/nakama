@@ -1,5 +1,5 @@
-import { PencilIcon, SaveIcon } from "lucide-react";
-import { useState } from "react";
+import { PencilIcon } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,9 @@ import { toast } from "@/lib/toast";
 
 const MAX_BODY_BYTES = 256_000;
 
+const orgMemoryPreviewMarkdownClassName =
+  "max-w-none text-sm [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h2]:text-xs [&_h2]:font-medium [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:text-muted-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h4]:mt-2 [&_h4]:mb-1 [&_h4]:text-xs [&_h4]:font-medium";
+
 export function OrgMemoryCard() {
   const { activeOrg } = useAuth();
   const orgId = activeOrg?.id ?? null;
@@ -31,9 +34,34 @@ export function OrgMemoryCard() {
   const [draft, setDraft] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [previewTruncated, setPreviewTruncated] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const liveContent = data?.content ?? "";
   const draftBytes = new TextEncoder().encode(draft).byteLength;
+
+  useEffect(() => {
+    setPreviewExpanded(false);
+  }, [liveContent]);
+
+  useLayoutEffect(() => {
+    const element = previewRef.current;
+    if (!element || previewExpanded) {
+      return;
+    }
+
+    const checkTruncation = () => {
+      setPreviewTruncated(element.scrollHeight > element.clientHeight + 1);
+    };
+
+    checkTruncation();
+
+    const observer = new ResizeObserver(checkTruncation);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [liveContent, previewExpanded]);
 
   if (!isAdmin) {
     return null;
@@ -85,7 +113,33 @@ export function OrgMemoryCard() {
             {isLoading ? (
               <p className="text-xs text-muted-foreground">Loading…</p>
             ) : liveContent.trim() ? (
-              <MessageResponse className="text-sm">{liveContent}</MessageResponse>
+              <div className="space-y-2">
+                <div
+                  ref={previewRef}
+                  className={previewExpanded ? "relative" : "relative max-h-48 overflow-hidden"}
+                >
+                  <MessageResponse className={orgMemoryPreviewMarkdownClassName}>
+                    {liveContent}
+                  </MessageResponse>
+                  {!previewExpanded ? (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent"
+                      aria-hidden
+                    />
+                  ) : null}
+                </div>
+                {previewTruncated || previewExpanded ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-0 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setPreviewExpanded((expanded) => !expanded)}
+                  >
+                    {previewExpanded ? "See less" : "See more"}
+                  </Button>
+                ) : null}
+              </div>
             ) : (
               <p className="text-xs text-muted-foreground">No pinned facts yet.</p>
             )}
@@ -139,11 +193,7 @@ export function OrgMemoryCard() {
               <div className="flex w-full items-center justify-between gap-3">
                 <span className="text-xs text-muted-foreground">{draftBytes} bytes</span>
                 <Button type="submit" size="sm" disabled={busy || !dirty}>
-                  {updateMutation.isPending ? (
-                    <Spinner className="mr-2" />
-                  ) : (
-                    <SaveIcon className="mr-2" />
-                  )}
+                  {updateMutation.isPending ? <Spinner className="mr-2" /> : null}
                   Save
                 </Button>
               </div>
