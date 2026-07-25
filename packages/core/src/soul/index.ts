@@ -6,3 +6,4 @@ export * from "./init";
 export * from "./save";
 export * from "./templates";
 export * from "./org-memory";
+export * from "./memory-archive";
