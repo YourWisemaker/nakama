@@ -1,3 +1,4 @@
+import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import { hasActiveAgentTodos } from "@nakama/core/agent-todo";
 import type {
   AgentQuestionAnswer,
@@ -153,7 +154,8 @@ export function ChatComposer(props: ChatComposerProps) {
   const isMinimal = props.variant === "minimal";
   const showTips = !isMinimal && props.showTips === true;
   const hasTodos = hasActiveAgentTodos(todos);
-  const hasQuestionnaire = Boolean(questionnaire && questionnaire.questions.length > 0);
+  const hasQuestionnaire = hasActiveAgentQuestionnaire(questionnaire);
+  const showTodos = hasTodos && !hasQuestionnaire;
   const hasQueuedMessages = queuedMessages.length > 0;
   const availableSkills = isMinimal ? EMPTY_SKILLS : (props.availableSkills ?? EMPTY_SKILLS);
   const skillPickerKey = availableSkills.map((skill) => skill.id).join("\0");
@@ -186,7 +188,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </span>
         </p>
       ) : null}
-      {(hasQuestionnaire || hasTodos || hasQueuedMessages) && !isMinimal ? (
+      {(hasQuestionnaire || showTodos || hasQueuedMessages) && !isMinimal ? (
         <div className="relative flex w-full flex-col">
           {hasQuestionnaire ? (
             <AgentQuestionnairePanel
@@ -195,7 +197,7 @@ export function ChatComposer(props: ChatComposerProps) {
               onSubmit={(answers) => onSubmitQuestionnaire?.(answers)}
             />
           ) : null}
-          <AgentTodoPanel todos={todos} stack />
+          {showTodos ? <AgentTodoPanel todos={todos} stack /> : null}
           {hasQueuedMessages ? <ChatMessageQueuePanel messages={queuedMessages} stack /> : null}
           <div className="relative z-10 -mt-2 w-full">
             {composerNotice}

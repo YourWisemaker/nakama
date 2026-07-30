@@ -148,6 +148,35 @@
     }
   }
 
+  .todo-item-enter {
+    animation: todo-item-enter 0.3s ease-out both;
+  }
+
+  @keyframes todo-item-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .todo-panel-expand {
+    display: grid;
+    transition: grid-template-rows 0.2s ease-out;
+  }
+
+  .todo-panel-expand[data-expanded="true"] {
+    grid-template-rows: 1fr;
+  }
+
+  .todo-panel-expand[data-expanded="false"] {
+    grid-template-rows: 0fr;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .todo-shimmer-text,
     .thinking-shimmer-text {
@@ -157,6 +186,14 @@
       -webkit-background-clip: unset;
       -webkit-text-fill-color: unset;
       color: var(--foreground);
+    }
+
+    .todo-item-enter {
+      animation: none;
+    }
+
+    .todo-panel-expand {
+      transition: none;
     }
   }
 
