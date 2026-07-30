@@ -187,7 +187,7 @@ export function McpHeadersEditor({
     <div className="space-y-2">
       <ul className="space-y-2">
         {headers.map((row, index) => (
-          <li key={row.key.trim() || rowKeysRef.current[index]} className="flex items-start gap-2">
+          <li key={rowKeysRef.current[index]} className="flex items-start gap-2">
             <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
               <Input
                 value={row.key}
