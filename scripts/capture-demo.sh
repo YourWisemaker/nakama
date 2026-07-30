@@ -11,7 +11,11 @@ SESSION=nakama-demo-screenshot
 SERVER_PID=""
 VIEWPORT_WIDTH=1440
 VIEWPORT_HEIGHT=900
-AB="/Users/ahmadrosid/Library/pnpm/nodejs/22.23.1/bin/agent-browser"
+if command -v agent-browser >/dev/null 2>&1; then
+  AB="$(command -v agent-browser)"
+else
+  AB="/Users/ahmadrosid/Library/pnpm/nodejs/22.23.1/bin/agent-browser"
+fi
 
 cleanup() {
   "$AB" --session "$SESSION" close --all 2>/dev/null || true
@@ -24,6 +28,9 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$TEMP_CONFIG"
+
+echo "Building latest web UI..."
+bun run --filter @nakama/web build
 
 NAKAMA_CONFIG_DIR="$TEMP_CONFIG" NAKAMA_PORT="$PORT" \
   bun run "$ROOT/apps/server/src/index.ts" > /tmp/nakama-demo-server.log 2>&1 &
@@ -66,11 +73,13 @@ curl -sf -b "$COOKIE_JAR" -X POST "${BASE_URL}/v1/profiles" \
   --url "${BASE_URL}/" --httpOnly --sameSite Lax
 "$AB" --session "$SESSION" cookies set nakama_csrf "$CSRF_VAL" \
   --url "${BASE_URL}/" --sameSite Lax
-"$AB" --session "$SESSION" open "${BASE_URL}/chat"
-"$AB" --session "$SESSION" wait 3500
 "$AB" --session "$SESSION" set viewport "$VIEWPORT_WIDTH" "$VIEWPORT_HEIGHT"
 "$AB" --session "$SESSION" set media dark
-"$AB" --session "$SESSION" wait 800
+"$AB" --session "$SESSION" open "${BASE_URL}/chat"
+"$AB" --session "$SESSION" wait 2000
+"$AB" --session "$SESSION" storage local set nakama-sidebar-collapsed false
+"$AB" --session "$SESSION" open "${BASE_URL}/chat"
+"$AB" --session "$SESSION" wait 3500
 "$AB" --session "$SESSION" screenshot "$OUTPUT"
 
 echo "Demo screenshot saved to $OUTPUT"
