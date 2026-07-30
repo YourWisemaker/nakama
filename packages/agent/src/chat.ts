@@ -60,6 +60,7 @@ export interface StreamHandlers {
     tool: string;
     result: unknown;
   }) => void;
+  onSubAgentActivity?: (event: { parentToolCallId: string; label: string }) => void;
 }
 
 export type SendMessageArg = string | SendMessageInput;
@@ -398,6 +399,21 @@ async function executeToolCalls(
   handlers?: StreamHandlers,
   toolContext: ToolContext = {},
 ): Promise<void> {
+  const contextForCall = (call: ToolCall): ToolContext => {
+    if (!handlers?.onSubAgentActivity || call.name !== "sub_agent") {
+      return toolContext;
+    }
+
+    return {
+      ...toolContext,
+      emitSubAgentActivity: (label) =>
+        handlers.onSubAgentActivity?.({
+          parentToolCallId: call.id,
+          label,
+        }),
+    };
+  };
+
   if (canRunToolCallsInParallel(tools, toolCalls)) {
     const results = await Promise.all(
       toolCalls.map(async (call) => {
@@ -407,7 +423,7 @@ async function executeToolCalls(
           input: call.arguments,
         });
 
-        const result = await executeToolCall(tools, call, toolContext);
+        const result = await executeToolCall(tools, call, contextForCall(call));
 
         handlers?.onToolEnd?.({
           toolCallId: call.id,
@@ -440,7 +456,7 @@ async function executeToolCalls(
       input: call.arguments,
     });
 
-    const result = await executeToolCall(tools, call, toolContext);
+    const result = await executeToolCall(tools, call, contextForCall(call));
 
     handlers?.onToolEnd?.({
       toolCallId: call.id,

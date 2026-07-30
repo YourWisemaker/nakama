@@ -354,7 +354,13 @@ function SubAgentToolRow({
   const isRunning = message.toolStatus === "running";
   const elapsedSeconds = useElapsedSeconds(isRunning, message.createdAt);
   const title = formatSubAgentTitle(message.toolInput);
-  const subtitle = formatSubAgentSubtitle(message.toolInput, message.toolResult, isRunning);
+  const activity = message.subAgentActivity;
+  const subtitle = formatSubAgentSubtitle(
+    message.toolInput,
+    message.toolResult,
+    isRunning,
+    activity,
+  );
   const parsed = message.toolStatus === "done" ? parseSubAgentResult(message.toolResult) : null;
   const output =
     message.toolStatus === "done" ? formatSubAgentToolResult(message.toolResult) : null;
@@ -384,16 +390,23 @@ function SubAgentToolRow({
             <span className="block text-xs text-muted-foreground">{modelLabel}</span>
           ) : null}
           <p className="min-w-0 truncate text-sm font-medium text-foreground">{title}</p>
-          <p className={cn("mt-0.5 truncate text-sm", statusTone)}>{subtitle}</p>
+          <p
+            className={cn(
+              "mt-0.5 truncate text-sm",
+              isRunning && activity ? "todo-shimmer-text font-medium text-foreground" : statusTone,
+            )}
+          >
+            {subtitle}
+          </p>
         </div>
       </div>
 
       {isRunning ? (
-        <div className="flex items-center gap-2 pl-6 text-sm">
-          <span className="todo-shimmer-text">Waiting for subagent</span>
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {formatElapsedSeconds(elapsedSeconds)}
-          </span>
+        <div className="flex items-center gap-2 pl-6 text-xs tabular-nums text-muted-foreground">
+          {activity ? null : (
+            <span className="text-sm todo-shimmer-text text-muted-foreground">Waiting for subagent</span>
+          )}
+          <span>{formatElapsedSeconds(elapsedSeconds)}</span>
         </div>
       ) : null}
 

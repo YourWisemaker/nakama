@@ -67,6 +67,25 @@ describe("readStreamEvents", () => {
     ]);
   });
 
+  test("dispatches sub_agent_activity events", async () => {
+    const events: Array<{ parentToolCallId: string; label: string }> = [];
+
+    await readStreamEvents(
+      streamFromChunks([
+        'data: {"type":"sub_agent_activity","parentToolCallId":"call_sa","label":"Reading SOUL.md"}\n\n',
+        'data: {"type":"done","reply":"ok"}\n\n',
+      ]),
+      {
+        onChunk: () => {},
+        onSubAgentActivity: (event) => {
+          events.push(event);
+        },
+      },
+    );
+
+    expect(events).toEqual([{ parentToolCallId: "call_sa", label: "Reading SOUL.md" }]);
+  });
+
   test("surfaces server error events", async () => {
     await expect(
       readStreamEvents(

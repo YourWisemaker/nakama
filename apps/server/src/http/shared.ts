@@ -455,6 +455,12 @@ export function streamMessage(
                 }
               }
             },
+            onSubAgentActivity: (event) =>
+              send({
+                type: "sub_agent_activity",
+                parentToolCallId: event.parentToolCallId,
+                label: event.label,
+              }),
           }),
           new Promise<never>((_, reject) => {
             setTimeout(() => {

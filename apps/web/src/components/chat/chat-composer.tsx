@@ -72,7 +72,6 @@ import {
 } from "@/lib/pasted-text";
 import {
   encodeModelSelection,
-  modelSelectContentMaxHeightClass,
 } from "@/lib/models";
 import {
   filterSkillsForSlashQuery,
@@ -80,7 +79,7 @@ import {
   replaceSlashRangeWithSkillInvocation,
   type SkillSlashRange,
 } from "@/lib/chat-composer-skills";
-import { ChatTips } from "./chat-tips";
+import { ChatComposerError, ChatTips } from "./chat-tips";
 
 interface ChatComposerBaseProps {
   chatStatus: ChatStatus;
@@ -156,21 +155,19 @@ export function ChatComposer(props: ChatComposerProps) {
   const hasTodos = hasActiveAgentTodos(todos);
   const hasQuestionnaire = Boolean(questionnaire && questionnaire.questions.length > 0);
   const hasQueuedMessages = queuedMessages.length > 0;
-  const shellClass = isMinimal ? composerShellCompactClass : composerShellClass;
   const availableSkills = isMinimal ? EMPTY_SKILLS : (props.availableSkills ?? EMPTY_SKILLS);
   const skillPickerKey = availableSkills.map((skill) => skill.id).join("\0");
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const displayError = error ?? attachmentError;
+  const composerNotice = displayError ? (
+    <ChatComposerError message={displayError} />
+  ) : showTips ? (
+    <ChatTips />
+  ) : null;
+  const shellClass = isMinimal ? composerShellCompactClass : composerShellClass;
 
   return (
     <div className={cn("w-full shrink-0", className)}>
-      <p
-        className={`min-h-5 px-2 text-sm ${displayError ? "text-destructive" : "invisible"}`}
-        role={displayError ? "alert" : undefined}
-        aria-hidden={!displayError}
-      >
-        {displayError ?? "\u00a0"}
-      </p>
       {!isMinimal && props.showOfflineHint ? (
         <p
           className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
@@ -201,6 +198,7 @@ export function ChatComposer(props: ChatComposerProps) {
           <AgentTodoPanel todos={todos} stack />
           {hasQueuedMessages ? <ChatMessageQueuePanel messages={queuedMessages} stack /> : null}
           <div className="relative z-10 -mt-2 w-full">
+            {composerNotice}
             <PromptInput
               accept={ALL_ATTACHMENT_ACCEPT}
               multiple
@@ -247,7 +245,7 @@ export function ChatComposer(props: ChatComposerProps) {
         </div>
       ) : (
         <>
-          {showTips ? <ChatTips /> : null}
+          {composerNotice}
           <PromptInput
             accept={isMinimal ? undefined : ALL_ATTACHMENT_ACCEPT}
             multiple={!isMinimal}
@@ -507,10 +505,7 @@ function ChatComposerFullFooter({
             <PromptInputSelectContent
               align="start"
               alignItemWithTrigger={false}
-              className={cn(
-                "w-max max-w-[min(24rem,92vw)] text-xs",
-                modelSelectContentMaxHeightClass,
-              )}
+              className="w-max max-w-[min(24rem,92vw)] text-xs"
             >
               {props.profileModelId &&
                 !props.providerModelGroups.some((group) =>

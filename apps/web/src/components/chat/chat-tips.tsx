@@ -1,4 +1,4 @@
-import { LightbulbIcon } from "lucide-react";
+import { CircleAlertIcon, LightbulbIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,43 @@ const TIPS = [
 ];
 
 const TIP_INTERVAL_MS = 10000;
+
+function ChatComposerNotice({
+  children,
+  className,
+  role,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  role?: React.AriaRole;
+}) {
+  return (
+    <div className="px-4">
+      <div
+        role={role}
+        className={cn(
+          "relative overflow-hidden rounded-t-xl border-x border-t border-border bg-card/75 px-3 py-2",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function ChatComposerError({ message }: { message: string }) {
+  return (
+    <ChatComposerNotice role="alert">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <CircleAlertIcon className="size-3 shrink-0 text-destructive/80" aria-hidden />
+        <div className="relative min-h-4 flex-1 overflow-hidden">
+          <span className="block text-destructive/90">{message}</span>
+        </div>
+      </div>
+    </ChatComposerNotice>
+  );
+}
 
 export function ChatTips({ className }: { className?: string }) {
   const [index, setIndex] = useState(0);
@@ -21,26 +58,19 @@ export function ChatTips({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div className="px-4">
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-t-xl border-x border-t border-border bg-card/75 px-3 py-2",
-          className,
-        )}
-      >
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <LightbulbIcon className="size-3 shrink-0 text-primary/80" aria-hidden />
-          <div className="relative min-h-4 flex-1 overflow-hidden">
-            <span
-              key={index}
-              className="chat-tip-slide-up block truncate"
-              aria-live="polite"
-            >
-              {TIPS[index]}
-            </span>
-          </div>
+    <ChatComposerNotice className={className}>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <LightbulbIcon className="size-3 shrink-0 text-primary/80" aria-hidden />
+        <div className="relative min-h-4 flex-1 overflow-hidden">
+          <span
+            key={index}
+            className="chat-tip-slide-up block truncate"
+            aria-live="polite"
+          >
+            {TIPS[index]}
+          </span>
         </div>
       </div>
-    </div>
+    </ChatComposerNotice>
   );
 }

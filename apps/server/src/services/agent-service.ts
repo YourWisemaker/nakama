@@ -203,6 +203,7 @@ import {
   type SubAgentRunInput,
   type SubAgentRunResult,
 } from "../tools/sub-agent-shared";
+import { formatToolActivityLabel } from "../tools/sub-agent-activity";
 import { AgentQuestionnaireState } from "./agent-questionnaire-state";
 import {
   getCodingHarnessInstallCommand,
@@ -1068,10 +1069,41 @@ export class AgentService {
       }),
     });
 
-    const sendPromise = session.send(prompt).then((reply) => ({
-      kind: "success" as const,
-      reply: reply.trim(),
-    }));
+    let sawPlanning = false;
+    let sawWriting = false;
+
+    const emitActivity = (label: string) => {
+      input.onActivity?.(label);
+    };
+
+    emitActivity("Starting…");
+
+    const sendPromise = session
+      .sendStream(prompt, {
+        onChunk: () => {
+          if (sawWriting) {
+            return;
+          }
+
+          sawWriting = true;
+          emitActivity("Writing answer…");
+        },
+        onThinking: () => {
+          if (sawPlanning) {
+            return;
+          }
+
+          sawPlanning = true;
+          emitActivity("Planning…");
+        },
+        onToolStart: (event) => {
+          emitActivity(formatToolActivityLabel(event.tool, event.input));
+        },
+      })
+      .then((reply) => ({
+        kind: "success" as const,
+        reply: reply.trim(),
+      }));
 
     const timeoutPromise = new Promise<{ kind: "timeout" }>((resolve) => {
       setTimeout(() => resolve({ kind: "timeout" }), timeoutMs);

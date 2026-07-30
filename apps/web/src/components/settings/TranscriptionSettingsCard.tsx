@@ -16,7 +16,6 @@ import { formatError } from "@/lib/client";
 import {
   encodeModelSelection,
   groupModelsByProvider,
-  modelSelectContentMaxHeightClass,
   profileModelLabel,
   profileModelSelectionValue,
   TRANSCRIPTION_MODEL_OPTIONS,
@@ -143,7 +142,7 @@ export function TranscriptionSettingsCard() {
         </SelectTrigger>
         <SelectContent
           alignItemWithTrigger={false}
-          className={`${modelSelectContentMaxHeightClass} w-max min-w-72 max-w-[min(24rem,92vw)]`}
+          className="w-max min-w-72 max-w-[min(24rem,92vw)]"
         >
           <SelectItem value={CLEAR_TRANSCRIPTION_MODEL_VALUE}>Not configured</SelectItem>
           {transcriptionModelGroups.flatMap((group) =>
