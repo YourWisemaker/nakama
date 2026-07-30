@@ -524,6 +524,11 @@ export interface SessionMessagesResponse {
   questionnaire: AgentQuestionnaire | null;
 }
 
+export interface SessionStatusResponse {
+  active: boolean;
+  startedAt?: string;
+}
+
 export interface SessionSummary {
   id: string;
   profileId: string;

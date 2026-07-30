@@ -44,6 +44,11 @@ import {
   finalizeStreamingMessages,
   isAbortError,
 } from "@/lib/chat-stream";
+import {
+  isActiveTurnConflictError,
+  reconnectActiveSessionStream,
+  seedStreamingStateForActiveTurn,
+} from "@/lib/chat-stream-resume";
 import { client, formatError } from "@/lib/client";
 import {
   decodeModelSelection,
@@ -278,16 +283,54 @@ export function useChatPage() {
           questionnaire,
         } = await client.getSessionMessages(sessionId);
         const nextSession = client.createChatSession(sessionId, channel);
+        let listItems = chatMessagesToListItems(storedMessages, messageMeta);
         setProfileId(nextProfileId);
         setSessionChannel(channel);
         setSession(nextSession);
-        setMessages(chatMessagesToListItems(storedMessages, messageMeta));
+        setMessages(listItems);
         setAgentTodos(todos);
         setAgentQuestionnaire(questionnaire);
         syncChatUrl(nextProfileId, sessionId);
+
+        if (channel === "web") {
+          const status = await client.getSessionStatus(sessionId);
+
+          if (status.active) {
+            listItems = seedStreamingStateForActiveTurn(listItems);
+            setMessages(listItems);
+
+            const abortController = new AbortController();
+            streamAbortRef.current = abortController;
+
+            const { reconnected } = await reconnectActiveSessionStream({
+              sessionId,
+              messages: listItems,
+              handlers: buildStreamHandlers(setMessages, {
+                onTodosUpdated: setAgentTodos,
+                onQuestionnaireUpdated: setAgentQuestionnaire,
+              }),
+              signal: abortController.signal,
+            });
+
+            const refreshed = await client.getSessionMessages(sessionId);
+            setMessages(chatMessagesToListItems(refreshed.messages, refreshed.messageMeta));
+            setAgentTodos(refreshed.todos);
+            setAgentQuestionnaire(refreshed.questionnaire);
+
+            if (!reconnected && !status.active) {
+              setError(null);
+            }
+          }
+        }
       } catch (err) {
+        if (isAbortError(err)) {
+          setMessages((current) => finalizeStreamingMessages(current));
+          return;
+        }
+
         setError(formatError(err));
       } finally {
+        streamAbortRef.current = null;
         setBusy(false);
       }
     },
@@ -532,6 +575,11 @@ export function useChatPage() {
         }
 
         const message = formatError(err);
+
+        if (isActiveTurnConflictError(message) && activeSession) {
+          setError("The agent is still responding to your last message.");
+          return;
+        }
 
         if (message.includes("Session not found") && profileId) {
           try {

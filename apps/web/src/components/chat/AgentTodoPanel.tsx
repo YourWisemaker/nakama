@@ -23,9 +23,9 @@ const pendingPattern: Frame = [
 ];
 
 const completedPattern: Frame = [
-  [0, 1],
-  [1, 0],
-  [1, 0],
+  [1, 1],
+  [1, 1],
+  [1, 1],
 ];
 
 const cancelledPattern: Frame = [

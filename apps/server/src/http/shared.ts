@@ -21,6 +21,7 @@ import type {
 } from "@nakama/db";
 import { ensureLocalClientAccess } from "@nakama/db";
 import type { AppEnv } from "./types";
+import { sessionTurnRegistry } from "../services/session-turn-registry";
 
 const SESSION_COOKIE_NAME = "nakama_session";
 const CSRF_COOKIE_NAME = "nakama_csrf";
@@ -389,7 +390,146 @@ export function parseChannel(value: string | undefined): AgentChannel {
 
 const STREAM_TIMEOUT_MS = 600_000;
 
+function createStreamSenders(
+  sessionId: string,
+  enqueue: (chunk: Uint8Array) => void,
+): {
+  send: (event: StreamEvent) => void;
+  getTerminal: () => StreamEvent | null;
+} {
+  let terminal: StreamEvent | null = null;
+
+  const send = (event: StreamEvent) => {
+    sessionTurnRegistry.publish(sessionId, event);
+
+    if (event.type === "done" || event.type === "error") {
+      terminal = event;
+    }
+
+    try {
+      enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
+    } catch {
+      // Client disconnected — keep the server turn and registry subscribers alive.
+    }
+  };
+
+  return {
+    send,
+    getTerminal: () => terminal,
+  };
+}
+
+function buildAgentStreamHandlers(send: (event: StreamEvent) => void) {
+  return {
+    onChunk: (delta: string) => send({ type: "chunk", delta }),
+    onThinking: (delta: string) => send({ type: "thinking", delta }),
+    onToolInputDelta: (event: {
+      toolCallId: string;
+      tool: string;
+      delta: string;
+      accumulatedArguments?: string;
+    }) =>
+      send({
+        type: "tool_input_delta",
+        toolCallId: event.toolCallId,
+        tool: event.tool,
+        delta: event.delta,
+        accumulatedArguments: event.accumulatedArguments,
+      }),
+    onToolStart: (event: {
+      toolCallId: string;
+      tool: string;
+      input: Record<string, unknown>;
+    }) =>
+      send({
+        type: "tool_start",
+        toolCallId: event.toolCallId,
+        tool: event.tool,
+        input: event.input,
+      }),
+    onToolEnd: (event: { toolCallId: string; tool: string; result: unknown }) => {
+      send({
+        type: "tool_end",
+        toolCallId: event.toolCallId,
+        tool: event.tool,
+        result: event.result,
+      });
+
+      if (event.tool === "todo_write") {
+        const todos = readTodosFromToolResult(event.result);
+
+        if (todos) {
+          send({ type: "todos_updated", todos });
+        }
+      }
+
+      if (event.tool === "ask_user_question") {
+        const questionnaire = readQuestionnaireFromToolResult(event.result);
+
+        if (questionnaire) {
+          send({ type: "questionnaire_updated", questionnaire });
+        }
+      }
+    },
+    onSubAgentActivity: (event: { parentToolCallId: string; label: string }) =>
+      send({
+        type: "sub_agent_activity",
+        parentToolCallId: event.parentToolCallId,
+        label: event.label,
+      }),
+  };
+}
+
+export function streamTurnSubscribe(sessionId: string): Response | null {
+  if (!sessionTurnRegistry.isActive(sessionId)) {
+    return null;
+  }
+
+  const encoder = new TextEncoder();
+  const keepaliveIntervalMs = 4_000;
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const subscription = sessionTurnRegistry.subscribe(sessionId, (event) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+
+          if (event.type === "done" || event.type === "error") {
+            subscription?.unsubscribe();
+            controller.close();
+          }
+        } catch {
+          subscription?.unsubscribe();
+        }
+      });
+
+      if (!subscription) {
+        controller.close();
+        return;
+      }
+
+      const keepalive = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(": ping\n\n"));
+        } catch {
+          clearInterval(keepalive);
+          subscription.unsubscribe();
+        }
+      }, keepaliveIntervalMs);
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 export function streamMessage(
+  sessionId: string,
   session: AgentChatSession,
   input: SendMessageInput,
   onComplete?: () => void,
@@ -399,9 +539,9 @@ export function streamMessage(
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: StreamEvent) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-      };
+      const { send, getTerminal } = createStreamSenders(sessionId, (chunk) => {
+        controller.enqueue(chunk);
+      });
 
       const keepalive = setInterval(() => {
         try {
@@ -413,55 +553,7 @@ export function streamMessage(
 
       try {
         const reply = await Promise.race([
-          session.sendStream(input, {
-            onChunk: (delta) => send({ type: "chunk", delta }),
-            onThinking: (delta) => send({ type: "thinking", delta }),
-            onToolInputDelta: (event) =>
-              send({
-                type: "tool_input_delta",
-                toolCallId: event.toolCallId,
-                tool: event.tool,
-                delta: event.delta,
-                accumulatedArguments: event.accumulatedArguments,
-              }),
-            onToolStart: (event) =>
-              send({
-                type: "tool_start",
-                toolCallId: event.toolCallId,
-                tool: event.tool,
-                input: event.input,
-              }),
-            onToolEnd: (event) => {
-              send({
-                type: "tool_end",
-                toolCallId: event.toolCallId,
-                tool: event.tool,
-                result: event.result,
-              });
-
-              if (event.tool === "todo_write") {
-                const todos = readTodosFromToolResult(event.result);
-
-                if (todos) {
-                  send({ type: "todos_updated", todos });
-                }
-              }
-
-              if (event.tool === "ask_user_question") {
-                const questionnaire = readQuestionnaireFromToolResult(event.result);
-
-                if (questionnaire) {
-                  send({ type: "questionnaire_updated", questionnaire });
-                }
-              }
-            },
-            onSubAgentActivity: (event) =>
-              send({
-                type: "sub_agent_activity",
-                parentToolCallId: event.parentToolCallId,
-                label: event.label,
-              }),
-          }),
+          session.sendStream(input, buildAgentStreamHandlers(send)),
           new Promise<never>((_, reject) => {
             setTimeout(() => {
               reject(
@@ -478,6 +570,15 @@ export function streamMessage(
         send({ type: "error", error: formatServerError(error) });
       } finally {
         clearInterval(keepalive);
+
+        const terminal =
+          getTerminal() ??
+          ({
+            type: "error",
+            error: "Stream closed before the agent finished.",
+          } satisfies StreamEvent);
+
+        sessionTurnRegistry.endTurn(sessionId, terminal);
         controller.close();
         onComplete?.();
       }
