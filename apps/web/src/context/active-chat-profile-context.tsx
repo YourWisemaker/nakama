@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
   ActiveChatProfileContext,
   type ActiveChatProfileContextValue,
@@ -18,10 +18,13 @@ export function ActiveChatProfileProvider({ children }: { children: ReactNode })
     writeStoredActiveChatProfileId(nextProfileId);
   }, []);
 
-  const value: ActiveChatProfileContextValue = {
-    profileId,
-    setProfileId,
-  };
+  const value = useMemo<ActiveChatProfileContextValue>(
+    () => ({
+      profileId,
+      setProfileId,
+    }),
+    [profileId, setProfileId],
+  );
 
   return (
     <ActiveChatProfileContext.Provider value={value}>
