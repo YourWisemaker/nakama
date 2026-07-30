@@ -37,10 +37,13 @@ function ChatComposerNotice({
 export function ChatComposerError({ message }: { message: string }) {
   return (
     <ChatComposerNotice role="alert">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <CircleAlertIcon className="size-3 shrink-0 text-destructive/80" aria-hidden />
-        <div className="relative min-h-4 flex-1 overflow-hidden">
-          <span className="block text-destructive/90">{message}</span>
+      <div className="flex items-start gap-2 text-xs text-muted-foreground sm:items-center">
+        <CircleAlertIcon
+          className="mt-0.5 size-3 shrink-0 text-destructive/80 sm:mt-0"
+          aria-hidden
+        />
+        <div className="relative min-w-0 flex-1 sm:min-h-4">
+          <span className="block leading-relaxed text-destructive/90">{message}</span>
         </div>
       </div>
     </ChatComposerNotice>
