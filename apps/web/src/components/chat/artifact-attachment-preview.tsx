@@ -11,6 +11,7 @@ import {
 } from "@/components/chat/artifact-attachment-panel-body";
 import {
   downloadActionLabel,
+  artifactPanelBodyClassName,
   artifactPanelDefaultWidth,
   artifactPanelSubtitle,
 } from "@/components/chat/artifact-attachment-panel-body.shared";
@@ -199,8 +200,11 @@ export function ArtifactAttachmentPreview({
       ),
       resizable: !fullscreen,
       fullscreen,
-      bodyClassName:
-        isHtml || isImage ? "flex flex-col overflow-hidden p-0" : undefined,
+      bodyClassName: artifactPanelBodyClassName({
+        isHtml,
+        isImage,
+        isMarkdown,
+      }),
       content: buildPanelBody(),
     };
   }

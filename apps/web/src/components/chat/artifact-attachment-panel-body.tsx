@@ -1,3 +1,4 @@
+import { CodeBlock } from "@/components/ai-elements/code-block";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChatArtifactRef } from "@/lib/chat-artifacts";
@@ -5,6 +6,7 @@ import {
   ARTIFACT_HTML_IFRAME_SANDBOX,
   htmlForArtifactPreview,
 } from "@/lib/artifact-html-preview";
+import { cn } from "@/lib/utils";
 
 /** Highlighting a very large file blocks the main thread, so show it as plain text. */
 const MAX_HIGHLIGHTED_CHARS = 200_000;
@@ -40,16 +42,28 @@ function toCodeFence(content: string, language: string): string {
   return `${fence}${language}\n${content}\n${fence}`;
 }
 
+function usesPlainCodeBlock(
+  content: string,
+  format: "markdown" | "plain",
+  language: string | null,
+): boolean {
+  return (
+    format !== "markdown" && !(language !== null && content.length <= MAX_HIGHLIGHTED_CHARS)
+  );
+}
+
 function renderTextContent({
   content,
   format,
   language,
   streaming = false,
+  fillHeight = false,
 }: {
   content: string;
   format: "markdown" | "plain";
   language: string | null;
   streaming?: boolean;
+  fillHeight?: boolean;
 }) {
   if (format === "markdown") {
     return (
@@ -67,11 +81,7 @@ function renderTextContent({
     );
   }
 
-  return (
-    <pre className="max-h-[min(50vh,28rem)] overflow-auto rounded-lg border border-border bg-muted/40 p-3 text-sm whitespace-pre-wrap text-foreground">
-      {content}
-    </pre>
-  );
+  return <CodeBlock code={content} lang={language} fillHeight={fillHeight} />;
 }
 
 function LoadingState({ compact = false }: { compact?: boolean }) {
@@ -158,8 +168,16 @@ function ArtifactAttachmentTextBody({
   streaming = false,
   canPreview,
 }: Extract<ArtifactAttachmentPanelBodyProps, { kind: "text" }>) {
+  const showCodeBlock = Boolean(
+    content && usesPlainCodeBlock(content, format, language),
+  );
+
   return (
-    <div className="space-y-4">
+    <div
+      className={cn(
+        showCodeBlock ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4",
+      )}
+    >
       {loading ? <LoadingState compact /> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {!loading && !error && content
@@ -168,6 +186,7 @@ function ArtifactAttachmentTextBody({
             format,
             language,
             streaming,
+            fillHeight: showCodeBlock,
           })
         : null}
       {!loading && !error && !canPreview ? <UnavailablePreview padded={false} /> : null}

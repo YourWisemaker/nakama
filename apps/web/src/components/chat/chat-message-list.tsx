@@ -429,7 +429,6 @@ function UserMessageContent({ message }: { message: ChatListItem }) {
               key={image.url ?? `image-attachment-${message.id}-${image.description ?? "unnamed"}`}
               url={image.url}
               description={image.description}
-              caption={message.content || null}
             />
           ))}
         </div>

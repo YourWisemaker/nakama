@@ -27,6 +27,26 @@ export function artifactPanelDefaultWidth(
     : NARROW_ARTIFACT_PANEL_WIDTH;
 }
 
+export function artifactPanelBodyClassName({
+  isHtml,
+  isImage,
+  isMarkdown,
+}: {
+  isHtml: boolean;
+  isImage: boolean;
+  isMarkdown: boolean;
+}): string | undefined {
+  if (isHtml || isImage) {
+    return "flex flex-col overflow-hidden p-0";
+  }
+
+  if (!isMarkdown) {
+    return "flex flex-col overflow-hidden";
+  }
+
+  return undefined;
+}
+
 export function artifactPanelSubtitle({
   mimeType,
   sizeBytes = 0,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { ArtifactAttachmentPanelBody } from "@/components/chat/artifact-attachment-panel-body";
-import { artifactPanelDefaultWidth, artifactPanelSubtitle } from "@/components/chat/artifact-attachment-panel-body.shared";
+import { artifactPanelDefaultWidth, artifactPanelBodyClassName, artifactPanelSubtitle } from "@/components/chat/artifact-attachment-panel-body.shared";
 import { useChatAttachmentPanel } from "@/context/use-chat-attachment-panel";
 import {
   findCompletedContentArtifact,
@@ -160,6 +160,16 @@ export function ArtifactStreamingPanelBridge({
       mimeType: artifact.mimeType,
       streaming: true,
     });
+    const isHtml = isHtmlArtifactMimeType(artifact.mimeType);
+    const isWordDocument =
+      isDocxFile(artifact.filename, artifact.mimeType) ||
+      isLegacyDocFile(artifact.filename, artifact.mimeType);
+    const isMarkdown = isMarkdownArtifactMimeType(artifact.mimeType) || isWordDocument;
+    const bodyClassName = artifactPanelBodyClassName({
+      isHtml,
+      isImage: false,
+      isMarkdown,
+    });
     const widthPatch =
       defaultWidth === 768 && !autoWidthAppliedRef.current.has(panelId)
         ? { defaultWidth }
@@ -174,6 +184,7 @@ export function ArtifactStreamingPanelBridge({
         title: filename,
         subtitle,
         content: body,
+        bodyClassName,
         ...widthPatch,
       });
       return;
@@ -194,6 +205,7 @@ export function ArtifactStreamingPanelBridge({
       defaultWidth,
       resizable: true,
       fullscreen: false,
+      bodyClassName,
       content: body,
       onClose: () => {
         dismissedRef.current.add(panelId);
@@ -247,6 +259,10 @@ export function ArtifactStreamingPanelBridge({
           handoffTarget.tool,
         );
         const isHtml = isHtmlArtifactMimeType(artifact.mimeType);
+        const isWordDocument =
+          isDocxFile(artifact.filename, artifact.mimeType) ||
+          isLegacyDocFile(artifact.filename, artifact.mimeType);
+        const isMarkdown = isMarkdownArtifactMimeType(artifact.mimeType) || isWordDocument;
 
         update(handoffTarget.toolCallId, {
           title: filename,
@@ -255,7 +271,11 @@ export function ArtifactStreamingPanelBridge({
             sizeBytes: new TextEncoder().encode(text).byteLength,
           }),
           defaultWidth: artifactPanelDefaultWidth(artifact.filename, artifact.mimeType),
-          bodyClassName: isHtml ? "flex flex-col overflow-hidden p-0" : undefined,
+          bodyClassName: artifactPanelBodyClassName({
+            isHtml,
+            isImage: false,
+            isMarkdown,
+          }),
           content: buildStablePanelBody({
             artifact,
             content: text,
