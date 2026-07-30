@@ -29,9 +29,9 @@ const completedPattern: Frame = [
 ];
 
 const cancelledPattern: Frame = [
-  [1, 0],
-  [0, 1],
-  [1, 0],
+  [0, 0],
+  [0, 0],
+  [0, 0],
 ];
 
 export function AgentTodoPanel({
