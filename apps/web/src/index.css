@@ -860,7 +860,110 @@
     border-top: 1px solid var(--border);
   }
 
-  .chat-markdown table {
+  /* Streamdown tables — AICSS Data Table style (https://www.aicss.dev/components/data-table) */
+  .chat-markdown [data-streamdown="table-wrapper"] {
+    --chat-table-outer-bg: #fafafa;
+    --chat-table-body-bg: var(--background);
+    --chat-table-border: #e6e8ec;
+    --chat-table-head-color: #a1a1a1;
+
+    margin-block: 1rem !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border: 1px solid var(--chat-table-border) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+    background: var(--chat-table-outer-bg) !important;
+    font-size: 13px;
+    max-width: 100%;
+  }
+
+  .dark .chat-markdown [data-streamdown="table-wrapper"] {
+    --chat-table-outer-bg: #242424;
+    --chat-table-body-bg: #1a1a1a;
+    --chat-table-border: #303030;
+
+    border-color: transparent !important;
+    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  }
+
+  .chat-markdown [data-streamdown="table-wrapper"] > div:has([data-streamdown="table"]) {
+    overflow-x: auto;
+    overflow-y: visible;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  .chat-markdown [data-streamdown="table-wrapper"] > div:has([data-streamdown="table"])::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-markdown [data-streamdown="table-wrapper"] > div.flex.items-center.justify-end {
+    padding: 4px 8px 0;
+  }
+
+  .chat-markdown [data-streamdown="table"] {
+    width: calc(100% + 2px);
+    margin-inline: -1px;
+    margin-bottom: -1px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--font-sans);
+    font-size: inherit;
+    line-height: 1.4;
+  }
+
+  .chat-markdown [data-streamdown="table"] thead th {
+    padding: 7px 12px;
+    font-weight: 500;
+    color: var(--chat-table-head-color);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--chat-table-border);
+    text-align: start;
+    vertical-align: middle;
+  }
+
+  .chat-markdown [data-streamdown="table"] thead th:last-child {
+    border-right: none;
+  }
+
+  .chat-markdown [data-streamdown="table"] tbody td {
+    padding: 9px 12px;
+    color: var(--foreground);
+    background: var(--chat-table-body-bg);
+    border: none;
+    border-top: 1px solid var(--chat-table-border);
+    border-right: 1px solid var(--chat-table-border);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .chat-markdown [data-streamdown="table"] tbody td:first-child {
+    border-left: 1px solid var(--chat-table-border);
+  }
+
+  .chat-markdown [data-streamdown="table"] tbody td:last-child {
+    border-right: 1px solid var(--chat-table-border);
+  }
+
+  .chat-markdown [data-streamdown="table"] tbody tr:not(:last-child) td {
+    border-bottom: 1px solid var(--chat-table-border);
+  }
+
+  .chat-markdown [data-streamdown="table"] tbody tr:first-child td:first-child {
+    border-top-left-radius: 12px;
+  }
+
+  .chat-markdown [data-streamdown="table"] tbody tr:first-child td:last-child {
+    border-top-right-radius: 12px;
+  }
+
+  /* Bare markdown tables (no Streamdown wrapper) */
+  .chat-markdown table:not([data-streamdown="table"]) {
     width: 100%;
     margin-block: 0.75rem;
     border-collapse: collapse;
@@ -869,14 +972,14 @@
     line-height: 1.5;
   }
 
-  .chat-markdown th,
-  .chat-markdown td {
+  .chat-markdown table:not([data-streamdown="table"]) th,
+  .chat-markdown table:not([data-streamdown="table"]) td {
     border: 1px solid var(--border);
     padding: 0.375rem 0.625rem;
     text-align: start;
   }
 
-  .chat-markdown th {
+  .chat-markdown table:not([data-streamdown="table"]) th {
     font-weight: 600;
     background: var(--muted);
   }
