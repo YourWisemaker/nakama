@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { PlusIcon } from "lucide-react";
+import { SidebarUserMenu } from "@/components/SidebarUserMenu";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +68,7 @@ export function ProfileRail() {
         />
       </a>
 
-      <div className="no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto p-1">
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto px-1 py-1">
         {profiles.map((profile) => {
           const active = profile.id === activeProfileId;
           const trigger = (
@@ -78,16 +79,16 @@ export function ProfileRail() {
               aria-current={active ? "true" : undefined}
               title={profile.name}
               className={cn(
-                "group relative flex size-9 shrink-0 items-center justify-center rounded-xl transition-all duration-150",
+                "group relative flex size-7 shrink-0 items-center justify-center rounded-md transition-all duration-150",
                 active
-                  ? "ring-2 ring-primary"
+                  ? "ring-2 ring-inset ring-primary"
                   : "opacity-80 hover:opacity-100",
               )}
             >
               <ProfileAvatar
                 profile={profile}
                 size="sm"
-                className="size-9 rounded-xl"
+                className="size-7 rounded-md"
               />
             </button>
           );
@@ -124,6 +125,10 @@ export function ProfileRail() {
             </TooltipContent>
           </Tooltip>
         ) : null}
+      </div>
+
+      <div className="flex shrink-0 flex-col items-center">
+        <SidebarUserMenu />
       </div>
     </div>
   );

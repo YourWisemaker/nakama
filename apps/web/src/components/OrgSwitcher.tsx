@@ -66,6 +66,7 @@ export function OrgSwitcher({ collapsed = false }: OrgSwitcherProps) {
   }
 
   const label = activeOrg?.name ?? "Organization";
+  const initial = label.charAt(0).toUpperCase();
 
   function openEditDialog(org: UserOrgSummary) {
     editingOrgRef.current = org;
@@ -140,17 +141,23 @@ export function OrgSwitcher({ collapsed = false }: OrgSwitcherProps) {
       variant="ghost"
       title={collapsed ? label : undefined}
       className={cn(
-        "h-auto min-w-0 justify-start gap-2 px-2 py-1.5 text-left font-normal hover:bg-sidebar-accent/60",
-        collapsed ? "size-9 justify-center px-0" : "w-full",
+        "font-normal hover:bg-sidebar-accent/60 motion-reduce:transition-none",
+        collapsed
+          ? "sidebar-nav-link sidebar-nav-link--collapsed p-0"
+          : "h-auto w-full min-w-0 justify-start gap-2 px-2 py-1.5 text-left",
       )}
       aria-label={collapsed ? `Current organization: ${label}` : undefined}
     >
-      {!collapsed ? (
+      {collapsed ? (
+        <span className="flex size-8 items-center justify-center rounded-md bg-muted text-xs font-semibold text-foreground">
+          {initial}
+        </span>
+      ) : (
         <>
           <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
           <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
         </>
-      ) : null}
+      )}
     </Button>
   );
 
@@ -159,7 +166,12 @@ export function OrgSwitcher({ collapsed = false }: OrgSwitcherProps) {
       <DropdownMenu>
         <DropdownMenuTrigger render={trigger} />
 
-        <DropdownMenuContent align="start" className="w-64 p-0">
+        <DropdownMenuContent
+          align="start"
+          side={collapsed ? "right" : "bottom"}
+          sideOffset={8}
+          className="w-64 p-0"
+        >
           <div className="border-b border-border/50 px-2 py-1.5">
             <p className="text-xs font-medium text-muted-foreground">Select organization</p>
           </div>
