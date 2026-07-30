@@ -75,7 +75,7 @@ export function useChatPage() {
   const [searchParams] = useSearchParams();
   const routeSession = useMemo(() => parseChatRouteParams(params), [params]);
   const { health, models } = useAppContext();
-  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId } =
+  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId, registerChatProfileSwitchHandler } =
     useActiveChatProfile();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [profileId, setProfileId] = useState(() =>
@@ -101,16 +101,23 @@ export function useChatPage() {
   const skipNextProfileSessionRef = useRef(false);
   const loadedRouteRef = useRef<string | null>(null);
   const profileIdRef = useRef(profileId);
+  const busyRef = useRef(busy);
 
   useEffect(() => {
     profileIdRef.current = profileId;
   }, [profileId]);
 
   useEffect(() => {
-    if (profileId) {
-      setLiveChatProfileId(profileId);
+    busyRef.current = busy;
+  }, [busy]);
+
+  // Composer / in-page switches update profileId first; push to shared context.
+  useEffect(() => {
+    if (!profileId || profileId === liveChatProfileId) {
+      return;
     }
-  }, [profileId, setLiveChatProfileId]);
+    setLiveChatProfileId(profileId);
+  }, [profileId, liveChatProfileId, setLiveChatProfileId]);
 
   const syncChatUrl = useCallback(
     (nextProfileId: string, sessionId: string) => {
@@ -322,27 +329,19 @@ export function useChatPage() {
     [profileId, busy, enterDraftChat],
   );
 
-  // Profile rail updates context on draft /chat without a URL change.
   useEffect(() => {
-    if (!liveChatProfileId || liveChatProfileId === profileId) {
-      return;
-    }
-    if (routeSession || location.pathname !== buildChatBasePath()) {
-      return;
-    }
-    if (searchParams.get("new") === "1") {
-      return;
-    }
-    setProfileId(liveChatProfileId);
-    enterDraftChat(liveChatProfileId);
-  }, [
-    liveChatProfileId,
-    profileId,
-    routeSession,
-    location.pathname,
-    searchParams,
-    enterDraftChat,
-  ]);
+    return registerChatProfileSwitchHandler((nextProfileId) => {
+      if (
+        !nextProfileId ||
+        nextProfileId === profileIdRef.current ||
+        busyRef.current
+      ) {
+        return;
+      }
+      setProfileId(nextProfileId);
+      enterDraftChat(nextProfileId);
+    });
+  }, [registerChatProfileSwitchHandler, enterDraftChat]);
 
   // Layout effect so session is cleared before the syncChatUrl effect can
   // re-push the previous /chat/:profile/:session URL (first-click blink).

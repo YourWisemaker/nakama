@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 export function ProfileRail() {
   const { data: profiles = [] } = useProfilesQuery();
   const { user } = useAuth();
-  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId } =
+  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId, switchChatProfile } =
     useActiveChatProfile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,20 +40,21 @@ export function ProfileRail() {
       return;
     }
 
-    setLiveChatProfileId(profileId);
-
     if (location.pathname === PAGE_PATHS.history) {
+      setLiveChatProfileId(profileId);
       const params = new URLSearchParams(location.search);
       params.set("profile", profileId);
       navigate(`${PAGE_PATHS.history}?${params.toString()}`);
       return;
     }
 
-    // Draft /chat: profile travels via context; ChatPage resets state in place.
+    // Draft /chat: reset in place via the mounted ChatPage handler.
     if (location.pathname === buildChatBasePath()) {
+      switchChatProfile(profileId);
       return;
     }
 
+    setLiveChatProfileId(profileId);
     navigate(buildChatBasePath(), {
       replace: isChatSessionPath(location.pathname),
     });
