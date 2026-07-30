@@ -26,6 +26,20 @@ For example:
 
 Give each profile the minimum tool set it needs.
 
+## Parallel execution
+
+When the model requests multiple tool calls in one turn, Nakama can run them concurrently — but only when **every** call in the batch is marked `parallelSafe`.
+
+| Parallel-safe builtins | Sequential (default) |
+|------------------------|----------------------|
+| `read_file`, `search_files`, `knowledge_base_search`, `web_search`, `web_fetch`, `sub_agent` | `bash`, write/edit/delete file tools, email, Composio, MCP, session-state tools, and the rest |
+
+If a turn mixes parallel-safe and sequential tools — for example `read_file` and `bash` together — the whole turn runs sequentially.
+
+Custom JavaScript tools under `~/.nakama/tools/` default to sequential. Export `parallelSafe = true` from the module to opt in.
+
+Parallel execution speeds up multi-file research and lets a parent agent delegate several independent `sub_agent` tasks at once. See [`sub_agent`](#sub_agent) below.
+
 ## Default assignments
 
 Nakama includes these builtins:
@@ -283,6 +297,10 @@ Run a one-off shell command in the profile workspace and return stdout, stderr, 
 
 Run a focused **same-profile** sub-agent for delegated work (research, review, planning, debugging). The parent receives a structured result to summarize for the user. This is a Nakama-native in-process agent loop — **not** the external coding-agent path (`bash` + `coding-agent`).
 
+While a sub-agent runs, the chat UI shows a dedicated row with the task title and a **live status label** (for example "Reading SOUL.md", "Searching web · …", "Writing answer…"). When the run completes, the row shows the summary with an expandable full output.
+
+Multiple `sub_agent` calls in one turn can run **in parallel** when the model batches them for independent tasks. Sub-agents still cannot nest — a sub-agent cannot call `sub_agent` again.
+
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
 | `task` | string | Yes | Clear instruction for the sub-agent |
@@ -300,6 +318,28 @@ Run a focused **same-profile** sub-agent for delegated work (research, review, p
 - Default timeout counts toward the parent web stream budget (10 minute total turn limit)
 
 **Availability:** When assigned to the profile (opt-in; not part of default custom profile assignments).
+
+### `org_memory_search`
+
+Search the organization's shared memory — live pinned bullets and the full archive — for facts relevant to a query. Use when the injected org memory summary is missing detail or when you need historical facts that were archived.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `query` | string | Yes | Text to search for across org memory bullets |
+
+**Returns:** `{ query, matches }` — each match includes the source file and matching bullet text.
+
+**Availability:** Automatically available on every profile for non-viewer roles. Not assigned from the dashboard. Viewers are denied. See [Org memory](/org-memory).
+
+### `org_memory_list`
+
+Return the organization's current live org memory content (pinned facts).
+
+**Parameters:** None.
+
+**Returns:** `{ content }` — raw markdown of the live org memory file.
+
+**Availability:** Automatically available on every profile for non-viewer roles. Not assigned from the dashboard. Viewers are denied. See [Org memory](/org-memory).
 
 ## Configuration prerequisites
 
@@ -351,6 +391,7 @@ All builtin tool IDs are protected and cannot be deleted from the dashboard.
 
 ## Next steps
 
+- [Org memory](/org-memory) — shared facts, admin UI, and API
 - [Skills](/skills) — bundled system skills and reusable profile procedures
 - [Coding agent](/coding-agent) — hand repo work to Codex, Claude Code, or OpenCode via `bash`
 - [Agent browser](/agent-browser) — interactive browsing via `bash` and the `agent-browser` skill
