@@ -65,7 +65,8 @@ When a chat runs with a profile, Nakama builds the agent context in this order:
 2. If soul files exist, compose them into the main system prompt
 3. Append the assigned skills catalog
 4. Append the knowledge base catalog
-5. Expose only the tools allowed for that profile
+5. Append org memory summary for non-viewers (see [Org memory](/org-memory))
+6. Expose only the tools allowed for that profile
 
 So a profile is not just a name. It controls both:
 
@@ -141,10 +142,13 @@ Profiles keep their own context on disk under the org-scoped profile directory:
 - **`memory-archive/`** for facts moved out of active memory without deleting them
 - **Artifacts** for persistent reports and generated text saved via the `save-artifact` skill
 
+At the **organization** level (not inside a profile directory), [org memory](/org-memory) stores shared facts every profile in the org sees — admin-curated, distinct from per-profile `MEMORY.md`.
+
 Memory writes and archives use bundled skills (`update-profile-memory`, `archive-profile-memory`) with the profile's file tools — not separate memory builtins. Artifact saves use `save-artifact` with `write_file`. Default and super-bot profiles receive these skills automatically when they are installed on the server.
 
 | Store | Loaded into chat | How agents write |
 |-------|------------------|------------------|
+| Org memory | Yes (appended as `## Org Memory` for non-viewers) | Org admins via Settings or API — see [Org memory](/org-memory) |
 | `MEMORY.md` | Yes (via soul stack) | `update-profile-memory` skill + `read_file` / `edit_file` / `write_file` |
 | `memory-archive/` | No | `archive-profile-memory` skill + file tools |
 | `artifacts/` | No (dashboard, download API, web chat preview) | `save-artifact` skill + `write_file` or `write_docx` |
@@ -152,6 +156,8 @@ Memory writes and archives use bundled skills (`update-profile-memory`, `archive
 | Profile skills | Via skill matcher when relevant | `manage-skills` skill or dashboard |
 
 Active `MEMORY.md` has a **4096-byte** soft limit. When it is full, the agent should archive old bullets before adding new ones.
+
+Org memory has separate limits: **8192 bytes** for the live file and **2048 bytes** for the injected summary. See [Org memory](/org-memory).
 
 This data is isolated per org and per profile. Two orgs never read or write the same directory, even if profile ids happen to match.
 
