@@ -32,7 +32,6 @@ import {
   readInitialDraftChatProfileId,
   readRequestedDraftFromNewChatSearch,
   readRequestedDraftKeyFromNewChatSearch,
-  readRequestedProfileFromNewChatSearch,
   readStoredActiveChatProfileId,
   resolveDefaultProfileId,
   sessionStorageKey,
