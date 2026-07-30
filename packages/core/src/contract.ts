@@ -1725,6 +1725,8 @@ export interface ToolDefinition<Input = unknown, Output = unknown> {
   name: string;
   description: string;
   parameters?: JsonSchema;
+  /** When true, this tool may run concurrently with other parallelSafe tools in the same turn. */
+  parallelSafe?: boolean;
   run(input: Input, context: ToolContext): Promise<Output>;
 }
 

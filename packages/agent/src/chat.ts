@@ -37,7 +37,7 @@ import {
   compactHistory,
   type CompactionConfig,
 } from "./history-compaction";
-import { executeToolCall, serializeToolResult } from "./tool-loop";
+import { executeToolCall, canRunToolCallsInParallel, serializeToolResult } from "./tool-loop";
 
 const MAX_TOOL_ITERATIONS = 100;
 
@@ -398,6 +398,41 @@ async function executeToolCalls(
   handlers?: StreamHandlers,
   toolContext: ToolContext = {},
 ): Promise<void> {
+  if (canRunToolCallsInParallel(tools, toolCalls)) {
+    const results = await Promise.all(
+      toolCalls.map(async (call) => {
+        handlers?.onToolStart?.({
+          toolCallId: call.id,
+          tool: call.name,
+          input: call.arguments,
+        });
+
+        const result = await executeToolCall(tools, call, toolContext);
+
+        handlers?.onToolEnd?.({
+          toolCallId: call.id,
+          tool: call.name,
+          result,
+        });
+
+        return { call, result };
+      }),
+    );
+
+    const resultsByCallId = new Map(results.map((entry) => [entry.call.id, entry.result]));
+
+    for (const call of toolCalls) {
+      history.push({
+        role: "tool",
+        toolCallId: call.id,
+        name: call.name,
+        content: serializeToolResult(resultsByCallId.get(call.id)),
+      });
+    }
+
+    return;
+  }
+
   for (const call of toolCalls) {
     handlers?.onToolStart?.({
       toolCallId: call.id,

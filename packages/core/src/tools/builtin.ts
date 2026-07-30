@@ -645,6 +645,7 @@ export const readFileTool: ToolDefinition<ReadFileInput, ReadFileOutput> = {
   description:
     "Read text from a file in the active profile workspace. Word .docx files are converted to Markdown. Use offset/limit for large files.",
   parameters: jsonSchemaFromZod(readFileInputSchema),
+  parallelSafe: true,
   run(input, context) {
     return runReadFile(input, context);
   },
