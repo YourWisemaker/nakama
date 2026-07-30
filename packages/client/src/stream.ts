@@ -57,6 +57,13 @@ export async function readStreamEvents(
         });
       }
 
+      if (payload.type === "sub_agent_activity") {
+        handlers.onSubAgentActivity?.({
+          parentToolCallId: payload.parentToolCallId,
+          label: payload.label,
+        });
+      }
+
       if (payload.type === "todos_updated") {
         handlers.onTodosUpdated?.(payload.todos);
       }

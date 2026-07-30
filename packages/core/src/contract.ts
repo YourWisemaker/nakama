@@ -618,6 +618,11 @@ export type StreamEvent =
     }
   | { type: "todos_updated"; todos: AgentTodo[] }
   | { type: "questionnaire_updated"; questionnaire: AgentQuestionnaire | null }
+  | {
+      type: "sub_agent_activity";
+      parentToolCallId: string;
+      label: string;
+    }
   | { type: "done"; reply: string }
   | { type: "error"; error: string };
 
@@ -1719,12 +1724,16 @@ export interface ToolContext {
   workspaceRoot?: string;
   /** Org role of the invoking user. Org-memory tools gate on this; undefined means deny-by-default. */
   orgRole?: OrgRole;
+  /** Emits concise live status lines while a sub-agent child loop runs (parent web UI). */
+  emitSubAgentActivity?: (label: string) => void;
 }
 
 export interface ToolDefinition<Input = unknown, Output = unknown> {
   name: string;
   description: string;
   parameters?: JsonSchema;
+  /** When true, this tool may run concurrently with other parallelSafe tools in the same turn. */
+  parallelSafe?: boolean;
   run(input: Input, context: ToolContext): Promise<Output>;
 }
 

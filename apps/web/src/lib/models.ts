@@ -698,11 +698,6 @@ export function groupModelsByProvider(
 
 export const UNSET_MODEL_VALUE = "";
 
-/** Visible rows before a model select list scrolls (~SelectItem py-1 + text-sm). */
-export const MODEL_SELECT_MAX_VISIBLE_ROWS = 25;
-
-export const modelSelectContentMaxHeightClass = `max-h-[min(calc(1.75rem*${MODEL_SELECT_MAX_VISIBLE_ROWS}+0.5rem),var(--available-height))]`;
-
 export function profileModelSelectionValue(
   modelId: string | null,
   groups: ReturnType<typeof groupModelsByProvider>,

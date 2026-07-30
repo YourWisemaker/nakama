@@ -163,8 +163,13 @@ export function formatSubAgentSubtitle(
   input: Record<string, unknown> | undefined,
   result: unknown,
   running: boolean,
+  activity?: string,
 ): string {
   if (running) {
+    if (activity?.trim()) {
+      return truncateDisplay(activity.trim().split("\n")[0] ?? activity.trim(), 72);
+    }
+
     const context = typeof input?.context === "string" ? input.context.trim() : "";
 
     if (context) {
@@ -581,6 +586,20 @@ export function buildStreamHandlers(
                 artifactStreaming: false,
                 content: `${event.tool} completed`,
                 toolResult: event.result,
+                subAgentActivity: undefined,
+              }
+            : message,
+        ),
+      );
+    },
+    onSubAgentActivity: (event) => {
+      setMessages((current) =>
+        current.map((message) =>
+          message.toolCallId === event.parentToolCallId &&
+          message.toolStatus === "running"
+            ? {
+                ...message,
+                subAgentActivity: event.label,
               }
             : message,
         ),

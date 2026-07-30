@@ -13,6 +13,7 @@ export interface SubAgentRunInput {
   userId?: string;
   clientOrigin?: string;
   agentDepth: number;
+  onActivity?: (label: string) => void;
 }
 
 export interface SubAgentRunResult {

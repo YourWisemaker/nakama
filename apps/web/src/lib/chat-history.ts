@@ -134,6 +134,8 @@ export interface ChatListItem {
   toolInputAccumulatedJson?: string;
   artifactStreaming?: boolean;
   toolResult?: unknown;
+  /** Live status from a running sub-agent child loop (e.g. "Reading SOUL.md"). */
+  subAgentActivity?: string;
 }
 
 export function sessionStorageKey(profileId: string): string {

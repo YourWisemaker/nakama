@@ -44,6 +44,7 @@ export interface StreamHandlers {
     tool: string;
     result: unknown;
   }) => void;
+  onSubAgentActivity?: (event: { parentToolCallId: string; label: string }) => void;
   onTodosUpdated?: (todos: AgentTodo[]) => void;
   onQuestionnaireUpdated?: (questionnaire: AgentQuestionnaire | null) => void;
 }

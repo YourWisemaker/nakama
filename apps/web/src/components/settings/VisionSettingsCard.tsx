@@ -13,7 +13,6 @@ import { formatError } from "@/lib/client";
 import {
   encodeModelSelection,
   groupModelsByProvider,
-  modelSelectContentMaxHeightClass,
   profileModelLabel,
   profileModelSelectionValue,
   resolveModelVisionSupport,
@@ -143,7 +142,7 @@ export function VisionSettingsCard() {
         </SelectTrigger>
         <SelectContent
           alignItemWithTrigger={false}
-          className={`${modelSelectContentMaxHeightClass} w-max min-w-72 max-w-[min(24rem,92vw)]`}
+          className="w-max min-w-72 max-w-[min(24rem,92vw)]"
         >
           <SelectItem value={CLEAR_VISION_MODEL_VALUE}>Not configured</SelectItem>
           {visionModelGroups.flatMap((group) =>
