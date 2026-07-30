@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useProfilesQuery } from "@/hooks/use-app-queries";
 import { useAuth } from "@/context/use-auth";
+import { useActiveChatProfile } from "@/context/use-active-chat-profile";
 import {
   buildNewChatPath,
-  chatProfileIdFromPath,
-  readRequestedProfileFromNewChatSearch,
+  resolveActiveProfileIdFromLocation,
 } from "@/lib/chat-history";
 import { PAGE_PATHS, pathForPage } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -21,27 +21,23 @@ import { cn } from "@/lib/utils";
 export function ProfileRail() {
   const { data: profiles = [] } = useProfilesQuery();
   const { user } = useAuth();
+  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId } =
+    useActiveChatProfile();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isHistory = location.pathname === PAGE_PATHS.history;
-
-  const activeProfileId = (() => {
-    if (isHistory) {
-      return new URLSearchParams(location.search).get("profile");
-    }
-    const fromPath = chatProfileIdFromPath(location.pathname);
-    if (fromPath) {
-      return fromPath;
-    }
-    if (location.pathname === "/chat") {
-      return readRequestedProfileFromNewChatSearch(location.search);
-    }
-    return null;
-  })();
+  const activeProfileId = resolveActiveProfileIdFromLocation({
+    pathname: location.pathname,
+    search: location.search,
+    profiles,
+    liveChatProfileId,
+    historyPath: PAGE_PATHS.history,
+  });
 
   function handleSelectProfile(profileId: string) {
-    if (isHistory) {
+    setLiveChatProfileId(profileId);
+
+    if (location.pathname === PAGE_PATHS.history) {
       const params = new URLSearchParams(location.search);
       params.set("profile", profileId);
       navigate(`${PAGE_PATHS.history}?${params.toString()}`);
@@ -81,14 +77,19 @@ export function ProfileRail() {
               className={cn(
                 "group relative flex size-7 shrink-0 items-center justify-center rounded-md transition-all duration-150",
                 active
-                  ? "ring-2 ring-inset ring-primary"
-                  : "opacity-80 hover:opacity-100",
+                  ? "bg-background shadow-sm ring-2 ring-primary ring-offset-1 ring-offset-sidebar/60"
+                  : "hover:bg-muted/40",
               )}
             >
               <ProfileAvatar
                 profile={profile}
                 size="sm"
-                className="size-7 rounded-md"
+                className={cn(
+                  "size-7 rounded-md transition-all duration-150",
+                  active
+                    ? "opacity-100 saturate-100"
+                    : "opacity-45 grayscale group-hover:opacity-70 group-hover:grayscale-0",
+                )}
               />
             </button>
           );

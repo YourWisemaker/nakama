@@ -97,6 +97,124 @@ export function chatProfileIdFromPath(pathname: string): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+export const ACTIVE_CHAT_PROFILE_STORAGE_KEY = "nakama:active-chat-profile";
+
+export function readStoredActiveChatProfileId(): string | null {
+  if (typeof localStorage === "undefined") {
+    return null;
+  }
+
+  const profileId = localStorage.getItem(ACTIVE_CHAT_PROFILE_STORAGE_KEY)?.trim();
+  return profileId || null;
+}
+
+export function writeStoredActiveChatProfileId(profileId: string): void {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+
+  localStorage.setItem(ACTIVE_CHAT_PROFILE_STORAGE_KEY, profileId);
+}
+
+export function pickKnownProfileId(
+  profiles: ReadonlyArray<{ id: string }>,
+  ...candidates: Array<string | null | undefined>
+): string | null {
+  for (const candidate of candidates) {
+    if (candidate && profiles.some((profile) => profile.id === candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+/** Initial profile for draft `/chat` before profiles list loads. */
+export function readInitialDraftChatProfileId(input: {
+  search: string;
+  routeProfileId?: string | null;
+}): string {
+  if (input.routeProfileId) {
+    return input.routeProfileId;
+  }
+
+  return (
+    readRequestedProfileFromNewChatSearch(input.search) ??
+    readStoredActiveChatProfileId() ??
+    ""
+  );
+}
+
+export function resolveDefaultProfileId(
+  profiles: ReadonlyArray<{ id: string }>,
+): string | null {
+  if (profiles.length === 0) {
+    return null;
+  }
+
+  return profiles.find((profile) => profile.id === "default")?.id ?? profiles[0]!.id;
+}
+
+/** Profile id for sidebar rail highlight — URL when present, else live chat state / storage. */
+export function resolveActiveProfileIdFromLocation(input: {
+  pathname: string;
+  search: string;
+  profiles: ReadonlyArray<{ id: string }>;
+  liveChatProfileId?: string | null;
+  historyPath?: string;
+}): string | null {
+  const {
+    pathname,
+    search,
+    profiles,
+    liveChatProfileId,
+    historyPath = "/history",
+  } = input;
+
+  const isKnownProfile = (profileId: string | null | undefined): profileId is string =>
+    Boolean(profileId && profiles.some((profile) => profile.id === profileId));
+
+  if (pathname === historyPath) {
+    const fromUrl = new URLSearchParams(search).get("profile");
+    if (isKnownProfile(fromUrl)) {
+      return fromUrl;
+    }
+    return resolveDefaultProfileId(profiles);
+  }
+
+  const fromSessionPath = chatProfileIdFromPath(pathname);
+  if (isKnownProfile(fromSessionPath)) {
+    return fromSessionPath;
+  }
+
+  const fromNewChat = readRequestedProfileFromNewChatSearch(search);
+  if (isKnownProfile(fromNewChat)) {
+    return fromNewChat;
+  }
+
+  if (pathname === buildChatBasePath()) {
+    if (isKnownProfile(liveChatProfileId)) {
+      return liveChatProfileId;
+    }
+    const stored = readStoredActiveChatProfileId();
+    if (isKnownProfile(stored)) {
+      return stored;
+    }
+    return resolveDefaultProfileId(profiles);
+  }
+
+  if (isKnownProfile(liveChatProfileId)) {
+    return liveChatProfileId;
+  }
+
+  const stored = readStoredActiveChatProfileId();
+  if (isKnownProfile(stored)) {
+    return stored;
+  }
+
+  return null;
+}
+
 export function buildChatPath(profileId: string, sessionId: string): string {
   return `/chat/${encodeURIComponent(profileId)}/${encodeURIComponent(sessionId)}`;
 }

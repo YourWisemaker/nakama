@@ -12,6 +12,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import type { RemoteChatSession } from "@nakama/client";
 import type { QueuedComposerMessage } from "@/components/chat/ChatMessageQueuePanel";
 import { useAppContext } from "@/context/use-app-context";
+import { useActiveChatProfile } from "@/context/use-active-chat-profile";
 import { useProfileQuery } from "@/hooks/use-app-queries";
 import { useBranchSessionMutation, useUpdateProfileMutation } from "@/hooks/use-resource-mutations";
 import {
@@ -24,12 +25,16 @@ import {
   buildChatPath,
   buildNewChatPath,
   chatMessagesToListItems,
+  consumeStoredChatDraft,
   isReadOnlySessionChannel,
   parseChatRouteParams,
+  pickKnownProfileId,
+  readInitialDraftChatProfileId,
   readRequestedDraftFromNewChatSearch,
   readRequestedDraftKeyFromNewChatSearch,
-  consumeStoredChatDraft,
   readRequestedProfileFromNewChatSearch,
+  readStoredActiveChatProfileId,
+  resolveDefaultProfileId,
   sessionStorageKey,
   type ChatListItem,
 } from "@/lib/chat-history";
@@ -71,9 +76,13 @@ export function useChatPage() {
   const [searchParams] = useSearchParams();
   const routeSession = useMemo(() => parseChatRouteParams(params), [params]);
   const { health, models } = useAppContext();
+  const { setProfileId: setLiveChatProfileId } = useActiveChatProfile();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
-  const [profileId, setProfileId] = useState(
-    () => readRequestedProfileFromNewChatSearch(location.search) ?? "",
+  const [profileId, setProfileId] = useState(() =>
+    readInitialDraftChatProfileId({
+      search: location.search,
+      routeProfileId: parseChatRouteParams(params)?.profileId,
+    }),
   );
   const [session, setSession] = useState<RemoteChatSession | null>(null);
   const [sessionChannel, setSessionChannel] = useState<AgentChannel>("web");
@@ -96,6 +105,12 @@ export function useChatPage() {
   useEffect(() => {
     profileIdRef.current = profileId;
   }, [profileId]);
+
+  useEffect(() => {
+    if (profileId) {
+      setLiveChatProfileId(profileId);
+    }
+  }, [profileId, setLiveChatProfileId]);
 
   const syncChatUrl = useCallback(
     (nextProfileId: string, sessionId: string) => {
@@ -202,13 +217,15 @@ export function useChatPage() {
       setProfiles(response.profiles);
       if (!routeSession && response.profiles.length > 0) {
         setProfileId((current) => {
-          if (current) {
-            return current;
+          const resolved = pickKnownProfileId(
+            response.profiles,
+            current,
+            readStoredActiveChatProfileId(),
+          );
+          if (resolved) {
+            return resolved;
           }
-          const defaultProfile =
-            response.profiles.find((profile) => profile.id === "default") ??
-            response.profiles[0]!;
-          return defaultProfile.id;
+          return resolveDefaultProfileId(response.profiles) ?? "";
         });
       }
     } catch (err) {

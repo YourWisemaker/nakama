@@ -16,6 +16,7 @@ import { useAppContext } from "@/context/use-app-context";
 import { useAuth } from "@/context/use-auth";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { ProfileRail } from "@/components/ProfileRail";
+import { ActiveChatProfileProvider } from "@/context/active-chat-profile-context";
 import { usePrefetchAppData } from "@/hooks/use-app-queries";
 import { useAutomationUnreadTotal } from "@/hooks/use-automations";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
@@ -72,8 +73,9 @@ export function Layout() {
 
   return (
     <TooltipProvider delay={0}>
-      <div className="flex h-svh overflow-hidden bg-background">
-        <ProfileRail />
+      <ActiveChatProfileProvider>
+        <div className="flex h-svh overflow-hidden bg-background">
+          <ProfileRail />
 
         <aside
           aria-label="Main navigation"
@@ -153,6 +155,7 @@ export function Layout() {
           </main>
         </div>
       </div>
+      </ActiveChatProfileProvider>
     </TooltipProvider>
   );
 }
