@@ -938,65 +938,55 @@
     display: none;
   }
 
-  .chat-markdown [data-streamdown="table-wrapper"] > div.flex.items-center.justify-end {
-    padding: 4px 8px 0;
-  }
-
   .chat-markdown [data-streamdown="table"] {
-    width: calc(100% + 2px);
-    margin-inline: -1px;
-    margin-bottom: -1px;
-    border-collapse: separate;
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
     border-spacing: 0;
     font-family: var(--font-sans);
     font-size: inherit;
     line-height: 1.4;
   }
 
-  .chat-markdown [data-streamdown="table"] thead th {
-    padding: 7px 12px;
-    font-weight: 500;
-    color: var(--chat-table-head-color);
-    background: transparent;
-    border: none;
-    border-right: 1px solid var(--chat-table-border);
-    text-align: start;
-    vertical-align: middle;
+  /* Streamdown adds divide-y / row borders on top of cell borders — reset them. */
+  .chat-markdown [data-streamdown="table"] > :not([hidden]) ~ :not([hidden]),
+  .chat-markdown [data-streamdown="table"] tbody > :not([hidden]) ~ :not([hidden]),
+  .chat-markdown [data-streamdown="table"] tr {
+    border-top-width: 0 !important;
+    border-color: transparent !important;
   }
 
-  .chat-markdown [data-streamdown="table"] thead th:last-child {
-    border-right: none;
-  }
-
-  .chat-markdown [data-streamdown="table"] tbody td {
+  .chat-markdown [data-streamdown="table"] th,
+  .chat-markdown [data-streamdown="table"] td {
     padding: 9px 12px;
-    color: var(--foreground);
-    background: var(--chat-table-body-bg);
     border: none;
-    border-top: 1px solid var(--chat-table-border);
     border-right: 1px solid var(--chat-table-border);
+    border-bottom: 1px solid var(--chat-table-border);
     text-align: start;
     vertical-align: top;
   }
 
-  .chat-markdown [data-streamdown="table"] tbody td:first-child {
-    border-left: 1px solid var(--chat-table-border);
+  .chat-markdown [data-streamdown="table"] th {
+    padding-block: 7px;
+    font-weight: 500;
+    color: var(--chat-table-head-color);
+    background: transparent;
+    vertical-align: middle;
   }
 
-  .chat-markdown [data-streamdown="table"] tbody td:last-child {
-    border-right: 1px solid var(--chat-table-border);
+  .chat-markdown [data-streamdown="table"] td {
+    color: var(--foreground);
+    background: var(--chat-table-body-bg);
   }
 
-  .chat-markdown [data-streamdown="table"] tbody tr:not(:last-child) td {
-    border-bottom: 1px solid var(--chat-table-border);
+  .chat-markdown [data-streamdown="table"] th:last-child,
+  .chat-markdown [data-streamdown="table"] td:last-child {
+    border-right: none;
   }
 
-  .chat-markdown [data-streamdown="table"] tbody tr:first-child td:first-child {
-    border-top-left-radius: 12px;
-  }
-
-  .chat-markdown [data-streamdown="table"] tbody tr:first-child td:last-child {
-    border-top-right-radius: 12px;
+  .chat-markdown [data-streamdown="table"] tbody tr:last-child td,
+  .chat-markdown [data-streamdown="table"] thead:last-child tr:last-child th {
+    border-bottom: none;
   }
 
   /* Bare markdown tables (no Streamdown wrapper) */

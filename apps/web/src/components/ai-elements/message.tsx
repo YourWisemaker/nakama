@@ -71,7 +71,7 @@ const MessageResponseBody = memo(
   ({
     className,
     lineNumbers = false,
-    controls = { code: { copy: true, download: false } },
+    controls = { code: { copy: true, download: false }, table: false },
     shikiTheme,
     linkSafety: linkSafetyOverride,
     components: userComponents,
