@@ -67,5 +67,9 @@ export interface RemoteChatSession {
   clear(): Promise<void>;
   purge(): Promise<void>;
   getMessages(): Promise<ChatMessage[]>;
+  subscribeStream(
+    handler: StreamHandler | StreamHandlers,
+    options?: SendStreamOptions,
+  ): Promise<{ reconnected: boolean; reply?: string }>;
   createAutomation(prompt: string): Promise<AutomationDefinition>;
 }

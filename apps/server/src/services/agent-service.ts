@@ -233,6 +233,7 @@ import {
   replaceSessionHistory,
   wrapPersistedSession,
 } from "./session-persistence";
+import { sessionTurnRegistry } from "./session-turn-registry";
 import type { TaskRunner } from "./task-runner";
 import { buildMcpToolDefinitions } from "./mcp-tool-bridge";
 import {
@@ -1355,6 +1356,26 @@ export class AgentService {
 
     if (!channel) {
       return null;
+    }
+
+    if (sessionTurnRegistry.isActive(sessionId)) {
+      const liveSession = await this.resolveSession(sessionId);
+
+      if (liveSession) {
+        const history = liveSession.getHistory();
+        const startedAt =
+          sessionTurnRegistry.getStatus(sessionId).startedAt ?? new Date().toISOString();
+
+        return {
+          channel,
+          messages: [...history],
+          messageMeta: history.map((_, index) => ({
+            id: `live-${index}`,
+            seq: index,
+            createdAt: startedAt,
+          })),
+        };
+      }
     }
 
     const storedMessages = await this.db.listMessagesForSession(sessionId);

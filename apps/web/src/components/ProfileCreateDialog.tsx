@@ -34,7 +34,6 @@ type ProfileCreateFormState = {
   submitError: string | null;
   name: string;
   profileId: string;
-  prompt: string;
   avatarPreview: string | null;
   toolIds: string[];
 };
@@ -50,7 +49,6 @@ const initialProfileCreateFormState: ProfileCreateFormState = {
   submitError: null,
   name: "",
   profileId: "",
-  prompt: defaultCreatePrompt,
   avatarPreview: null,
   toolIds: [],
 };
@@ -146,7 +144,7 @@ function ProfileCreateDialogContent({
     Boolean(profileIdTrimmed) && PROFILE_ID_PATTERN.test(profileIdTrimmed);
   const profileIdHasValue = form.profileId.length > 0;
   const profileIdHelpText = !profileIdHasValue || profileIdValid
-    ? "Auto-generated from the name. Use letters, numbers, `_`, or `-`."
+    ? "From name. Letters, numbers, `_`, `-` only."
     : "Profile id must start with a letter or number and only use letters, numbers, `_`, or `-`.";
   const toolIdSet = useMemo(() => new Set(form.toolIds), [form.toolIds]);
   const availableTools = tools.filter((tool) => !toolIdSet.has(tool.id));
@@ -214,7 +212,7 @@ function ProfileCreateDialogContent({
       const response = await createMutation.mutateAsync({
         id: profileIdTrimmed,
         name: form.name.trim(),
-        systemPrompt: form.prompt.trim() || undefined,
+        systemPrompt: defaultCreatePrompt,
       });
 
       const avatarFile = avatarFileRef.current;
@@ -258,7 +256,7 @@ function ProfileCreateDialogContent({
         <DialogHeader className="gap-2">
           <DialogTitle>Create profile</DialogTitle>
           <DialogDescription>
-            Name, profile id, and system prompt for the new bot profile.
+            Set name and profile id.
             {onAskSuperBot ? (
               <>
                 {" "}
@@ -274,7 +272,7 @@ function ProfileCreateDialogContent({
                 >
                   ask Super Bot
                 </button>{" "}
-                to draft one from chat.
+                to draft from chat.
               </>
             ) : null}
           </DialogDescription>
@@ -288,7 +286,6 @@ function ProfileCreateDialogContent({
           profileIdHasValue={profileIdHasValue}
           profileIdValid={profileIdValid}
           profileIdHelpText={profileIdHelpText}
-          prompt={form.prompt}
           avatarPreview={form.avatarPreview}
           avatarInputRef={createAvatarInputRef}
           tools={tools}
@@ -300,9 +297,6 @@ function ProfileCreateDialogContent({
           onProfileIdChange={(value) => {
             dispatch({ type: "patch", values: { submitError: null, profileId: value } });
             profileIdEditedRef.current = true;
-          }}
-          onPromptChange={(value) => {
-            dispatch({ type: "patch", values: { submitError: null, prompt: value } });
           }}
           onAvatarSelected={handleAvatarSelected}
           onClearAvatar={() => {

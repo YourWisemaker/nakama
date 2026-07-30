@@ -51,6 +51,7 @@ import type {
   ProfileResponse,
   SendMessageResponse,
   SessionMessagesResponse,
+  SessionStatusResponse,
   ConfigureProviderRequest,
   ConfigureProviderResponse,
   CompactionResponse,
@@ -378,6 +379,47 @@ export class NakamaClient {
     return this.request<SessionMessagesResponse>(
       `/v1/sessions/${encodeURIComponent(sessionId)}/messages`,
     );
+  }
+
+  async getSessionStatus(sessionId: string): Promise<SessionStatusResponse> {
+    return this.request<SessionStatusResponse>(
+      `/v1/sessions/${encodeURIComponent(sessionId)}/status`,
+    );
+  }
+
+  async subscribeSessionStream(
+    sessionId: string,
+    handler: StreamHandler | StreamHandlers,
+    options?: SendStreamOptions,
+  ): Promise<{ reconnected: boolean; reply?: string }> {
+    const handlers = normalizeStreamHandlers(handler);
+    const headers = this.buildHeaders("GET", {
+      Accept: "text/event-stream",
+    });
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/v1/sessions/${encodeURIComponent(sessionId)}/stream`,
+      {
+        method: "GET",
+        headers,
+        signal: options?.signal,
+        credentials: this.credentials,
+      },
+    );
+
+    if (response.status === 204) {
+      return { reconnected: false };
+    }
+
+    if (!response.ok) {
+      throw await createApiError(response, `/v1/sessions/${sessionId}/stream`);
+    }
+
+    if (!response.body) {
+      throw new Error("Server returned an empty stream.");
+    }
+
+    const reply = await readStreamEvents(response.body, handlers, options?.signal);
+    return { reconnected: true, reply };
   }
 
   async branchSession(
@@ -874,6 +916,12 @@ export class NakamaClient {
       getMessages: async () => {
         const response = await this.getSessionMessages(sessionId);
         return response.messages;
+      },
+      subscribeStream: async (
+        handler: StreamHandler | StreamHandlers,
+        options?: SendStreamOptions,
+      ) => {
+        return this.subscribeSessionStream(sessionId, handler, options);
       },
       createAutomation: async (prompt: string) => {
         const response = await this.request<DraftAutomationResponse>(
