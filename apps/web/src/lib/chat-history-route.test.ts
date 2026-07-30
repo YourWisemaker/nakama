@@ -7,7 +7,12 @@ import {
   readRequestedDraftFromNewChatSearch,
   readRequestedDraftKeyFromNewChatSearch,
   readRequestedProfileFromNewChatSearch,
+  readInitialDraftChatProfileId,
+  pickKnownProfileId,
+  resolveActiveProfileIdFromLocation,
+  resolveDefaultProfileId,
   sessionStorageKey,
+  writeStoredActiveChatProfileId,
 } from "./chat-history";
 
 describe("chat history route helpers", () => {
@@ -43,5 +48,104 @@ describe("chat history route helpers", () => {
 
   test("uses a profile-scoped session storage key", () => {
     expect(sessionStorageKey("default")).toBe("nakama:session:default");
+  });
+
+  test("resolveActiveProfileIdFromLocation prefers URL, live chat state, and defaults", () => {
+    const profiles = [{ id: "default" }, { id: "super" }];
+
+    expect(
+      resolveActiveProfileIdFromLocation({
+        pathname: "/chat/default/session-1",
+        search: "",
+        profiles,
+      }),
+    ).toBe("default");
+
+    expect(
+      resolveActiveProfileIdFromLocation({
+        pathname: "/chat",
+        search: "",
+        profiles,
+        liveChatProfileId: "super",
+      }),
+    ).toBe("super");
+
+    expect(
+      resolveActiveProfileIdFromLocation({
+        pathname: "/chat",
+        search: "?new=1&profile=super",
+        profiles,
+      }),
+    ).toBe("super");
+
+    expect(
+      resolveActiveProfileIdFromLocation({
+        pathname: "/history",
+        search: "?profile=super",
+        profiles,
+      }),
+    ).toBe("super");
+
+    expect(
+      resolveActiveProfileIdFromLocation({
+        pathname: "/history",
+        search: "",
+        profiles,
+      }),
+    ).toBe("default");
+
+    expect(resolveDefaultProfileId(profiles)).toBe("default");
+    expect(resolveDefaultProfileId([{ id: "alpha" }])).toBe("alpha");
+  });
+
+  test("readInitialDraftChatProfileId restores stored selection on refresh", () => {
+    const store = new Map<string, string>();
+    const previousLocalStorage = globalThis.localStorage;
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+
+    try {
+      writeStoredActiveChatProfileId("super");
+
+      expect(
+        readInitialDraftChatProfileId({
+          search: "",
+        }),
+      ).toBe("super");
+
+      expect(
+        readInitialDraftChatProfileId({
+          search: "?new=1&profile=default",
+        }),
+      ).toBe("default");
+
+      expect(
+        readInitialDraftChatProfileId({
+          search: "",
+          routeProfileId: "session-profile",
+        }),
+      ).toBe("session-profile");
+    } finally {
+      Object.defineProperty(globalThis, "localStorage", {
+        configurable: true,
+        value: previousLocalStorage,
+      });
+    }
+  });
+
+  test("pickKnownProfileId validates against the profiles list", () => {
+    const profiles = [{ id: "default" }, { id: "super" }];
+    expect(pickKnownProfileId(profiles, "missing", "super")).toBe("super");
+    expect(pickKnownProfileId(profiles, "missing")).toBeNull();
   });
 });

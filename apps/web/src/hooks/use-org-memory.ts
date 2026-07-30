@@ -32,7 +32,7 @@ export function useUpdateOrgMemory(orgId: string) {
   });
 }
 
-export function useAddOrgMemoryFact(orgId: string) {
+function useAddOrgMemoryFact(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: AddOrgMemoryFactRequest) => client.addOrgMemoryFact(orgId, request),
@@ -40,7 +40,7 @@ export function useAddOrgMemoryFact(orgId: string) {
   });
 }
 
-export function usePinOrgMemoryFact(orgId: string) {
+function usePinOrgMemoryFact(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: PinOrgMemoryRequest) => client.pinOrgMemoryFact(orgId, request),
@@ -48,7 +48,7 @@ export function usePinOrgMemoryFact(orgId: string) {
   });
 }
 
-export function useUnpinOrgMemoryFact(orgId: string) {
+function useUnpinOrgMemoryFact(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: UnpinOrgMemoryRequest) => client.unpinOrgMemoryFact(orgId, request),
@@ -56,7 +56,7 @@ export function useUnpinOrgMemoryFact(orgId: string) {
   });
 }
 
-export function useArchiveOrgMemory(orgId: string) {
+function useArchiveOrgMemory(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: ArchiveOrgMemoryRequest) => client.archiveOrgMemory(orgId, request),
