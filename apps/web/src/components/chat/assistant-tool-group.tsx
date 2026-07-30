@@ -380,12 +380,10 @@ function SubAgentToolRow({
           )}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-baseline gap-2">
-            <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{title}</p>
-            {modelLabel ? (
-              <span className="shrink-0 text-xs text-muted-foreground">{modelLabel}</span>
-            ) : null}
-          </div>
+          {modelLabel ? (
+            <span className="block text-xs text-muted-foreground">{modelLabel}</span>
+          ) : null}
+          <p className="min-w-0 truncate text-sm font-medium text-foreground">{title}</p>
           <p className={cn("mt-0.5 truncate text-sm", statusTone)}>{subtitle}</p>
         </div>
       </div>
