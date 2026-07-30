@@ -22,6 +22,7 @@ type ActiveTurn = {
   startedAt: string;
   events: StreamEvent[];
   bufferBytes: number;
+  snapshotIndexes: Map<string, number>;
   subscribers: Set<Subscriber>;
 };
 
@@ -51,6 +52,67 @@ function snapshotKey(event: StreamEvent): string | null {
     default:
       return null;
   }
+}
+
+function rebuildSnapshotIndexes(turn: ActiveTurn): void {
+  turn.snapshotIndexes.clear();
+  for (let index = 0; index < turn.events.length; index += 1) {
+    const key = snapshotKey(turn.events[index]!);
+    if (key) {
+      turn.snapshotIndexes.set(key, index);
+    }
+  }
+}
+
+function removeEventAt(turn: ActiveTurn, index: number): StreamEvent {
+  const removed = turn.events[index]!;
+  const lastIndex = turn.events.length - 1;
+
+  if (index !== lastIndex) {
+    const lastEvent = turn.events[lastIndex]!;
+    turn.events[index] = lastEvent;
+    const movedKey = snapshotKey(lastEvent);
+    if (movedKey) {
+      turn.snapshotIndexes.set(movedKey, index);
+    }
+  }
+
+  turn.events.pop();
+
+  const removedKey = snapshotKey(removed);
+  if (removedKey) {
+    turn.snapshotIndexes.delete(removedKey);
+  }
+
+  return removed;
+}
+
+function onShiftFront(turn: ActiveTurn, removed: StreamEvent): void {
+  const removedKey = snapshotKey(removed);
+  if (removedKey) {
+    turn.snapshotIndexes.delete(removedKey);
+  }
+
+  for (const [key, index] of turn.snapshotIndexes) {
+    if (index > 0) {
+      turn.snapshotIndexes.set(key, index - 1);
+    }
+  }
+}
+
+function shouldReplaceOnPublish(event: StreamEvent): boolean {
+  return (
+    event.type === "tool_input_delta" ||
+    event.type === "todos_updated" ||
+    event.type === "questionnaire_updated"
+  );
+}
+
+function publishSnapshotKey(event: StreamEvent): string | null {
+  if (!shouldReplaceOnPublish(event)) {
+    return null;
+  }
+  return snapshotKey(event);
 }
 
 function compactBuffer(events: StreamEvent[]): StreamEvent[] {
@@ -87,6 +149,7 @@ function trimBuffer(turn: ActiveTurn): void {
     }
 
     turn.events = compactBuffer(turn.events);
+    rebuildSnapshotIndexes(turn);
     turn.bufferBytes = turn.events.reduce(
       (total, event) => total + estimateEventBytes(event),
       0,
@@ -96,6 +159,7 @@ function trimBuffer(turn: ActiveTurn): void {
       const removed = turn.events.shift();
       if (removed) {
         turn.bufferBytes -= estimateEventBytes(removed);
+        onShiftFront(turn, removed);
       }
     }
   }
@@ -113,6 +177,7 @@ export class SessionTurnRegistry {
       startedAt: new Date().toISOString(),
       events: [],
       bufferBytes: 0,
+      snapshotIndexes: new Map(),
       subscribers: new Set(),
     });
 
@@ -138,8 +203,20 @@ export class SessionTurnRegistry {
       return;
     }
 
+    const key = publishSnapshotKey(event);
+    if (key) {
+      const existingIndex = turn.snapshotIndexes.get(key);
+      if (existingIndex !== undefined) {
+        const removed = removeEventAt(turn, existingIndex);
+        turn.bufferBytes -= estimateEventBytes(removed);
+      }
+    }
+
     turn.events.push(event);
     turn.bufferBytes += estimateEventBytes(event);
+    if (key) {
+      turn.snapshotIndexes.set(key, turn.events.length - 1);
+    }
     trimBuffer(turn);
 
     for (const subscriber of turn.subscribers) {

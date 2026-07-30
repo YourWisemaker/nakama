@@ -34,7 +34,6 @@ type ProfileCreateFormState = {
   submitError: string | null;
   name: string;
   profileId: string;
-  prompt: string;
   avatarPreview: string | null;
   toolIds: string[];
 };
@@ -50,7 +49,6 @@ const initialProfileCreateFormState: ProfileCreateFormState = {
   submitError: null,
   name: "",
   profileId: "",
-  prompt: defaultCreatePrompt,
   avatarPreview: null,
   toolIds: [],
 };
@@ -214,7 +212,7 @@ function ProfileCreateDialogContent({
       const response = await createMutation.mutateAsync({
         id: profileIdTrimmed,
         name: form.name.trim(),
-        systemPrompt: form.prompt.trim() || undefined,
+        systemPrompt: defaultCreatePrompt,
       });
 
       const avatarFile = avatarFileRef.current;
@@ -258,7 +256,7 @@ function ProfileCreateDialogContent({
         <DialogHeader className="gap-2">
           <DialogTitle>Create profile</DialogTitle>
           <DialogDescription>
-            Name, profile id, and system prompt for the new bot profile.
+            Name and profile id for the new bot profile.
             {onAskSuperBot ? (
               <>
                 {" "}
@@ -288,7 +286,6 @@ function ProfileCreateDialogContent({
           profileIdHasValue={profileIdHasValue}
           profileIdValid={profileIdValid}
           profileIdHelpText={profileIdHelpText}
-          prompt={form.prompt}
           avatarPreview={form.avatarPreview}
           avatarInputRef={createAvatarInputRef}
           tools={tools}
@@ -300,9 +297,6 @@ function ProfileCreateDialogContent({
           onProfileIdChange={(value) => {
             dispatch({ type: "patch", values: { submitError: null, profileId: value } });
             profileIdEditedRef.current = true;
-          }}
-          onPromptChange={(value) => {
-            dispatch({ type: "patch", values: { submitError: null, prompt: value } });
           }}
           onAvatarSelected={handleAvatarSelected}
           onClearAvatar={() => {

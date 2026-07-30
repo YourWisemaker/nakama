@@ -1,8 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { PlusIcon } from "lucide-react";
 import { SidebarUserMenu } from "@/components/SidebarUserMenu";
+import { ProfileAdminPlusButton } from "@/components/ProfileAdminPlusButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -119,26 +118,10 @@ export function ProfileRail() {
         })}
 
         {user?.isPlatformAdmin ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Manage profiles"
-                  title="Manage profiles"
-                  onClick={() => navigate(pathForPage("profiles"))}
-                  className="text-muted-foreground/70 hover:text-foreground"
-                >
-                  <PlusIcon className="size-4" strokeWidth={1.75} />
-                </Button>
-              }
-            />
-            <TooltipContent side="right" sideOffset={8}>
-              Manage profiles
-            </TooltipContent>
-          </Tooltip>
+          <ProfileAdminPlusButton
+            label="Manage profiles"
+            onClick={() => navigate(pathForPage("profiles"))}
+          />
         ) : null}
       </div>
 
