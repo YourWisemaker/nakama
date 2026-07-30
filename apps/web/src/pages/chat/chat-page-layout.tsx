@@ -39,7 +39,7 @@ export function ChatWelcome({
   profileSwitchDisabled?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-2 px-2">
+    <div className="flex flex-col gap-2 px-4 pb-2">
       <h2 className="type-section-title text-xl tracking-tight">
         Hi, good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}!
       </h2>
