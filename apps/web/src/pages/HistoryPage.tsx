@@ -1,16 +1,20 @@
 import type { SessionSummary } from "@nakama/core/contract";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useActiveChatProfile } from "@/context/use-active-chat-profile";
 import { useProfilesQuery } from "@/hooks/use-app-queries";
 import { usePurgeSessionMutation, useHistorySessionsQuery } from "@/hooks/use-resource-mutations";
 import { formatError } from "@/lib/client";
 import { useAppNavigation } from "@/hooks/use-app-navigation";
+import { resolveHistoryProfileId } from "@/lib/chat-history";
 import { HistoryDeleteDialog } from "@/pages/history-delete-dialog";
 import { HistorySessionsPanel } from "@/pages/history-sessions-panel";
 
 export function HistoryPage() {
   const { navigateToPage, navigateToChat } = useAppNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId } =
+    useActiveChatProfile();
   const { data: profiles = [], error: profilesError } = useProfilesQuery();
   const [profileId, setProfileIdState] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +36,7 @@ export function HistoryPage() {
   const setProfileId = useCallback(
     (nextProfileId: string) => {
       setProfileIdState(nextProfileId);
+      setLiveChatProfileId(nextProfileId);
       setSearchParams(
         (current) => {
           const next = new URLSearchParams(current);
@@ -45,7 +50,7 @@ export function HistoryPage() {
         { replace: true },
       );
     },
-    [setSearchParams],
+    [setLiveChatProfileId, setSearchParams],
   );
 
   useEffect(() => {
@@ -61,15 +66,15 @@ export function HistoryPage() {
     }
 
     profileInitializedRef.current = true;
-    const fromUrl = searchParams.get("profile");
-    const matchedProfile = fromUrl ? profiles.find((profile) => profile.id === fromUrl) : null;
-    const defaultProfile =
-      matchedProfile ??
-      profiles.find((profile) => profile.id === "default") ??
-      profiles[0]!;
-
-    setProfileId(defaultProfile.id);
-  }, [profiles, searchParams, setProfileId]);
+    const resolvedProfileId = resolveHistoryProfileId({
+      search: searchParams.toString(),
+      profiles,
+      liveChatProfileId,
+    });
+    if (resolvedProfileId) {
+      setProfileId(resolvedProfileId);
+    }
+  }, [liveChatProfileId, profiles, searchParams, setProfileId]);
 
   // Sync from URL when the profile rail switches the active profile after init.
   useEffect(() => {
@@ -81,9 +86,9 @@ export function HistoryPage() {
       return;
     }
     if (profiles.some((profile) => profile.id === fromUrl)) {
-      setProfileIdState(fromUrl);
+      setProfileId(fromUrl);
     }
-  }, [searchParams, profileId, profiles]);
+  }, [searchParams, profileId, profiles, setProfileId]);
 
   const filteredSessions = useMemo(() => {
     const query = trimmedSearch.toLowerCase();

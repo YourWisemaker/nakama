@@ -11,6 +11,7 @@ import {
   pickKnownProfileId,
   resolveActiveProfileIdFromLocation,
   resolveDefaultProfileId,
+  resolveHistoryProfileId,
   sessionStorageKey,
   writeStoredActiveChatProfileId,
 } from "./chat-history";
@@ -94,6 +95,67 @@ describe("chat history route helpers", () => {
       }),
     ).toBe("default");
 
+    expect(
+      resolveActiveProfileIdFromLocation({
+        pathname: "/history",
+        search: "",
+        profiles,
+        liveChatProfileId: "super",
+      }),
+    ).toBe("super");
+  });
+
+  test("resolveHistoryProfileId restores stored selection when URL has no profile", () => {
+    const profiles = [{ id: "default" }, { id: "super" }];
+    const store = new Map<string, string>();
+    const previousLocalStorage = globalThis.localStorage;
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+
+    try {
+      writeStoredActiveChatProfileId("super");
+
+      expect(
+        resolveHistoryProfileId({
+          search: "",
+          profiles,
+        }),
+      ).toBe("super");
+
+      expect(
+        resolveHistoryProfileId({
+          search: "?profile=default",
+          profiles,
+        }),
+      ).toBe("default");
+
+      expect(
+        resolveHistoryProfileId({
+          search: "",
+          profiles,
+          liveChatProfileId: "default",
+        }),
+      ).toBe("default");
+    } finally {
+      Object.defineProperty(globalThis, "localStorage", {
+        configurable: true,
+        value: previousLocalStorage,
+      });
+    }
+  });
+
+  test("resolveDefaultProfileId picks default or first profile", () => {
+    const profiles = [{ id: "default" }, { id: "super" }];
     expect(resolveDefaultProfileId(profiles)).toBe("default");
     expect(resolveDefaultProfileId([{ id: "alpha" }])).toBe("alpha");
   });

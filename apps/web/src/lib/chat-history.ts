@@ -145,6 +145,23 @@ export function readInitialDraftChatProfileId(input: {
   );
 }
 
+/** Profile id for `/history` — URL when present, else live chat state / storage / default. */
+export function resolveHistoryProfileId(input: {
+  search: string;
+  profiles: ReadonlyArray<{ id: string }>;
+  liveChatProfileId?: string | null;
+}): string | null {
+  const fromUrl = new URLSearchParams(input.search).get("profile");
+  return (
+    pickKnownProfileId(
+      input.profiles,
+      fromUrl,
+      input.liveChatProfileId,
+      readStoredActiveChatProfileId(),
+    ) ?? resolveDefaultProfileId(input.profiles)
+  );
+}
+
 export function resolveDefaultProfileId(
   profiles: ReadonlyArray<{ id: string }>,
 ): string | null {
@@ -175,11 +192,7 @@ export function resolveActiveProfileIdFromLocation(input: {
     Boolean(profileId && profiles.some((profile) => profile.id === profileId));
 
   if (pathname === historyPath) {
-    const fromUrl = new URLSearchParams(search).get("profile");
-    if (isKnownProfile(fromUrl)) {
-      return fromUrl;
-    }
-    return resolveDefaultProfileId(profiles);
+    return resolveHistoryProfileId({ search, profiles, liveChatProfileId });
   }
 
   const fromSessionPath = chatProfileIdFromPath(pathname);
