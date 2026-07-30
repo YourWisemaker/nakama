@@ -75,7 +75,8 @@ export function useChatPage() {
   const [searchParams] = useSearchParams();
   const routeSession = useMemo(() => parseChatRouteParams(params), [params]);
   const { health, models } = useAppContext();
-  const { setProfileId: setLiveChatProfileId } = useActiveChatProfile();
+  const { profileId: liveChatProfileId, setProfileId: setLiveChatProfileId } =
+    useActiveChatProfile();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [profileId, setProfileId] = useState(() =>
     readInitialDraftChatProfileId({
@@ -320,6 +321,28 @@ export function useChatPage() {
     },
     [profileId, busy, enterDraftChat],
   );
+
+  // Profile rail updates context on draft /chat without a URL change.
+  useEffect(() => {
+    if (!liveChatProfileId || liveChatProfileId === profileId) {
+      return;
+    }
+    if (routeSession || location.pathname !== buildChatBasePath()) {
+      return;
+    }
+    if (searchParams.get("new") === "1") {
+      return;
+    }
+    setProfileId(liveChatProfileId);
+    enterDraftChat(liveChatProfileId);
+  }, [
+    liveChatProfileId,
+    profileId,
+    routeSession,
+    location.pathname,
+    searchParams,
+    enterDraftChat,
+  ]);
 
   // Layout effect so session is cleared before the syncChatUrl effect can
   // re-push the previous /chat/:profile/:session URL (first-click blink).

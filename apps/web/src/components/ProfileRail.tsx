@@ -12,7 +12,8 @@ import { useProfilesQuery } from "@/hooks/use-app-queries";
 import { useAuth } from "@/context/use-auth";
 import { useActiveChatProfile } from "@/context/use-active-chat-profile";
 import {
-  buildNewChatPath,
+  buildChatBasePath,
+  isChatSessionPath,
   resolveActiveProfileIdFromLocation,
 } from "@/lib/chat-history";
 import { PAGE_PATHS, pathForPage } from "@/lib/navigation";
@@ -35,6 +36,10 @@ export function ProfileRail() {
   });
 
   function handleSelectProfile(profileId: string) {
+    if (profileId === activeProfileId) {
+      return;
+    }
+
     setLiveChatProfileId(profileId);
 
     if (location.pathname === PAGE_PATHS.history) {
@@ -43,7 +48,15 @@ export function ProfileRail() {
       navigate(`${PAGE_PATHS.history}?${params.toString()}`);
       return;
     }
-    navigate(buildNewChatPath(profileId));
+
+    // Draft /chat: profile travels via context; ChatPage resets state in place.
+    if (location.pathname === buildChatBasePath()) {
+      return;
+    }
+
+    navigate(buildChatBasePath(), {
+      replace: isChatSessionPath(location.pathname),
+    });
   }
 
   return (

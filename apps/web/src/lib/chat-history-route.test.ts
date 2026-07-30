@@ -3,6 +3,7 @@ import {
   buildChatPath,
   buildNewChatPath,
   chatProfileIdFromPath,
+  isChatSessionPath,
   parseChatRouteParams,
   readRequestedDraftFromNewChatSearch,
   readRequestedDraftKeyFromNewChatSearch,
@@ -20,6 +21,8 @@ describe("chat history route helpers", () => {
   test("builds and parses chat routes consistently", () => {
     expect(buildChatPath("profile 1", "session/2")).toBe("/chat/profile%201/session%2F2");
     expect(chatProfileIdFromPath("/chat/profile%201/session%2F2")).toBe("profile 1");
+    expect(isChatSessionPath("/chat/profile%201/session%2F2")).toBe(true);
+    expect(isChatSessionPath("/chat")).toBe(false);
     expect(parseChatRouteParams({ profileId: "p", sessionId: "s" })).toEqual({
       profileId: "p",
       sessionId: "s",

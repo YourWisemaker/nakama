@@ -97,6 +97,10 @@ export function chatProfileIdFromPath(pathname: string): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+export function isChatSessionPath(pathname: string): boolean {
+  return chatProfileIdFromPath(pathname) !== null;
+}
+
 export const ACTIVE_CHAT_PROFILE_STORAGE_KEY = "nakama:active-chat-profile";
 
 export function readStoredActiveChatProfileId(): string | null {
