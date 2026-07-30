@@ -144,7 +144,7 @@ function ProfileCreateDialogContent({
     Boolean(profileIdTrimmed) && PROFILE_ID_PATTERN.test(profileIdTrimmed);
   const profileIdHasValue = form.profileId.length > 0;
   const profileIdHelpText = !profileIdHasValue || profileIdValid
-    ? "Auto-generated from the name. Use letters, numbers, `_`, or `-`."
+    ? "From name. Letters, numbers, `_`, `-` only."
     : "Profile id must start with a letter or number and only use letters, numbers, `_`, or `-`.";
   const toolIdSet = useMemo(() => new Set(form.toolIds), [form.toolIds]);
   const availableTools = tools.filter((tool) => !toolIdSet.has(tool.id));
@@ -256,7 +256,7 @@ function ProfileCreateDialogContent({
         <DialogHeader className="gap-2">
           <DialogTitle>Create profile</DialogTitle>
           <DialogDescription>
-            Name and profile id for the new bot profile.
+            Set name and profile id.
             {onAskSuperBot ? (
               <>
                 {" "}
@@ -272,7 +272,7 @@ function ProfileCreateDialogContent({
                 >
                   ask Super Bot
                 </button>{" "}
-                to draft one from chat.
+                to draft from chat.
               </>
             ) : null}
           </DialogDescription>

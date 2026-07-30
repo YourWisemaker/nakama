@@ -2,7 +2,8 @@ import { hasActiveAgentTodos } from "@nakama/core/agent-todo";
 import type { AgentTodo } from "@nakama/core/contract";
 import { ChevronDownIcon, ListIcon } from "lucide-react";
 import { useState } from "react";
-import { Matrix, snake3x2, type Frame } from "@/components/ui/matrix";
+import { Matrix } from "@/components/ui/matrix";
+import { snake3x2, type Frame } from "@/components/ui/matrix-frames";
 import { cn } from "@/lib/utils";
 
 interface AgentTodoPanelProps {
@@ -33,6 +34,14 @@ const cancelledPattern: Frame = [
   [0, 0],
   [0, 0],
 ];
+
+const todoMatrixStaticProps = {
+  rows: TODO_MATRIX_ROWS,
+  cols: TODO_MATRIX_COLS,
+  size: TODO_MATRIX_SIZE,
+  gap: TODO_MATRIX_GAP,
+  className: "inline-flex h-4 w-auto shrink-0 items-center justify-center",
+};
 
 export function AgentTodoPanel({
   todos,
@@ -138,19 +147,11 @@ function TodoRow({ todo, index }: { todo: AgentTodo; index: number }) {
 }
 
 function TodoStatusIcon({ status }: { status: AgentTodo["status"] }) {
-  const staticProps = {
-    rows: TODO_MATRIX_ROWS,
-    cols: TODO_MATRIX_COLS,
-    size: TODO_MATRIX_SIZE,
-    gap: TODO_MATRIX_GAP,
-    className: "inline-flex h-4 w-auto shrink-0 items-center justify-center",
-  };
-
   switch (status) {
     case "in_progress":
       return (
         <Matrix
-          {...staticProps}
+          {...todoMatrixStaticProps}
           frames={snake3x2}
           fps={4}
           ariaLabel="In progress"
@@ -159,7 +160,7 @@ function TodoStatusIcon({ status }: { status: AgentTodo["status"] }) {
     case "completed":
       return (
         <Matrix
-          {...staticProps}
+          {...todoMatrixStaticProps}
           pattern={completedPattern}
           ariaLabel="Completed"
           palette={{
@@ -171,7 +172,7 @@ function TodoStatusIcon({ status }: { status: AgentTodo["status"] }) {
     case "cancelled":
       return (
         <Matrix
-          {...staticProps}
+          {...todoMatrixStaticProps}
           pattern={cancelledPattern}
           ariaLabel="Cancelled"
           palette={{
@@ -183,7 +184,7 @@ function TodoStatusIcon({ status }: { status: AgentTodo["status"] }) {
     default:
       return (
         <Matrix
-          {...staticProps}
+          {...todoMatrixStaticProps}
           pattern={pendingPattern}
           ariaLabel="Pending"
           brightness={0.55}

@@ -171,7 +171,7 @@ export function ProfileCreateDialogForm({
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Selecting a tool adds it right away. Remove any you do not want below.
+                    Adds on select. Remove unwanted ones below.
                   </p>
                 </div>
 

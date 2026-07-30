@@ -274,27 +274,6 @@ export function ProfilesEmptyState({
   );
 }
 
-export function EmptyMessage({
-  message,
-  actionLabel,
-  onAction,
-}: {
-  message: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <div className="rounded-md border border-dashed border-border/60 px-3 py-8 text-center" role="status">
-      <p className="type-body text-xs text-muted-foreground">{message}</p>
-      {actionLabel && onAction ? (
-        <Button type="button" variant="link" className="mt-2 h-auto p-0" onClick={onAction}>
-          {actionLabel}
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
 export function PageState({ message, embedded = false }: { message: string; embedded?: boolean }) {
   return (
     <div
