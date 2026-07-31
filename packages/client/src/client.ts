@@ -168,6 +168,7 @@ import type {
   OrgMemoryProposalResponse,
   ListOrgMemoryHistoryResponse,
   RestoreOrgMemoryHistoryResponse,
+  OrgMemoryHistoryRevisionResponse,
   StoredTask,
   TaskRunRecord,
   WorkerLogsResponse,
@@ -1707,6 +1708,16 @@ export class NakamaClient {
   async listOrgMemoryHistory(orgId: string): Promise<ListOrgMemoryHistoryResponse> {
     return this.request<ListOrgMemoryHistoryResponse>(
       `/v1/orgs/${encodeURIComponent(orgId)}/memory/history`,
+      { headers: { "X-Org-Id": orgId } },
+    );
+  }
+
+  async getOrgMemoryHistoryRevision(
+    orgId: string,
+    revisionId: string,
+  ): Promise<OrgMemoryHistoryRevisionResponse> {
+    return this.request<OrgMemoryHistoryRevisionResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/history/${encodeURIComponent(revisionId)}`,
       { headers: { "X-Org-Id": orgId } },
     );
   }

@@ -441,6 +441,11 @@ export interface RestoreOrgMemoryHistoryResponse {
   content: string;
 }
 
+export interface OrgMemoryHistoryRevisionResponse {
+  change: OrgMemoryChangeLogEntry;
+  content: string;
+}
+
 export type OrgMemoryProposalStatus = "pending" | "approved" | "rejected";
 
 export interface OrgMemoryProposal {

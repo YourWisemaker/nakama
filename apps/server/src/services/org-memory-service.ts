@@ -132,6 +132,16 @@ export class OrgMemoryService {
     return listOrgMemoryHistory(orgId, limit);
   }
 
+  async getHistoryRevision(orgId: string, revisionId: string) {
+    const record = await getOrgMemoryHistoryEntry(orgId, revisionId);
+    if (!record) {
+      throw new NakamaApiError("Org memory history revision not found.", 404);
+    }
+
+    const { content, ...change } = record;
+    return { change, content };
+  }
+
   async restoreHistoryRevision(
     orgId: string,
     revisionId: string,

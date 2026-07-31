@@ -112,6 +112,7 @@ Org admins can also manage memory via the REST API (`X-Org-Id` required):
 | `GET` | `/v1/orgs/{orgId}/memory` | Read live memory |
 | `PUT` | `/v1/orgs/{orgId}/memory` | Replace live memory |
 | `GET` | `/v1/orgs/{orgId}/memory/history` | List change snapshots (newest first) |
+| `GET` | `/v1/orgs/{orgId}/memory/history/{revisionId}` | Read a single snapshot |
 | `POST` | `/v1/orgs/{orgId}/memory/history/undo` | Undo the latest change |
 | `POST` | `/v1/orgs/{orgId}/memory/history/{revisionId}/restore` | Restore a specific snapshot |
 | `GET` | `/v1/orgs/{orgId}/memory/proposals` | List proposals |

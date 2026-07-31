@@ -20,6 +20,14 @@ export function useOrgMemoryHistory(orgId: string | null) {
   });
 }
 
+export function useOrgMemoryHistoryRevision(orgId: string, revisionId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.orgMemoryHistoryRevision(orgId, revisionId ?? ""),
+    queryFn: () => client.getOrgMemoryHistoryRevision(orgId, revisionId!),
+    enabled: Boolean(orgId && revisionId),
+  });
+}
+
 export function useRestoreOrgMemoryHistory(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation({

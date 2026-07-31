@@ -337,6 +337,10 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     .object({})
     .passthrough()
     .openapi("ListOrgMemoryHistoryResponse");
+  const orgMemoryHistoryRevisionResponseSchema = z
+    .object({})
+    .passthrough()
+    .openapi("OrgMemoryHistoryRevisionResponse");
   const restoreOrgMemoryHistoryResponseSchema = z
     .object({})
     .passthrough()
@@ -369,6 +373,40 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const service = requireService();
     const changes = await service.listHistory(orgId);
     return json({ changes });
+  });
+
+  // GET /v1/orgs/{orgId}/memory/history/{revisionId} — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "get",
+      path: "/v1/orgs/{orgId}/memory/history/{revisionId}",
+      tags: ["Organizations"],
+      summary: "Get an org memory history revision",
+      operationId: "getOrgMemoryHistoryRevision",
+      request: {
+        params: orgIdParam.extend({
+          revisionId: z.string().openapi({ param: { name: "revisionId", in: "path" } }),
+        }),
+      },
+      responses: {
+        200: {
+          description: "History revision",
+          content: { "application/json": { schema: orgMemoryHistoryRevisionResponseSchema } },
+        },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.get("/v1/orgs/:orgId/memory/history/:revisionId", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const revisionId = decodeURIComponent(c.req.param("revisionId"));
+    const service = requireService();
+    const revision = await service.getHistoryRevision(orgId, revisionId);
+    return json(revision);
   });
 
   // POST /v1/orgs/{orgId}/memory/history/undo — admin only

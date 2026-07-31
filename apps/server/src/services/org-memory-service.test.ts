@@ -181,5 +181,10 @@ describe("OrgMemoryService", () => {
     expect(restored).toContain("- first fact");
     expect(await service.getMemory("org_a")).toContain("- first fact");
     expect((await service.listHistory("org_a"))).toHaveLength(3);
+
+    const latest = (await service.listHistory("org_a"))[0]!;
+    const revision = await service.getHistoryRevision("org_a", latest.id);
+    expect(revision.content).toContain("- first fact");
+    expect(revision.change.id).toBe(latest.id);
   });
 });
