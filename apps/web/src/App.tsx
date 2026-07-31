@@ -14,6 +14,7 @@ import { ChatPage } from "@/pages/ChatPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { IntegrationsPage } from "@/pages/IntegrationsPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { NotificationsPage } from "@/pages/NotificationsPage";
 import { ProfilesPage } from "@/pages/ProfilesPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SetupWizardPage } from "@/pages/SetupWizardPage";
@@ -58,6 +59,7 @@ function AppShell() {
                   <Route path="/automations" element={<AutomationsPage />} />
                   <Route path="/tasks" element={<TasksPage />} />
                   <Route path="/integrations" element={<IntegrationsPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/chat" replace />} />
                 </Route>

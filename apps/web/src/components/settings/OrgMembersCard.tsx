@@ -5,7 +5,6 @@ import { useAuth } from "@/context/use-auth";
 import {
   OrgMemberAddDialog,
   OrgMemberEditDialog,
-  OrgMemberInviteDialog,
   OrgMemberRemoveDialog,
   type OrgMemberAddCredentials,
 } from "@/components/settings/org-member-dialogs";
@@ -301,11 +300,27 @@ export function OrgMembersCard() {
         <CardContent className="divide-y divide-border p-0">
           <OrgMembersCardHeader
             orgId={activeOrg.id}
-            onInvite={() => {
-              dispatch({ type: "reset-invite" });
-              dispatch({ type: "clear-secrets" });
-              dispatch({ type: "patch", values: { inviteOpen: true } });
+            inviteOpen={state.inviteOpen}
+            inviteEmail={state.inviteEmail}
+            inviteRole={state.inviteRole}
+            inviteFormError={state.formError}
+            invitePending={inviteMutation.isPending}
+            onInviteOpenChange={(open) => {
+              dispatch({ type: "patch", values: { inviteOpen: open } });
+              if (open) {
+                dispatch({ type: "reset-invite" });
+                dispatch({ type: "clear-secrets" });
+              } else {
+                dispatch({ type: "reset-invite" });
+              }
             }}
+            onInviteEmailChange={(value) =>
+              dispatch({ type: "patch", values: { inviteEmail: value } })
+            }
+            onInviteRoleChange={(value) =>
+              dispatch({ type: "patch", values: { inviteRole: value } })
+            }
+            onInviteSubmit={handleInviteSubmit}
             onAddMember={() => {
               dispatch({ type: "reset-add" });
               dispatch({ type: "clear-secrets" });
@@ -321,7 +336,7 @@ export function OrgMembersCard() {
             />
           ) : null}
 
-          <div className="px-4 py-3">
+          <div>
             <OrgMembersTable
               members={members}
               currentUserEmail={user?.email}
@@ -334,34 +349,13 @@ export function OrgMembersCard() {
             />
 
             {statusLine ? (
-              <p className="mt-3 text-sm text-destructive" role="alert">
+              <p className="px-4 pb-3 pt-2 text-sm text-destructive" role="alert">
                 {statusLine}
               </p>
             ) : null}
           </div>
         </CardContent>
       </Card>
-
-      <OrgMemberInviteDialog
-        open={state.inviteOpen}
-        inviteEmail={state.inviteEmail}
-        inviteRole={state.inviteRole}
-        formError={state.formError}
-        pending={inviteMutation.isPending}
-        onOpenChange={(open) => {
-          dispatch({ type: "patch", values: { inviteOpen: open } });
-          if (!open) {
-            dispatch({ type: "reset-invite" });
-          }
-        }}
-        onInviteEmailChange={(value) =>
-          dispatch({ type: "patch", values: { inviteEmail: value } })
-        }
-        onInviteRoleChange={(value) =>
-          dispatch({ type: "patch", values: { inviteRole: value } })
-        }
-        onSubmit={handleInviteSubmit}
-      />
 
       <OrgMemberAddDialog
         open={state.addOpen}

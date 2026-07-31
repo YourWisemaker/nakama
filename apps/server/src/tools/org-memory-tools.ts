@@ -40,16 +40,12 @@ function readString(input: unknown, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-/**
- * Build the org-memory tools bound to a service instance. v1 ships only the
- * search tool; the propose tool is deferred to v2.
- */
 export function createOrgMemoryTools(service: OrgMemoryService): ToolDefinition[] {
   return [
     {
       name: "org_memory_search",
       description:
-        "Search the organization's shared memory (pinned facts plus the full archive) for facts relevant to the query. Use this when the injected org memory summary is missing detail or when you need the full history.",
+        "Search the organization's shared memory (pinned facts, recent dated log, and archives) for facts relevant to the query. Use this when the injected org memory summary is missing detail or when you need the full history.",
       parameters: {
         type: "object",
         properties: {
@@ -73,12 +69,42 @@ export function createOrgMemoryTools(service: OrgMemoryService): ToolDefinition[
     {
       name: "org_memory_list",
       description:
-        "List the organization's pinned facts (the live org memory). Returns the current pinned bullets.",
+        "List the organization's live org memory markdown (pinned and recent-log sections). Returns the current MEMORY.md content.",
       parameters: emptyObjectSchema(),
       async run(_input, context: ToolContext) {
         const { orgId } = requireOrgMemoryAccess(context);
         const content = await service.getMemory(orgId);
         return { content };
+      },
+    },
+    {
+      name: "propose_org_memory",
+      description:
+        "Propose a durable org-wide fact (team conventions, policies, shared context) for admin approval. Never propose secrets, credentials, API keys, tokens, or PII. Facts require admin approval before appearing in org memory. Do not re-propose if the tool reports the fact is already pending, pinned, or in the recent log.",
+      parameters: {
+        type: "object",
+        properties: {
+          bullet: {
+            type: "string",
+            description: "A single concise org-wide fact to propose for admin review.",
+          },
+        },
+        required: ["bullet"],
+        additionalProperties: false,
+      },
+      parallelSafe: false,
+      async run(input, context: ToolContext) {
+        const { orgId } = requireOrgMemoryAccess(context);
+        const bullet = readString(input, "bullet");
+        if (!bullet) {
+          throw new Error("bullet is required.");
+        }
+        return service.propose(orgId, {
+          bullet,
+          profileId: context.profileId ?? null,
+          sessionId: context.sessionId ?? null,
+          proposedByUserId: context.userId ?? null,
+        });
       },
     },
   ];

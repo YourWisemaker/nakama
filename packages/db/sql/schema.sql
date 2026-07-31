@@ -286,6 +286,23 @@ CREATE TABLE IF NOT EXISTS org_invites (
 
 CREATE UNIQUE INDEX IF NOT EXISTS org_invites_token_hash_unique ON org_invites (token_hash);
 
+CREATE TABLE IF NOT EXISTS org_memory_proposals (
+  id TEXT PRIMARY KEY NOT NULL,
+  org_id TEXT NOT NULL,
+  profile_id TEXT,
+  session_id TEXT,
+  proposed_by_user_id TEXT,
+  bullet TEXT NOT NULL,
+  status TEXT NOT NULL,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  reviewer_user_id TEXT,
+  reviewed_at TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS org_memory_proposals_org_status ON org_memory_proposals (org_id, status);
+
 CREATE TABLE IF NOT EXISTS channel_org_mappings (
   channel TEXT NOT NULL,
   channel_user_id TEXT NOT NULL,

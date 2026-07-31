@@ -15,7 +15,10 @@ function invalidateOrgMemory(
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
 ) {
-  return queryClient.invalidateQueries({ queryKey: queryKeys.orgMemory(orgId) });
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.orgMemory(orgId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.orgMemoryHistory(orgId) }),
+  ]);
 }
 
 export function useUpdateOrgMemory(orgId: string) {

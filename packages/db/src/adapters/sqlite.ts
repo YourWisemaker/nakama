@@ -16,6 +16,8 @@ import type {
   StoredSkillRecord,
   StoredOrgMemberRecord,
   StoredOrgInviteRecord,
+  StoredOrgMemoryProposal,
+  OrgMemoryProposalStatus,
   StoredArtifactShareRecord,
   StoredOrganizationRecord,
   StoredUserOrganizationRecord,
@@ -298,6 +300,20 @@ interface OrgInviteRow {
   expires_at: string;
   accepted_at: string | null;
   revoked_at: string | null;
+  created_at: string;
+}
+
+interface OrgMemoryProposalRow {
+  id: string;
+  org_id: string;
+  profile_id: string | null;
+  session_id: string | null;
+  proposed_by_user_id: string | null;
+  bullet: string;
+  status: string;
+  pinned: number;
+  reviewer_user_id: string | null;
+  reviewed_at: string | null;
   created_at: string;
 }
 
@@ -1072,6 +1088,54 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SET accepted_at = ?
     WHERE id = ?
   `);
+  const createOrgMemoryProposalStmt = db.prepare(`
+    INSERT INTO org_memory_proposals (
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      bullet, status, pinned, reviewer_user_id, reviewed_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const listOrgMemoryProposalsStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      bullet, status, pinned, reviewer_user_id, reviewed_at, created_at
+    FROM org_memory_proposals
+    WHERE org_id = ? AND status = ?
+    ORDER BY created_at DESC
+  `);
+  const listAllOrgMemoryProposalsStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      bullet, status, pinned, reviewer_user_id, reviewed_at, created_at
+    FROM org_memory_proposals
+    WHERE org_id = ?
+    ORDER BY created_at DESC
+  `);
+  const getOrgMemoryProposalStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      bullet, status, pinned, reviewer_user_id, reviewed_at, created_at
+    FROM org_memory_proposals
+    WHERE org_id = ? AND id = ?
+    LIMIT 1
+  `);
+  const getPendingOrgMemoryProposalByBulletStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      bullet, status, pinned, reviewer_user_id, reviewed_at, created_at
+    FROM org_memory_proposals
+    WHERE org_id = ? AND bullet = ? AND status = 'pending'
+    LIMIT 1
+  `);
+  const updateOrgMemoryProposalStatusStmt = db.prepare(`
+    UPDATE org_memory_proposals
+    SET status = ?, reviewer_user_id = ?, reviewed_at = ?, pinned = ?
+    WHERE org_id = ? AND id = ?
+  `);
+  const countOrgMemoryProposalsStmt = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM org_memory_proposals
+    WHERE org_id = ? AND status = ?
+  `);
   const createArtifactShareStmt = db.prepare(`
     INSERT INTO artifact_shares (
       id, org_id, profile_id, source_path, filename, mime_type, size_bytes,
@@ -1374,6 +1438,60 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
 
     async markOrgInviteAccepted(id, acceptedAt) {
       markOrgInviteAcceptedStmt.run(acceptedAt, id);
+    },
+
+    async createOrgMemoryProposal(record) {
+      createOrgMemoryProposalStmt.run(
+        record.id,
+        record.orgId,
+        record.profileId,
+        record.sessionId,
+        record.proposedByUserId,
+        record.bullet,
+        record.status,
+        record.pinned ? 1 : 0,
+        record.reviewerUserId,
+        record.reviewedAt,
+        record.createdAt,
+      );
+    },
+
+    async listOrgMemoryProposals(orgId, status) {
+      const rows = (
+        status
+          ? listOrgMemoryProposalsStmt.all(orgId, status)
+          : listAllOrgMemoryProposalsStmt.all(orgId)
+      ) as OrgMemoryProposalRow[];
+      return rows.map(toOrgMemoryProposalRecord);
+    },
+
+    async getOrgMemoryProposal(orgId, id) {
+      const row = getOrgMemoryProposalStmt.get(orgId, id) as OrgMemoryProposalRow | null;
+      return row ? toOrgMemoryProposalRecord(row) : null;
+    },
+
+    async getPendingOrgMemoryProposalByBullet(orgId, bullet) {
+      const row = getPendingOrgMemoryProposalByBulletStmt.get(orgId, bullet) as
+        | OrgMemoryProposalRow
+        | null;
+      return row ? toOrgMemoryProposalRecord(row) : null;
+    },
+
+    async updateOrgMemoryProposalStatus(orgId, id, update) {
+      const result = updateOrgMemoryProposalStatusStmt.run(
+        update.status,
+        update.reviewerUserId,
+        update.reviewedAt,
+        update.pinned ? 1 : 0,
+        orgId,
+        id,
+      );
+      return result.changes > 0;
+    },
+
+    async countOrgMemoryProposals(orgId, status) {
+      const row = countOrgMemoryProposalsStmt.get(orgId, status) as { count: number };
+      return row.count;
     },
 
     async createArtifactShare(record) {
@@ -2616,6 +2734,22 @@ function toOrgInviteRecord(row: OrgInviteRow): StoredOrgInviteRecord {
     expiresAt: row.expires_at,
     acceptedAt: row.accepted_at,
     revokedAt: row.revoked_at,
+    createdAt: row.created_at,
+  };
+}
+
+function toOrgMemoryProposalRecord(row: OrgMemoryProposalRow): StoredOrgMemoryProposal {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    profileId: row.profile_id,
+    sessionId: row.session_id,
+    proposedByUserId: row.proposed_by_user_id,
+    bullet: row.bullet,
+    status: row.status as OrgMemoryProposalStatus,
+    pinned: Boolean(row.pinned),
+    reviewerUserId: row.reviewer_user_id,
+    reviewedAt: row.reviewed_at,
     createdAt: row.created_at,
   };
 }

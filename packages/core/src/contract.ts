@@ -386,6 +386,8 @@ export interface OrgMemorySearchRequest {
 export interface OrgMemorySearchMatchEntry {
   source: string;
   bullet: string;
+  tier?: "pinned" | "recent-log" | "archive";
+  date?: string;
 }
 
 export interface OrgMemorySearchResponse {
@@ -410,6 +412,68 @@ export interface PinOrgMemoryRequest {
 
 export interface UnpinOrgMemoryRequest {
   bullet: string;
+}
+
+export type OrgMemoryChangeAction =
+  | "edit"
+  | "approve"
+  | "add_fact"
+  | "pin"
+  | "unpin"
+  | "archive"
+  | "restore";
+
+export interface OrgMemoryChangeLogEntry {
+  id: string;
+  orgId: string;
+  createdAt: string;
+  actorUserId: string | null;
+  action: OrgMemoryChangeAction;
+  label: string;
+  restoredFromId?: string | null;
+}
+
+export interface ListOrgMemoryHistoryResponse {
+  changes: OrgMemoryChangeLogEntry[];
+}
+
+export interface RestoreOrgMemoryHistoryResponse {
+  content: string;
+}
+
+export interface OrgMemoryHistoryRevisionResponse {
+  change: OrgMemoryChangeLogEntry;
+  content: string;
+}
+
+export type OrgMemoryProposalStatus = "pending" | "approved" | "rejected";
+
+export interface OrgMemoryProposal {
+  id: string;
+  orgId: string;
+  profileId: string | null;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  bullet: string;
+  status: OrgMemoryProposalStatus;
+  pinned: boolean;
+  reviewerUserId: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface ListOrgMemoryProposalsResponse {
+  proposals: OrgMemoryProposal[];
+  pendingCount: number;
+}
+
+export interface ApproveOrgMemoryProposalRequest {
+  pin?: boolean;
+}
+
+export interface OrgMemoryProposalResponse {
+  proposal: OrgMemoryProposal;
+  content?: string;
 }
 
 export interface InviteOrgMemberRequest {

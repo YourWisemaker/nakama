@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BellIcon,
   CircleFadingPlusIcon,
   CircleUserRoundIcon,
   BrainIcon,
@@ -18,7 +19,8 @@ export type PageId =
   | "automations"
   | "tasks"
   | "integrations"
-  | "settings";
+  | "settings"
+  | "notifications";
 
 export interface NavItem {
   id: PageId;
@@ -95,6 +97,14 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
+export const STANDALONE_PAGES: Partial<Record<PageId, NavItem>> = {
+  notifications: {
+    id: "notifications",
+    label: "Notifications",
+    description: "Automation runs and org memory proposals",
+  },
+};
+
 export const NAV_ITEM_ICONS: Record<PageId, LucideIcon> = {
   chat: CircleFadingPlusIcon,
   history: ClockIcon,
@@ -104,6 +114,7 @@ export const NAV_ITEM_ICONS: Record<PageId, LucideIcon> = {
   tasks: KanbanIcon,
   integrations: CableIcon,
   settings: CogIcon,
+  notifications: BellIcon,
 };
 
 export const SETUP_PATH = "/setup";
@@ -178,6 +189,7 @@ export const PAGE_PATHS: Record<PageId, string> = {
   tasks: "/tasks",
   integrations: "/integrations",
   settings: "/settings",
+  notifications: "/notifications",
 };
 
 export function pathForPage(pageId: PageId): string {
@@ -200,7 +212,7 @@ export function navHrefForPage(
 }
 
 export function findNavItem(pageId: PageId): NavItem | undefined {
-  return NAV_ITEMS.find((item) => item.id === pageId);
+  return NAV_ITEMS.find((item) => item.id === pageId) ?? STANDALONE_PAGES[pageId];
 }
 
 export function pageIdFromPath(pathname: string): PageId | null {

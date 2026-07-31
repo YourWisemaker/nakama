@@ -71,3 +71,8 @@ export {
   generateSessionTitleFromMessages,
   normalizeSessionTitle,
 } from "./session-title";
+export {
+  mergeOrgMemoryWithApprovedBullet,
+  mergeOrgMemoryWithApprovedBulletFallback,
+} from "./org-memory-merge";
+export type { MergeOrgMemoryWithApprovedBulletOptions } from "./org-memory-merge";

@@ -12,7 +12,7 @@ setupTestConfigDir("nakama-org-memory-routes-test-");
 function createApp() {
   const databaseAdapter = createInMemoryDatabaseAdapter();
   const authService = new AuthService();
-  const orgMemoryService = new OrgMemoryService();
+  const orgMemoryService = new OrgMemoryService(databaseAdapter);
   return {
     databaseAdapter,
     authService,
@@ -237,5 +237,82 @@ describe("org memory routes (v1)", () => {
       }),
     );
     expect(archiveResp.status).toBe(404);
+  });
+
+  test("admin can list, approve, and reject proposals; member cannot list", async () => {
+    const { app, authService, databaseAdapter, orgMemoryService } = createApp();
+    const adminSession = await setupFreshInstallSession(app, databaseAdapter, "admin6@org.com");
+    const orgId = adminSession.orgId!;
+
+    const proposed = await orgMemoryService.propose(orgId, {
+      bullet: "deploy freeze on Fridays",
+      profileId: "profile_a",
+    });
+    expect(proposed.outcome).toBe("created");
+
+    const listResp = await app.fetch(
+      new Request(`${BASE}/v1/orgs/${orgId}/memory/proposals?status=pending`, {
+        headers: adminSession.headers({}, orgId),
+      }),
+    );
+    expect(listResp.status).toBe(200);
+    const listBody = (await listResp.json()) as {
+      proposals: { id: string; bullet: string }[];
+      pendingCount: number;
+    };
+    expect(listBody.pendingCount).toBe(1);
+    expect(listBody.proposals[0]?.bullet).toBe("deploy freeze on Fridays");
+
+    const approveResp = await app.fetch(
+      new Request(`${BASE}/v1/orgs/${orgId}/memory/proposals/${proposed.proposalId}/approve`, {
+        method: "POST",
+        headers: adminSession.headers({ "X-CSRF-Token": adminSession.csrfToken }, orgId),
+        body: JSON.stringify({ pin: false }),
+      }),
+    );
+    expect(approveResp.status).toBe(200);
+    const approveBody = (await approveResp.json()) as { content: string };
+    expect(approveBody.content).toContain("deploy freeze on Fridays");
+
+    const memberResp = await app.fetch(
+      new Request(`${BASE}/v1/orgs/${orgId}/members`, {
+        method: "POST",
+        headers: adminSession.headers({ "X-CSRF-Token": adminSession.csrfToken }, orgId),
+        body: JSON.stringify({
+          email: "member6@org.com",
+          name: "Member Six",
+          role: "member",
+        }),
+      }),
+    );
+    const memberProvisioned = (await memberResp.json()) as { temporaryPassword: string };
+    const memberSession = await loginUserSession(
+      app,
+      "member6@org.com",
+      memberProvisioned.temporaryPassword,
+      orgId,
+    );
+    const memberListResp = await app.fetch(
+      new Request(`${BASE}/v1/orgs/${orgId}/memory/proposals`, {
+        headers: memberSession.headers({}, orgId),
+      }),
+    );
+    expect(memberListResp.status).toBe(403);
+  });
+
+  test("approve proposal from wrong org returns 404", async () => {
+    const { app, databaseAdapter, orgMemoryService } = createApp();
+    const adminSession = await setupFreshInstallSession(app, databaseAdapter, "admin7@org.com");
+    const orgId = adminSession.orgId!;
+    const proposed = await orgMemoryService.propose(orgId, { bullet: "org scoped fact" });
+
+    const otherOrgResp = await app.fetch(
+      new Request(`${BASE}/v1/orgs/org_other/memory/proposals/${proposed.proposalId}/approve`, {
+        method: "POST",
+        headers: adminSession.headers({ "X-CSRF-Token": adminSession.csrfToken }, orgId),
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(otherOrgResp.status).toBe(404);
   });
 });

@@ -3,6 +3,7 @@ import type {
   StoredAutomation,
 } from "@nakama/core/contract";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useAutomationRunsQuery,
   useAutomationsQuery,
@@ -36,6 +37,7 @@ export function useAutomationsPage() {
     automationsData?.unread?.byAutomationId ?? EMPTY_UNREAD_BY_AUTOMATION_ID;
   const { data: profiles = [] } = useProfilesQuery();
   const superBotProfile = findSuperBotProfile(profiles);
+  const [searchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const {
     data: runs = [],
@@ -95,10 +97,19 @@ export function useAutomationsPage() {
       return;
     }
 
+    const automationFromUrl = searchParams.get("automation");
+    if (
+      automationFromUrl &&
+      automations.some((automation) => automation.id === automationFromUrl)
+    ) {
+      setSelectedId(automationFromUrl);
+      return;
+    }
+
     if (!selectedId || !automations.some((automation) => automation.id === selectedId)) {
       setSelectedId(automations[0]!.id);
     }
-  }, [automations, selectedId]);
+  }, [automations, selectedId, searchParams]);
 
   useEffect(() => {
     if (!selectedId || !runsLoaded) {
