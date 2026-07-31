@@ -6,7 +6,10 @@ import {
   isEmailConfigComplete,
   loadEmailConfig,
 } from "../email-config";
-import { verifyAttachmentReference } from "../mail/attachment-reference";
+import {
+  getMailboxIdentity,
+  verifyAttachmentReference,
+} from "../mail/attachment-reference";
 import { createImapReader } from "../mail/imap-reader";
 import { sanitizeMailError } from "../mail/sanitize";
 import type { MailReader } from "../mail/types";
@@ -76,9 +79,14 @@ export async function runExtractDocumentText(
         return { error: "No document provider is available for this document reference." };
       }
 
+      const mailboxConfig = emailConfigToMailboxConfig(config!);
       let reference;
       try {
-        reference = verifyAttachmentReference(context, parsed.documentRef);
+        reference = verifyAttachmentReference(
+          context,
+          parsed.documentRef,
+          getMailboxIdentity(mailboxConfig),
+        );
       } catch (error) {
         return {
           error:
@@ -89,7 +97,7 @@ export async function runExtractDocumentText(
       }
 
       reader = (dependencies.createReader ?? createImapReader)(
-        emailConfigToMailboxConfig(config!),
+        mailboxConfig,
       );
       await reader.connect();
       const attachment = await reader.readAttachment(

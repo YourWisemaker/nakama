@@ -1026,6 +1026,7 @@ export class AgentService {
         orgId: input.orgId,
         profileId: input.profileId,
         userId: input.userId,
+        sessionId: input.sessionId,
         clientOrigin: input.clientOrigin,
         agentDepth: input.agentDepth,
         orgRole: "member",

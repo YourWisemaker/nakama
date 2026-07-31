@@ -1,16 +1,14 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { ToolContext } from "../contract";
+import type { MailboxConfig } from "./types";
 
 const REFERENCE_TTL_MS = 10 * 60 * 1000;
-const referenceSecret = Buffer.from(
-  process.env.NAKAMA_EMAIL_ATTACHMENT_SECRET ?? randomBytes(32).toString("base64url"),
-  "utf8",
-);
 
 interface AttachmentReferenceClaims {
   orgId: string;
   profileId: string;
   sessionId: string;
+  mailboxId: string;
   folder: string;
   uid: number;
   attachmentId: string;
@@ -34,12 +32,31 @@ function contextScope(context: ToolContext): Pick<
 }
 
 function sign(payload: string): string {
-  return createHmac("sha256", referenceSecret).update(payload).digest("base64url");
+  const secret = process.env.NAKAMA_EMAIL_ATTACHMENT_SECRET?.trim();
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "NAKAMA_EMAIL_ATTACHMENT_SECRET must be configured with at least 32 characters.",
+    );
+  }
+
+  return createHmac("sha256", secret).update(payload).digest("base64url");
+}
+
+export function getMailboxIdentity(config: MailboxConfig): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        host: config.imap.host,
+        port: config.imap.port,
+        user: config.auth.user,
+      }),
+    )
+    .digest("base64url");
 }
 
 export function createAttachmentReference(
   context: ToolContext,
-  input: { folder: string; uid: number; attachmentId: string },
+  input: { folder: string; uid: number; attachmentId: string; mailboxId: string },
 ): string {
   const claims: AttachmentReferenceClaims = {
     ...contextScope(context),
@@ -53,6 +70,7 @@ export function createAttachmentReference(
 export function verifyAttachmentReference(
   context: ToolContext,
   reference: string,
+  mailboxId: string,
 ): Omit<AttachmentReferenceClaims, "orgId" | "profileId" | "sessionId"> {
   const parts = reference.split(".");
   if (parts.length !== 2) {
@@ -82,6 +100,7 @@ export function verifyAttachmentReference(
     claims.orgId !== scope.orgId ||
     claims.profileId !== scope.profileId ||
     claims.sessionId !== scope.sessionId ||
+    claims.mailboxId !== mailboxId ||
     !Number.isInteger(claims.uid) ||
     claims.expiresAt <= Date.now()
   ) {
@@ -92,6 +111,7 @@ export function verifyAttachmentReference(
     folder: claims.folder,
     uid: claims.uid,
     attachmentId: claims.attachmentId,
+    mailboxId: claims.mailboxId,
     expiresAt: claims.expiresAt,
   };
 }

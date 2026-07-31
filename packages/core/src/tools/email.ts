@@ -11,7 +11,10 @@ import { createSmtpSender } from "../mail/smtp-sender";
 import { sanitizeMailError } from "../mail/sanitize";
 import type { MailMessage, MailReader, MailSender } from "../mail/types";
 import { MAX_EMAIL_BODY_BYTES } from "../mail/types";
-import { createAttachmentReference } from "../mail/attachment-reference";
+import {
+  createAttachmentReference,
+  getMailboxIdentity,
+} from "../mail/attachment-reference";
 import { jsonSchemaFromZod, parseToolInput } from "./schema";
 
 const EMAIL_ADDRESS_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -175,7 +178,10 @@ export async function runEmailTool(
         return { error: `No message found with uid ${parsed.uid} in ${parsed.folder}.` };
       }
 
-      return { action: parsed.action, message: toEmailMessage(message, context) };
+      return {
+        action: parsed.action,
+        message: toEmailMessage(message, context, getMailboxIdentity(mailboxConfig)),
+      };
     }
 
     const messages = await reader.searchMessages(parsed.folder, parsed.query, parsed.limit);
@@ -241,6 +247,7 @@ export const emailTool: ToolDefinition<EmailToolInput, EmailToolResult> = {
 function toEmailMessage(
   message: MailMessage,
   context: ToolContext,
+  mailboxId: string,
 ): NonNullable<Extract<EmailToolSuccess, { message?: unknown }>["message"]> {
   const { attachments, ...messageWithoutAttachments } = message;
   if (!attachments) {
@@ -258,6 +265,7 @@ function toEmailMessage(
         folder: message.folder,
         uid: message.uid,
         attachmentId: attachment.id,
+        mailboxId,
       }),
     })),
   };

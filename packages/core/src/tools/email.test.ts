@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { EmailConfigFile } from "../email-config";
 import { createFakeMailReader, createFakeMailSender, runEmailTool } from "./email";
 
+process.env.NAKAMA_EMAIL_ATTACHMENT_SECRET ??= "test-email-attachment-secret-32-chars";
+
 const completeConfig: EmailConfigFile = {
   imapHost: "imap.example.com",
   imapPort: 993,

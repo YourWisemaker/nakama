@@ -4,6 +4,8 @@ import {
   verifyAttachmentReference,
 } from "./attachment-reference";
 
+process.env.NAKAMA_EMAIL_ATTACHMENT_SECRET ??= "test-email-attachment-secret-32-chars";
+
 const context = {
   orgId: "org_test",
   profileId: "profile_test",
@@ -16,9 +18,10 @@ describe("email attachment references", () => {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
+      mailboxId: "mailbox_test",
     });
 
-    expect(verifyAttachmentReference(context, reference)).toMatchObject({
+    expect(verifyAttachmentReference(context, reference, "mailbox_test")).toMatchObject({
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
@@ -30,16 +33,19 @@ describe("email attachment references", () => {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
+      mailboxId: "mailbox_test",
     });
 
-    expect(() => verifyAttachmentReference(context, `${reference}x`)).toThrow(
-      "Invalid email attachment reference.",
-    );
-    expect(() => verifyAttachmentReference(context, `${reference}.extra`)).toThrow(
+    expect(() => verifyAttachmentReference(context, `${reference}x`, "mailbox_test")).toThrow(
       "Invalid email attachment reference.",
     );
     expect(() =>
-      verifyAttachmentReference({ ...context, sessionId: "other" }, reference),
+      verifyAttachmentReference(context, `${reference}.extra`, "mailbox_test"),
+    ).toThrow(
+      "Invalid email attachment reference.",
+    );
+    expect(() =>
+      verifyAttachmentReference({ ...context, sessionId: "other" }, reference, "mailbox_test"),
     ).toThrow("out of scope");
   });
 
@@ -53,8 +59,22 @@ describe("email attachment references", () => {
       folder: "INBOX",
       uid: 7,
       attachmentId: "1",
+      mailboxId: "mailbox_test",
     });
 
-    expect(verifyAttachmentReference(automationContext, reference).uid).toBe(7);
+    expect(verifyAttachmentReference(automationContext, reference, "mailbox_test").uid).toBe(7);
+  });
+
+  test("rejects a reference for a different mailbox", () => {
+    const reference = createAttachmentReference(context, {
+      folder: "INBOX",
+      uid: 42,
+      attachmentId: "0",
+      mailboxId: "mailbox_test",
+    });
+
+    expect(() => verifyAttachmentReference(context, reference, "other_mailbox")).toThrow(
+      "out of scope",
+    );
   });
 });

@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import type { EmailConfigFile } from "../email-config";
+import {
+  emailConfigToMailboxConfig,
+  type EmailConfigFile,
+} from "../email-config";
 import type { MailReader } from "../mail/types";
-import { createAttachmentReference } from "../mail/attachment-reference";
+import {
+  createAttachmentReference,
+  getMailboxIdentity,
+} from "../mail/attachment-reference";
 import { runExtractDocumentText } from "./extract-document-text";
+
+process.env.NAKAMA_EMAIL_ATTACHMENT_SECRET ??= "test-email-attachment-secret-32-chars";
 
 const completeConfig: EmailConfigFile = {
   imapHost: "imap.example.com",
@@ -22,6 +30,7 @@ const context = {
   profileId: "profile_test",
   sessionId: "session_test",
 };
+const mailboxId = getMailboxIdentity(emailConfigToMailboxConfig(completeConfig));
 
 function readerWith(data: Buffer): MailReader {
   return {
@@ -81,6 +90,7 @@ describe("extract_document_text tool", () => {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
+      mailboxId,
     });
 
     const result = await runExtractDocumentText(
@@ -131,6 +141,7 @@ describe("extract_document_text tool", () => {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
+      mailboxId,
     });
 
     const result = await runExtractDocumentText(
@@ -150,6 +161,7 @@ describe("extract_document_text tool", () => {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
+      mailboxId,
     });
 
     const result = await runExtractDocumentText(
