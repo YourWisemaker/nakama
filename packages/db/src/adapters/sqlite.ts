@@ -2563,6 +2563,8 @@ function parseCodingAgentHarnessProbeCache(
     return null;
   }
 
+  const normalizedNextStep = nextStep === "login" ? "retry" : nextStep;
+
   return {
     checkedAt,
     authenticated:
@@ -2572,7 +2574,7 @@ function parseCodingAgentHarnessProbeCache(
           ? null
           : null,
     ready: cache.ready === true,
-    nextStep,
+    nextStep: normalizedNextStep,
     statusMessage:
       typeof cache.statusMessage === "string"
         ? cache.statusMessage

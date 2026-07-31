@@ -754,6 +754,7 @@ function migrateWorkspaceSettingsTable(db: Database): void {
       ALTER TABLE workspace_settings ADD COLUMN selected_coding_agent_harness TEXT;
     `);
   }
+
 }
 
 function migrateAutomationRunsTable(db: Database): void {

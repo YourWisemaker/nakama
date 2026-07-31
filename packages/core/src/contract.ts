@@ -1018,6 +1018,15 @@ export interface SendEmailTestResponse {
 
 export type CodingHarnessKind = "codex" | "claude_code" | "opencode";
 
+export interface CodingAgentProviderPassthroughSummary {
+  active: boolean;
+  configured: boolean;
+  compatible: boolean;
+  providerLabel: string | null;
+  model: string | null;
+  message?: string | null;
+}
+
 export interface CodingHarnessStatus {
   id: string;
   kind: CodingHarnessKind;
@@ -1031,7 +1040,7 @@ export interface CodingHarnessStatus {
   version: string | null;
   authenticated: boolean | null;
   ready: boolean;
-  nextStep: "install" | "login" | "retry" | null;
+  nextStep: "install" | "retry" | null;
   statusMessage: string | null;
 }
 
@@ -1039,6 +1048,7 @@ export interface CodingHarnessSettingsResponse {
   configured: boolean;
   selectedHarnessId: string | null;
   activeHarnessId: string | null;
+  providerPassthrough: CodingAgentProviderPassthroughSummary;
   harnesses: CodingHarnessStatus[];
 }
 
@@ -1054,7 +1064,7 @@ export interface VerifyCodingHarnessResponse {
   installed: boolean;
   authenticated: boolean | null;
   ready: boolean;
-  nextStep: "install" | "login" | "retry" | null;
+  nextStep: "install" | "retry" | null;
   statusMessage: string | null;
   error: string | null;
 }
@@ -1129,6 +1139,12 @@ export interface CodingAgentLaunchPlanResponse {
   harnessKind: CodingHarnessKind;
   harnessName: string;
   model: string | null;
+  providerPassthrough?: {
+    active: boolean;
+    providerLabel: string | null;
+    model: string | null;
+    message: string | null;
+  };
 }
 
 export interface WhatsAppSettingsResponse {

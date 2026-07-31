@@ -1,6 +1,6 @@
 ---
 title: "Coding Agent"
-description: "Launch Codex, Claude Code, or OpenCode from Nakama chat or the CLI, with optional inference gateway routing through your Nakama provider."
+description: "Launch Codex, Claude Code, or OpenCode from Nakama chat or the CLI, with optional provider passthrough from your Nakama LLM provider."
 ---
 
 A Nakama profile is a general-purpose agent: it chats, explains, uses file tools, and follows your soul and skills. For **real coding work** — multi-file features, refactors, test fixes, repo-wide changes — a dedicated **coding agent** (Codex, Claude Code, or OpenCode) usually does better.
@@ -74,68 +74,34 @@ For each backend:
 
 Until at least one harness is installed, verified, and **saved as the active selection**, coding-agent workflows are unavailable.
 
-### Model routing (inference gateway)
+### Provider passthrough
 
-Nakama can route coding-agent API calls through the deployment instead of each agent's vendor account. The server exposes an Anthropic-compatible `POST /v1/messages` endpoint and injects spawn-time env vars so Claude Code (and eventually Codex) talk to Nakama instead of Anthropic/OpenAI directly.
+Nakama injects your configured LLM provider credentials at coding-agent spawn time — the same provider and model as chat (Settings → Provider). Each harness uses its native override mechanism:
 
-**Local dev:** `bun run dev:server` enables the gateway by default (`NAKAMA_INFERENCE_GATEWAY_ENABLED=1`). Production deployments can opt out with `NAKAMA_INFERENCE_GATEWAY_ENABLED=0`.
+| Harness | Mechanism |
+|---------|-----------|
+| Claude Code | `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, model tier env vars |
+| Codex | `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` (or temp `config.toml` + `CODEX_HOME`) |
+| OpenCode | Temp `opencode.json` via `XDG_CONFIG_HOME` |
 
 **Requirements:**
 
-- A provider configured in Nakama (Settings → model provider) — the gateway routes to that provider using the selected profile's model
-- For `nakama launch`, a Nakama local auth token (automatic when using the CLI on the same machine as the server)
+- A compatible provider configured in Nakama (Settings → Provider)
+- Provider passthrough enabled in Integrations → Coding agents (default: on)
+- Claude Code requires an **Anthropic** provider; Codex and OpenCode support OpenAI-compatible providers (OpenAI, OpenRouter, DeepSeek, etc.)
 
 The `bash` tool merges spawn env when:
 
 - `codingAgent: true` is set on the bash call, or
 - the command starts with the active harness binary (auto-detection)
 
-`nakama launch` always requests a launch plan from the server, which includes the same spawn env.
+`nakama launch` always requests a launch plan from the server, which includes the same spawn env (full secrets only for local-token CLI auth).
 
-#### Server configuration
+**Compatibility:** Integrations → Coding agents shows whether passthrough is active for the selected harness. Incompatible provider/harness pairs show a warning with a link to Settings → Provider.
 
-```bash
-# enabled by default in bun run dev:server
-export NAKAMA_INFERENCE_GATEWAY_ENABLED=1
+**Readiness checks:** Opening Integrations or loading harness settings runs a light check (binary on `PATH` + provider passthrough active). Use **Run readiness check** to run a deeper exec probe that spawns the harness with passthrough env. `configured` and `activeHarnessId` reflect only the **selected** harness — Nakama does not fall back to another ready harness.
 
-# optional public URL when the server is not on localhost (Claude SDK appends /v1/messages):
-# export NAKAMA_INFERENCE_GATEWAY_URL=https://nakama.example.com
-```
-
-#### Spawn env (Claude Code)
-
-When the gateway is enabled, Nakama merges these variables at process spawn time:
-
-| Variable | Purpose |
-|----------|---------|
-| `ANTHROPIC_BASE_URL` | Nakama server root (for example `http://127.0.0.1:4310`) |
-| `ANTHROPIC_AUTH_TOKEN` | Local Nakama auth token (Bearer auth to the gateway) |
-| `ANTHROPIC_API_KEY` | Cleared/unset so shell keys do not override gateway routing |
-| `ANTHROPIC_DEFAULT_*_MODEL` | All Claude Code tiers mapped to the profile model |
-| `ANTHROPIC_CUSTOM_HEADERS` | `X-Org-Id` and `X-Nakama-Profile-Id` for tenant and model routing |
-
-Nakama does **not** patch `~/.claude/settings.json`. Env injection is session-scoped, matching the Ollama-style pattern.
-
-#### Gateway limitations (v1)
-
-- Text-only requests — tool calling in gateway requests is not supported yet
-- Claude Code first — Codex/OpenCode gateway adapters are partial
-- Restart the server after upgrading — older processes will not register `POST /v1/coding-agents/prepare-launch` or the gateway route
-
-#### Manual equivalent (Claude Code)
-
-```bash
-export NAKAMA_INFERENCE_GATEWAY_ENABLED=1  # on the server
-
-ANTHROPIC_BASE_URL=http://127.0.0.1:4310 \
-ANTHROPIC_AUTH_TOKEN=<your-local-nakama-token> \
-ANTHROPIC_CUSTOM_HEADERS=$'X-Org-Id: org_abc\nX-Nakama-Profile-Id: <profile-id>' \
-claude --print 'your task'
-```
-
-Unset `ANTHROPIC_API_KEY` in your shell if it is set — a leftover key can block gateway credentials.
-
-If `~/.claude/settings.json` forces Bedrock or another upstream, env injection may not win — adjust Claude Code settings or remove conflicting entries.
+**Security:** Passthrough injects the real org provider API key into subprocess env on the host. Use on trusted single-tenant machines only.
 
 ### 2. Assign tools and skills to the profile
 
@@ -165,7 +131,7 @@ The CLI ensures the server is running, resolves org context, builds a launch pla
 | Flag | Purpose |
 |------|---------|
 | `--org ID` | Organization for `X-Org-Id` (required when you belong to multiple orgs) |
-| `--profile ID` | Profile for model routing through the gateway (aliases: `super_bot`, `super-bot`, `Super Bot`) |
+| `--profile ID` | Profile for provider/model routing (aliases: `super_bot`, `super-bot`, `Super Bot`) |
 | `--model MODEL` | Override the profile model for this launch |
 | `--cwd DIR` | Working directory (defaults to your current shell directory) |
 | `--yes` | Skip the profile picker when no `--profile` is set |
@@ -187,16 +153,14 @@ bun run dev:cli -- launch claude --org org_abc --profile super_bot -- --print "f
 bun run dev:cli -- launch codex --model gpt-4.1 -- --help
 ```
 
-### Verify gateway routing
+### Verify provider passthrough
 
 After launch, the CLI prints either:
 
-- `Spawn env: Nakama inference gateway routing enabled` — Claude Code should **not** ask for `/login`
-- A warning that no gateway env was applied — Claude Code will use its own Anthropic account (`/login`)
+- `Provider passthrough enabled (Anthropic / claude-sonnet-4-6)` — the harness should **not** ask for `/login`
+- A warning that passthrough is not active — configure a compatible provider in Settings → Provider
 
-Inside Claude Code, run `/status` and confirm **Anthropic base URL** points at your Nakama server (not `api.anthropic.com`).
-
-Without the gateway, the coding CLI uses vendor authentication on the host (`claude /login`, Codex login, etc.).
+Coding agents always use Nakama provider passthrough; harness-native vendor login (`claude /login`, etc.) is not supported yet.
 
 ## When to use a coding agent vs Nakama alone
 
@@ -230,7 +194,7 @@ The Nakama agent then:
 3. Reads stdout/stderr from the coding agent
 4. Summarizes what changed, what was verified, and any follow-up risks
 
-Runs execute in the **active profile workspace** when delegated from chat (`~/.nakama/orgs/{orgId}/profiles/{profileId}/`). `nakama launch` defaults to your **current shell directory** unless you pass `--cwd`. When the inference gateway is enabled, spawn env routes API calls through Nakama using the selected profile's model; otherwise the coding CLI uses vendor auth configured on the host.
+Runs execute in the **active profile workspace** when delegated from chat (`~/.nakama/orgs/{orgId}/profiles/{profileId}/`). `nakama launch` defaults to your **current shell directory** unless you pass `--cwd`. When provider passthrough is active, spawn env routes API calls to your Nakama-configured provider using the selected profile's model; otherwise the coding CLI uses vendor auth configured on the host.
 
 ## Safety boundaries
 
@@ -260,8 +224,8 @@ Harness settings are deployment-wide. Tool and skill assignment remain per profi
 | `nakama launch` returns Forbidden | Use `--org` with your org id; ensure you are not an org viewer |
 | Unknown profile `super_bot` | Use `Super Bot`, `super-bot`, or the profile id from the dashboard — Super Bot's id is not always literally `super_bot` |
 | CLI fails immediately | Binary missing from `PATH`, auth incomplete, or wrong harness selected |
-| Claude Code asks for `/login` | Gateway off or spawn env not applied — restart `dev:server`; launch output should say gateway routing enabled; run `/status` inside Claude Code |
-| Gateway 503 / no provider | Configure a model provider in Nakama Settings for the launch profile |
+| Claude Code asks for `/login` | Provider passthrough off or spawn env not applied — restart `dev:server`; launch output should say passthrough is active; check Settings → Provider |
+| Provider passthrough inactive / no provider | Configure a compatible model provider in Nakama Settings for the launch profile |
 | Run times out | Increase `bash` `timeoutMs`; split the task into smaller coding-agent runs |
 | Changes land outside the workspace | Command `cwd` or backend `--dir` may point outside the profile tree; `nakama launch` uses your shell cwd by default |
 

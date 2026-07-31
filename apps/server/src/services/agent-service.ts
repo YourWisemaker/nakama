@@ -206,14 +206,13 @@ import {
 import { formatToolActivityLabel } from "../tools/sub-agent-activity";
 import { AgentQuestionnaireState } from "./agent-questionnaire-state";
 import {
-  getCodingHarnessInstallCommand,
-  getCodingHarnessInstallHint,
-  listCodingAgentHarnessStatuses,
-  loadCodingAgentWorkspaceSettings,
   resolveCodingAgentHarness,
-  saveCodingAgentWorkspaceSettings,
-  verifyCodingAgentHarness,
 } from "./coding-agent-harness-service";
+import {
+  getCodingHarnessSettings,
+  setCodingHarnessSettings,
+  verifyCodingHarnessSettings,
+} from "./coding-agent-settings";
 import { getAgentBrowserStatus } from "./agent-browser-service";
 import {
   buildCodingAgentCommandTemplate,
@@ -221,11 +220,7 @@ import {
   getBackendSkillName,
 } from "./coding-agent-command";
 import { prepareCodingAgentLaunch as buildCodingAgentLaunchPlan } from "./coding-agent-launcher";
-import {
-  getInferenceGatewayBaseUrl,
-  normalizeCodingAgentModel,
-} from "./coding-agent-spawn-env";
-import { loadLocalAuthToken } from "@nakama/core/local-auth";
+import { normalizeCodingAgentModel } from "./coding-agent-spawn-env";
 import { AgentTodoState } from "./agent-todo-state";
 import type { AutomationRunner } from "./automation-runner";
 import {
@@ -866,51 +861,17 @@ export class AgentService {
   }
 
   async getCodingHarnessSettings(): Promise<CodingHarnessSettingsResponse> {
-    const settings = await loadCodingAgentWorkspaceSettings(this.db);
-    const statuses = await listCodingAgentHarnessStatuses(this.db);
-    const activeHarness =
-      statuses.find(
-        (harness) =>
-          harness.id === settings.selectedHarnessId &&
-          harness.enabled &&
-          harness.installed &&
-          harness.ready,
-      ) ??
-      statuses.find((harness) => harness.enabled && harness.installed && harness.ready) ??
-      null;
-
-    return {
-      configured: activeHarness !== null,
-      selectedHarnessId: settings.selectedHarnessId,
-      activeHarnessId: activeHarness?.id ?? null,
-      harnesses: statuses.map((harness) => ({
-        id: harness.id,
-        kind: harness.kind,
-        name: harness.name,
-        command: harness.command,
-        enabled: harness.enabled,
-        installed: harness.installed,
-        version: harness.version,
-        authenticated: harness.authenticated,
-        ready: harness.ready,
-        nextStep: harness.nextStep,
-        statusMessage: harness.statusMessage,
-        selected: harness.id === settings.selectedHarnessId,
-        installHint: getCodingHarnessInstallHint(harness.kind),
-        installCommand: getCodingHarnessInstallCommand(harness.kind),
-      })),
-    };
+    return getCodingHarnessSettings(this.db, this.userConfig);
   }
 
   async setCodingHarnessSettings(
     input: UpdateCodingHarnessSettingsRequest,
   ): Promise<CodingHarnessSettingsResponse> {
-    await saveCodingAgentWorkspaceSettings(this.db, input);
-    return this.getCodingHarnessSettings();
+    return setCodingHarnessSettings(this.db, this.userConfig, input);
   }
 
   async verifyCodingHarness(harnessId?: string): Promise<VerifyCodingHarnessResponse> {
-    return verifyCodingAgentHarness(this.db, harnessId);
+    return verifyCodingHarnessSettings(this.db, this.userConfig, harnessId);
   }
 
   async getAgentBrowserStatus(): Promise<AgentBrowserStatusResponse> {
@@ -937,6 +898,7 @@ export class AgentService {
         cwd: input.cwd,
         passthroughArgs: input.passthroughArgs,
         persistSelection: options.persistSelection === true,
+        userConfig: this.userConfig,
       },
       {
         orgRole: options.orgRole,
@@ -2496,7 +2458,9 @@ export class AgentService {
     } = {},
   ): Promise<ToolDefinition[]> {
     const storedTools = await this.db.listToolsForProfile(profile.id);
-    const tools = await resolveProfileStoredTools(storedTools, this.db);
+    const tools = await resolveProfileStoredTools(storedTools, this.db, [], {
+      userConfig: this.userConfig,
+    });
     const includeAutomationTools = options.includeAutomationTools ?? true;
     const includeTodoTools = options.includeTodoTools ?? true;
     const includeQuestionTools = options.includeQuestionTools ?? true;
@@ -2757,30 +2721,19 @@ export class AgentService {
     profileId: string,
   ): Promise<string> {
     try {
-      const harness = await resolveCodingAgentHarness(this.db);
-      const workspaceRoot = getProfileSoulDir(orgId, profileId);
       const profile = await this.db.getProfile(profileId);
-      const gatewayBaseUrl = getInferenceGatewayBaseUrl();
-      let authToken: string | null = null;
-
-      if (gatewayBaseUrl) {
-        try {
-          authToken = await loadLocalAuthToken();
-        } catch {
-          authToken = null;
-        }
-      }
-
-      const template = buildCodingAgentCommandTemplate(
+      const harness = await resolveCodingAgentHarness(this.db, null, {
+        userConfig: this.userConfig,
+        profileModel: profile?.model ?? null,
+      });
+      const workspaceRoot = getProfileSoulDir(orgId, profileId);
+      const template = await buildCodingAgentCommandTemplate(
         harness,
         "<task prompt>",
         workspaceRoot,
         {
-          model: normalizeCodingAgentModel(profile?.model),
-          gatewayBaseUrl,
-          authToken,
-          orgId,
-          profileId,
+          userConfig: this.userConfig,
+          profileModel: profile?.model ?? null,
         },
       );
       const backendSkillName = getBackendSkillName(harness.kind);

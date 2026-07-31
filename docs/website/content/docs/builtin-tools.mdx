@@ -103,7 +103,7 @@ Legacy `.doc` (Word 97–2003) is not supported for generation or preview. Binar
 
 ## Coding agent
 
-Repo coding work is not a separate builtin. Profiles with the `coding-agent` skill invoke Codex, Claude Code, or OpenCode through `bash`. You can also launch a harness directly with `bun run dev:cli -- launch`. See [Coding agent](/coding-agent) for setup, the inference gateway, CLI flags, and runtime behavior.
+Repo coding work is not a separate builtin. Profiles with the `coding-agent` skill invoke Codex, Claude Code, or OpenCode through `bash`. You can also launch a harness directly with `bun run dev:cli -- launch`. See [Coding agent](/coding-agent) for setup, provider passthrough, CLI flags, and runtime behavior.
 
 ## Tool reference
 
@@ -287,7 +287,7 @@ Run a one-off shell command in the profile workspace and return stdout, stderr, 
 
 **Returns:** `{ exitCode, stdout, stderr, timedOut }`
 
-**Coding-agent spawn env:** When `codingAgent: true` (or the command matches the active harness binary), Nakama merges inference-gateway env vars on the server before spawn. See [Coding agent — Model routing](/coding-agent#model-routing-inference-gateway). Optional `env` keys are merged on top.
+**Coding-agent spawn env:** When `codingAgent: true` (or the command matches the active harness binary), Nakama merges provider passthrough env vars on the server before spawn. See [Coding agent — Provider passthrough](/coding-agent#provider-passthrough). Optional `env` keys are merged on top (credential keys cannot override passthrough).
 
 **Scope:** Profile workspace only. Do not use `bash` to create persistent tools or `.sh` wrappers — register JavaScript tools under `~/.nakama/tools/` instead.
 

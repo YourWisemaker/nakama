@@ -146,10 +146,10 @@ export function CodingHarnessSettingsPanel({
             return;
           }
 
-          if (status.nextStep === "login") {
+          if (status.nextStep === "retry") {
             setHint(
               status.statusMessage ??
-                `${name} is installed. Finish login on this server, then run readiness check.`,
+                `${name} is installed but provider passthrough is not ready. Check Settings → Provider, then run readiness check.`,
             );
             return;
           }
@@ -194,6 +194,43 @@ export function CodingHarnessSettingsPanel({
             <p className="text-sm text-muted-foreground">
               Nakama can hand off coding tasks to a CLI agent on this server.
             </p>
+            {settings.providerPassthrough ? (
+              <p className="text-sm text-muted-foreground">
+                {settings.providerPassthrough.active ? (
+                  <>
+                    Provider passthrough active
+                    {settings.providerPassthrough.providerLabel
+                      ? ` (${settings.providerPassthrough.providerLabel}`
+                      : ""}
+                    {settings.providerPassthrough.model
+                      ? ` / ${settings.providerPassthrough.model}`
+                      : settings.providerPassthrough.providerLabel
+                        ? ")"
+                        : ""}
+                    {settings.providerPassthrough.providerLabel &&
+                    settings.providerPassthrough.model
+                      ? ")"
+                      : ""}
+                    .
+                  </>
+                ) : (
+                  <>
+                    Provider passthrough is not active.{" "}
+                    {settings.providerPassthrough.message ? (
+                      settings.providerPassthrough.message
+                    ) : (
+                      <>
+                        Configure a compatible provider in{" "}
+                        <Link to="/settings?section=provider" className="underline">
+                          Settings → Provider
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </>
+                )}
+              </p>
+            ) : null}
           </div>
           {!embedded ? (
             <Button
@@ -311,7 +348,7 @@ export function CodingHarnessSettingsDialog({
         <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle>Coding agents</DialogTitle>
           <DialogDescription className="text-xs">
-            Pick an agent, make sure it is installed and logged in, then Nakama can enable code
+            Pick an agent, make sure it is installed and ready, then Nakama can enable code
             delegation.
           </DialogDescription>
         </DialogHeader>
