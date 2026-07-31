@@ -8,7 +8,9 @@
 
 import type { MemorySection } from "./memory-archive";
 
-export const ORG_MEMORY_PREAMBLE = `## Org Memory
+export const ORG_MEMORY_HEADER = "## Org Memory";
+
+export const ORG_MEMORY_PREAMBLE = `${ORG_MEMORY_HEADER}
 
 ## Pinned`;
 
@@ -98,31 +100,59 @@ export function parseOrgMemoryContent(content?: string | null): ParsedOrgMemory 
     flushSection();
   }
 
-  return {
+  return normalizeParsedOrgMemory({
     preamble: preambleLines.join("\n").replace(/\n+$/, ""),
     pinned,
     sections,
+  });
+}
+
+function stripPinnedHeaderFromPreamble(preamble: string): string {
+  return preamble
+    .split("\n")
+    .filter((line) => !/^## Pinned\s*$/.test(line.trim()))
+    .join("\n")
+    .replace(/\n+$/, "")
+    .trim();
+}
+
+/** Normalize malformed MEMORY.md content before rebuild or merge. */
+export function normalizeParsedOrgMemory(parsed: ParsedOrgMemory): ParsedOrgMemory {
+  const preambleLines: string[] = [];
+  const rescuedPinned: string[] = [];
+
+  for (const line of parsed.preamble.split("\n")) {
+    if (line.startsWith("- ")) {
+      rescuedPinned.push(line.slice(2));
+      continue;
+    }
+    preambleLines.push(line);
+  }
+
+  return {
+    preamble: stripPinnedHeaderFromPreamble(preambleLines.join("\n")),
+    pinned: [...parsed.pinned, ...rescuedPinned],
+    sections: parsed.sections,
   };
 }
 
 export function rebuildOrgMemoryContent(parsed: ParsedOrgMemory): string {
+  const normalized = normalizeParsedOrgMemory(parsed);
   const parts: string[] = [];
 
-  const preamble = parsed.preamble.trim();
-  if (preamble) {
-    parts.push(preamble);
-  } else {
-    parts.push(ORG_MEMORY_PREAMBLE);
-  }
+  const preamble = normalized.preamble.trim();
+  parts.push(preamble.length > 0 ? preamble : ORG_MEMORY_HEADER);
 
-  if (parsed.pinned.length > 0) {
+  if (normalized.pinned.length > 0) {
     parts.push("", "## Pinned", "");
-    for (const bullet of parsed.pinned) {
+    for (const bullet of normalized.pinned) {
       parts.push(`- ${bullet}`);
     }
+  } else if (normalized.sections.length === 0) {
+    parts.push("", "## Pinned", "");
   }
 
-  for (const section of parsed.sections) {
+  for (const section of normalized.sections) {
     if (section.bullets.length === 0) {
       continue;
     }
@@ -134,6 +164,107 @@ export function rebuildOrgMemoryContent(parsed: ParsedOrgMemory): string {
 
   const content = parts.join("\n").replace(/\n+$/, "");
   return content.length > 0 ? `${content}\n` : content;
+}
+
+const ORG_MEMORY_SUPERSEDE_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "at",
+  "for",
+  "in",
+  "is",
+  "of",
+  "on",
+  "or",
+  "our",
+  "team",
+  "the",
+  "to",
+  "we",
+]);
+
+function significantOrgMemoryTokens(bullet: string): string[] {
+  return bullet
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 1 && !ORG_MEMORY_SUPERSEDE_STOP_WORDS.has(token));
+}
+
+function orgMemorySupersessionScore(existingBullet: string, newBullet: string): number {
+  const existingTokens = significantOrgMemoryTokens(existingBullet);
+  const newTokens = significantOrgMemoryTokens(newBullet);
+  if (existingTokens.length < 2 || newTokens.length < 2) {
+    return 0;
+  }
+
+  const shared = newTokens.filter((token) => existingTokens.includes(token));
+  return shared.length / Math.min(existingTokens.length, newTokens.length);
+}
+
+function removeOrgMemoryBullet(
+  parsed: ParsedOrgMemory,
+  predicate: (bullet: string) => boolean,
+): void {
+  parsed.pinned = parsed.pinned.filter((bullet) => !predicate(bullet));
+  for (const section of parsed.sections) {
+    section.bullets = section.bullets.filter((bullet) => !predicate(bullet));
+  }
+}
+
+function removeSupersededOrgMemoryBullets(parsed: ParsedOrgMemory, newBullet: string): void {
+  const newKey = normalizeOrgMemoryDedupKey(newBullet);
+  removeOrgMemoryBullet(parsed, (bullet) => {
+    if (normalizeOrgMemoryDedupKey(bullet) === newKey) {
+      return false;
+    }
+    return orgMemorySupersessionScore(bullet, newBullet) >= 0.65;
+  });
+}
+
+export interface ApplyApprovedOrgMemoryBulletOptions {
+  pin?: boolean;
+  dateUtc?: string;
+}
+
+/** Apply an approved proposal bullet to live org memory content. */
+export function applyApprovedOrgMemoryBullet(
+  content: string | null | undefined,
+  bullet: string,
+  options: ApplyApprovedOrgMemoryBulletOptions = {},
+): string {
+  const pin = options.pin ?? false;
+  const dateUtc = options.dateUtc ?? new Date().toISOString().slice(0, 10);
+  const text = bullet.trim().replace(/^-\s+/, "").trim();
+  const parsed = normalizeParsedOrgMemory(parseOrgMemoryContent(content ?? ""));
+  const dedupKey = normalizeOrgMemoryDedupKey(text);
+
+  removeOrgMemoryBullet(parsed, (entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey);
+  removeSupersededOrgMemoryBullets(parsed, text);
+
+  const alreadyPresent =
+    parsed.pinned.some((entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey) ||
+    parsed.sections.some((section) =>
+      section.bullets.some((entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey),
+    );
+
+  if (!alreadyPresent) {
+    if (pin) {
+      parsed.pinned.push(text);
+    } else {
+      let section = parsed.sections.find((entry) => entry.date === dateUtc);
+      if (!section) {
+        section = { date: dateUtc, bullets: [] };
+        parsed.sections.push(section);
+        parsed.sections.sort((a, b) => a.date.localeCompare(b.date));
+      }
+      section.bullets.push(text);
+    }
+  }
+
+  return rebuildOrgMemoryContent(parsed);
 }
 
 export function collectRecentLogBullets(
@@ -212,30 +343,7 @@ export function previewOrgMemoryAfterApprove(
   const pin = options.pin ?? false;
   const dateUtc = options.dateUtc ?? new Date().toISOString().slice(0, 10);
   const text = bullet.trim().replace(/^-\s+/, "").trim();
-  const parsed = parseOrgMemoryContent(liveContent ?? "");
-  const dedupKey = normalizeOrgMemoryDedupKey(text);
-
-  const alreadyPresent =
-    parsed.pinned.some((entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey) ||
-    parsed.sections.some((section) =>
-      section.bullets.some((entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey),
-    );
-
-  if (!alreadyPresent) {
-    if (pin) {
-      parsed.pinned.push(text);
-    } else {
-      let section = parsed.sections.find((entry) => entry.date === dateUtc);
-      if (!section) {
-        section = { date: dateUtc, bullets: [] };
-        parsed.sections.push(section);
-        parsed.sections.sort((a, b) => a.date.localeCompare(b.date));
-      }
-      section.bullets.push(text);
-    }
-  }
-
-  const rebuilt = rebuildOrgMemoryContent(parsed);
+  const rebuilt = applyApprovedOrgMemoryBullet(liveContent, bullet, { pin, dateUtc });
   const promptInjection = composeOrgMemorySummary(rebuilt, {
     byteCap: options.byteCap ?? 2048,
     recentLogLimit: options.recentLogLimit ?? 20,

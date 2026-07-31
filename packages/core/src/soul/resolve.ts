@@ -31,6 +31,11 @@ export function getOrgMemoryArchiveDir(orgId: string): string {
   return join(getOrgMemoryDir(orgId), "memory-archive");
 }
 
+/** Org memory change history dir: ~/.nakama/orgs/{orgId}/memory-history/ */
+export function getOrgMemoryHistoryDir(orgId: string): string {
+  return join(getOrgMemoryDir(orgId), "memory-history");
+}
+
 /** Org memory archive file for a given year-month: ~/.nakama/orgs/{orgId}/memory-archive/YYYY-MM.md */
 export function getOrgMemoryArchiveFilePath(orgId: string, yearMonth: string): string {
   return join(getOrgMemoryArchiveDir(orgId), `${yearMonth}.md`);

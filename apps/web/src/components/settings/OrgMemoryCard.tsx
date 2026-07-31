@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { parseOrgMemoryContent } from "@nakama/core/soul/org-memory";
 import { OrgMemoryProposalsPanel } from "@/components/settings/OrgMemoryProposalsPanel";
+import { OrgMemoryHistoryPanel } from "@/components/settings/OrgMemoryHistoryPanel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 const MAX_BODY_BYTES = 256_000;
 
-type OrgMemoryTab = "live" | "proposals";
+type OrgMemoryTab = "live" | "proposals" | "history";
 
 function formatUpdatedLabel(timestampMs: number): string {
   if (!timestampMs) {
@@ -235,11 +236,16 @@ export function OrgMemoryCard() {
                 </span>
               ) : null}
             </OrgMemoryTabButton>
+            <OrgMemoryTabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
+              History
+            </OrgMemoryTabButton>
           </div>
         </div>
 
         {activeTab === "proposals" ? (
           orgId ? <OrgMemoryProposalsPanel orgId={orgId} /> : null
+        ) : activeTab === "history" ? (
+          orgId ? <OrgMemoryHistoryPanel orgId={orgId} /> : null
         ) : (
           <div className="px-4 py-3">
             {isLoading ? (

@@ -2,14 +2,21 @@ import { join } from "node:path";
 import {
   NakamaApiError,
   ORG_MEMORY_PREAMBLE,
+  applyApprovedOrgMemoryBullet,
+  appendOrgMemoryHistory,
   composeOrgMemorySummary,
+  createOrgMemoryChangeId,
   detectOrgMemoryInjectionWarnings,
   getOrgMemoryArchiveDir,
   getOrgMemoryDir,
   getOrgMemoryFilePath,
+  getOrgMemoryHistoryEntry,
+  listOrgMemoryHistory,
   normalizeOrgMemoryDedupKey,
   parseOrgMemoryContent,
   rebuildOrgMemoryContent,
+  type OrgMemoryChangeAction,
+  type OrgMemoryChangeLogEntry,
 } from "@nakama/core";
 import {
   pathExists,
@@ -61,8 +68,30 @@ export interface ProposeOrgMemoryInput {
   proposedByUserId?: string | null;
 }
 
+export interface OrgMemoryApprovedBulletMerger {
+  merge(
+    content: string,
+    bullet: string,
+    options: { pin: boolean; dateUtc: string },
+  ): Promise<string | null>;
+}
+
+export interface OrgMemoryServiceOptions {
+  approvedBulletMerger?: OrgMemoryApprovedBulletMerger;
+}
+
+export interface OrgMemoryChangeContext {
+  actorUserId?: string | null;
+  action: OrgMemoryChangeAction;
+  label: string;
+  restoredFromId?: string | null;
+}
+
 export class OrgMemoryService {
-  constructor(private readonly database: DatabaseAdapter | null = null) {}
+  constructor(
+    private readonly database: DatabaseAdapter | null = null,
+    private readonly options: OrgMemoryServiceOptions = {},
+  ) {}
 
   /**
    * Read the live org MEMORY.md. Returns the canonical preamble when the file
@@ -70,7 +99,10 @@ export class OrgMemoryService {
    */
   async getMemory(orgId: string): Promise<string> {
     const existing = await readTextIfExists(getOrgMemoryFilePath(orgId));
-    return existing ?? `${ORG_MEMORY_PREAMBLE}\n`;
+    if (!existing || existing.trim().length === 0) {
+      return `${ORG_MEMORY_PREAMBLE}\n`;
+    }
+    return existing;
   }
 
   /** Render the `## Org Memory` section injected into profile system prompts. */
@@ -80,15 +112,52 @@ export class OrgMemoryService {
   }
 
   /** Replace the entire live MEMORY.md content (admin only). */
-  async setMemory(orgId: string, content: string): Promise<void> {
+  async setMemory(
+    orgId: string,
+    content: string,
+    change?: OrgMemoryChangeContext,
+  ): Promise<void> {
     const trimmed = content.trim();
     if (Buffer.byteLength(trimmed, "utf8") > SUMMARY_BYTE_CAP * 4) {
       throw new NakamaApiError("Org memory content exceeds the size limit.", 400);
     }
     const normalized = trimmed.length > 0 ? `${trimmed.replace(/\n+$/, "")}\n` : `${ORG_MEMORY_PREAMBLE}\n`;
-    await writePrivateTextFile(getOrgMemoryFilePath(orgId), normalized, {
-      ensureDir: getOrgMemoryDir(orgId),
+    await this.commitMemory(orgId, normalized, change ?? {
+      action: "edit",
+      label: "Manual edit",
     });
+  }
+
+  async listHistory(orgId: string, limit?: number): Promise<OrgMemoryChangeLogEntry[]> {
+    return listOrgMemoryHistory(orgId, limit);
+  }
+
+  async restoreHistoryRevision(
+    orgId: string,
+    revisionId: string,
+    actorUserId: string,
+  ): Promise<string> {
+    const record = await getOrgMemoryHistoryEntry(orgId, revisionId);
+    if (!record) {
+      throw new NakamaApiError("Org memory history revision not found.", 404);
+    }
+
+    await this.commitMemory(orgId, record.content, {
+      actorUserId,
+      action: "restore",
+      label: `Restored snapshot from ${new Date(record.createdAt).toLocaleString()}`,
+      restoredFromId: revisionId,
+    });
+    return record.content;
+  }
+
+  async undoLastChange(orgId: string, actorUserId: string): Promise<string> {
+    const history = await listOrgMemoryHistory(orgId, 2);
+    if (history.length < 2) {
+      throw new NakamaApiError("No previous org memory revision to restore.", 404);
+    }
+
+    return this.restoreHistoryRevision(orgId, history[1]!.id, actorUserId);
   }
 
   /**
@@ -96,7 +165,11 @@ export class OrgMemoryService {
    * with the canonical preamble if it is missing. Idempotent — adding a
    * bullet that is already pinned is a no-op.
    */
-  async addFact(orgId: string, bullet: string, options: { pin?: boolean } = {}): Promise<void> {
+  async addFact(
+    orgId: string,
+    bullet: string,
+    options: { pin?: boolean; change?: OrgMemoryChangeContext } = {},
+  ): Promise<void> {
     const text = this.normalizeBullet(bullet);
     const content = await this.getMemory(orgId);
     const parsed = parseOrgMemoryContent(content);
@@ -105,35 +178,34 @@ export class OrgMemoryService {
       return;
     }
 
-    parsed.pinned.push(text);
-    await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
+    const next = applyApprovedOrgMemoryBullet(content, text, { pin: true });
+    await this.commitMemory(orgId, next, options.change ?? {
+      action: "add_fact",
+      label: `Added fact: ${truncateLabel(text)}`,
+    });
   }
 
-  async addRecentLogFact(orgId: string, bullet: string, dateUtc: string): Promise<void> {
+  async addRecentLogFact(
+    orgId: string,
+    bullet: string,
+    dateUtc: string,
+    change?: OrgMemoryChangeContext,
+  ): Promise<void> {
     const text = this.normalizeBullet(bullet);
     const content = await this.getMemory(orgId);
-    const parsed = parseOrgMemoryContent(content);
-
-    if (this.bulletExistsInMemory(parsed, text)) {
+    const parsedBefore = parseOrgMemoryContent(content);
+    if (this.bulletExistsInMemory(parsedBefore, text)) {
       return;
     }
-
-    let section = parsed.sections.find((entry) => entry.date === dateUtc);
-    if (!section) {
-      section = { date: dateUtc, bullets: [] };
-      parsed.sections.push(section);
-      parsed.sections.sort((a, b) => a.date.localeCompare(b.date));
-    }
-
-    if (!section.bullets.some((existing) => existing.trim() === text)) {
-      section.bullets.push(text);
-    }
-
-    await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
+    const next = applyApprovedOrgMemoryBullet(content, text, { pin: false, dateUtc });
+    await this.commitMemory(orgId, next, change ?? {
+      action: "add_fact",
+      label: `Added recent log fact: ${truncateLabel(text)}`,
+    });
   }
 
   /** Pin an existing bullet (move to pinned if dated, or add). */
-  async pinFact(orgId: string, bullet: string): Promise<void> {
+  async pinFact(orgId: string, bullet: string, change?: OrgMemoryChangeContext): Promise<void> {
     const text = this.normalizeBullet(bullet);
     const content = await this.getMemory(orgId);
     const parsed = parseOrgMemoryContent(content);
@@ -150,11 +222,14 @@ export class OrgMemoryService {
     }
 
     parsed.pinned.push(text);
-    await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
+    await this.commitMemory(orgId, rebuildOrgMemoryContent(parsed), change ?? {
+      action: "pin",
+      label: `Pinned fact: ${truncateLabel(text)}`,
+    });
   }
 
   /** Remove a bullet from the pinned section. 404 if it is not pinned. */
-  async unpinFact(orgId: string, bullet: string): Promise<void> {
+  async unpinFact(orgId: string, bullet: string, change?: OrgMemoryChangeContext): Promise<void> {
     const text = this.normalizeBullet(bullet);
     const content = await this.getMemory(orgId);
     const parsed = parseOrgMemoryContent(content);
@@ -164,13 +239,16 @@ export class OrgMemoryService {
       throw new NakamaApiError("Pinned fact not found.", 404);
     }
     parsed.pinned.splice(index, 1);
-    await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
+    await this.commitMemory(orgId, rebuildOrgMemoryContent(parsed), change ?? {
+      action: "unpin",
+      label: `Unpinned fact: ${truncateLabel(text)}`,
+    });
   }
 
   async archiveEntries(
     orgId: string,
     entries: string[],
-    options: { reason?: string; archivedAt?: Date } = {},
+    options: { reason?: string; archivedAt?: Date; change?: OrgMemoryChangeContext } = {},
   ) {
     const targets = new Set(
       entries.map((e) => e.trim().replace(/^-\s+/, "").trim()).filter(Boolean),
@@ -229,8 +307,9 @@ export class OrgMemoryService {
       sections: parsed.sections,
     });
     await writePrivateTextFile(archivePath, archiveContent, { ensureDir: archiveDir });
-    await writePrivateTextFile(getOrgMemoryFilePath(orgId), activeContent, {
-      ensureDir: getOrgMemoryDir(orgId),
+    await this.commitMemory(orgId, activeContent, options.change ?? {
+      action: "archive",
+      label: `Archived ${archived.length} pinned ${archived.length === 1 ? "fact" : "facts"}`,
     });
 
     return {
@@ -337,11 +416,25 @@ export class OrgMemoryService {
     }
 
     const pin = options.pin ?? false;
-    if (pin) {
-      await this.addFact(orgId, proposal.bullet, { pin: true });
-    } else {
-      await this.addRecentLogFact(orgId, proposal.bullet, utcDateString());
+    const dateUtc = utcDateString();
+    const content = await this.getMemory(orgId);
+
+    let next = applyApprovedOrgMemoryBullet(content, proposal.bullet, { pin, dateUtc });
+    if (this.options.approvedBulletMerger) {
+      const merged = await this.options.approvedBulletMerger.merge(content, proposal.bullet, {
+        pin,
+        dateUtc,
+      });
+      if (merged) {
+        next = merged;
+      }
     }
+
+    await this.commitMemory(orgId, next, {
+      actorUserId: reviewerUserId,
+      action: "approve",
+      label: `Approved proposal: ${truncateLabel(proposal.bullet)}`,
+    });
 
     const reviewedAt = new Date().toISOString();
     await db.updateOrgMemoryProposalStatus(orgId, proposalId, {
@@ -498,13 +591,41 @@ export class OrgMemoryService {
     return this.database;
   }
 
-  private async writeMemory(orgId: string, content: string): Promise<void> {
+  private async commitMemory(
+    orgId: string,
+    content: string,
+    change: OrgMemoryChangeContext,
+  ): Promise<void> {
+    const current = await this.getMemory(orgId);
+    if (current === content) {
+      return;
+    }
+
     await writePrivateTextFile(getOrgMemoryFilePath(orgId), content, {
       ensureDir: getOrgMemoryDir(orgId),
     });
+
+    const entry: OrgMemoryChangeLogEntry = {
+      id: createOrgMemoryChangeId(),
+      orgId,
+      createdAt: new Date().toISOString(),
+      actorUserId: change.actorUserId ?? null,
+      action: change.action,
+      label: change.label,
+      restoredFromId: change.restoredFromId ?? null,
+    };
+    await appendOrgMemoryHistory(orgId, entry, content);
   }
 }
 
 function utcDateString(date = new Date()): string {
   return date.toISOString().slice(0, 10);
+}
+
+function truncateLabel(value: string, maxLength = 80): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
 }

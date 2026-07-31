@@ -27,6 +27,9 @@ import { AuthService } from "./services/auth-service";
 import { OrgService } from "./services/org-service";
 import { OrgMemoryService } from "./services/org-memory-service";
 import {
+  mergeOrgMemoryWithApprovedBullet,
+} from "@nakama/agent";
+import {
   createAutomationRunHistoryTools,
   createAutomationTools,
 } from "./tools/automation-tools";
@@ -115,7 +118,17 @@ agent.setTaskRunner(taskRunner);
 const workerManager = new WorkerManagerService(projectRoot);
 
 const orgService = new OrgService(database.adapter, authService);
-const orgMemoryService = new OrgMemoryService(database.adapter);
+const orgMemoryService = new OrgMemoryService(database.adapter, {
+  approvedBulletMerger: {
+    merge(content, bullet, options) {
+      return mergeOrgMemoryWithApprovedBullet(content, bullet, {
+        pin: options.pin,
+        dateUtc: options.dateUtc,
+        provider,
+      });
+    },
+  },
+});
 
 const systemStatus = new SystemStatusService(
   agent,

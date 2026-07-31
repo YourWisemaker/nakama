@@ -166,6 +166,8 @@ import type {
   ListOrgMemoryProposalsResponse,
   ApproveOrgMemoryProposalRequest,
   OrgMemoryProposalResponse,
+  ListOrgMemoryHistoryResponse,
+  RestoreOrgMemoryHistoryResponse,
   StoredTask,
   TaskRunRecord,
   WorkerLogsResponse,
@@ -1697,6 +1699,36 @@ export class NakamaClient {
       {
         method: "POST",
         body: JSON.stringify(request),
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async listOrgMemoryHistory(orgId: string): Promise<ListOrgMemoryHistoryResponse> {
+    return this.request<ListOrgMemoryHistoryResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/history`,
+      { headers: { "X-Org-Id": orgId } },
+    );
+  }
+
+  async restoreOrgMemoryHistory(
+    orgId: string,
+    revisionId: string,
+  ): Promise<RestoreOrgMemoryHistoryResponse> {
+    return this.request<RestoreOrgMemoryHistoryResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/history/${encodeURIComponent(revisionId)}/restore`,
+      {
+        method: "POST",
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async undoOrgMemoryChange(orgId: string): Promise<RestoreOrgMemoryHistoryResponse> {
+    return this.request<RestoreOrgMemoryHistoryResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/history/undo`,
+      {
+        method: "POST",
         headers: { "X-Org-Id": orgId },
       },
     );

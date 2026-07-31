@@ -414,6 +414,33 @@ export interface UnpinOrgMemoryRequest {
   bullet: string;
 }
 
+export type OrgMemoryChangeAction =
+  | "edit"
+  | "approve"
+  | "add_fact"
+  | "pin"
+  | "unpin"
+  | "archive"
+  | "restore";
+
+export interface OrgMemoryChangeLogEntry {
+  id: string;
+  orgId: string;
+  createdAt: string;
+  actorUserId: string | null;
+  action: OrgMemoryChangeAction;
+  label: string;
+  restoredFromId?: string | null;
+}
+
+export interface ListOrgMemoryHistoryResponse {
+  changes: OrgMemoryChangeLogEntry[];
+}
+
+export interface RestoreOrgMemoryHistoryResponse {
+  content: string;
+}
+
 export type OrgMemoryProposalStatus = "pending" | "approved" | "rejected";
 
 export interface OrgMemoryProposal {

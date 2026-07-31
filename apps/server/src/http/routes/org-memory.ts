@@ -121,7 +121,11 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
     const service = requireService();
     const body = await readJson<UpdateOrgMemoryRequest>(c.req.raw);
-    await service.setMemory(orgId, body.content);
+    await service.setMemory(orgId, body.content, {
+      actorUserId: auth.user.id,
+      action: "edit",
+      label: "Manual edit",
+    });
     const content = await service.getMemory(orgId);
     return json<OrgMemoryResponse>({ content });
   });
@@ -159,7 +163,14 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
     const service = requireService();
     const body = await readJson<AddOrgMemoryFactRequest>(c.req.raw);
-    await service.addFact(orgId, body.bullet, { pin: body.pin ?? true });
+    await service.addFact(orgId, body.bullet, {
+      pin: body.pin ?? true,
+      change: {
+        actorUserId: auth.user.id,
+        action: "add_fact",
+        label: `Added fact: ${body.bullet.trim()}`,
+      },
+    });
     const content = await service.getMemory(orgId);
     return json<OrgMemoryResponse>({ content });
   });
@@ -230,7 +241,11 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
     const service = requireService();
     const body = await readJson<PinOrgMemoryRequest>(c.req.raw);
-    await service.pinFact(orgId, body.bullet);
+    await service.pinFact(orgId, body.bullet, {
+      actorUserId: auth.user.id,
+      action: "pin",
+      label: `Pinned fact: ${body.bullet.trim()}`,
+    });
     const content = await service.getMemory(orgId);
     return json<OrgMemoryResponse>({ content });
   });
@@ -265,7 +280,11 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
     const service = requireService();
     const body = await readJson<UnpinOrgMemoryRequest>(c.req.raw);
-    await service.unpinFact(orgId, body.bullet);
+    await service.unpinFact(orgId, body.bullet, {
+      actorUserId: auth.user.id,
+      action: "unpin",
+      label: `Unpinned fact: ${body.bullet.trim()}`,
+    });
     const content = await service.getMemory(orgId);
     return json<OrgMemoryResponse>({ content });
   });
@@ -303,8 +322,116 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
     const service = requireService();
     const body = await readJson<ArchiveOrgMemoryRequest>(c.req.raw);
-    const result = await service.archiveEntries(orgId, body.entries, { reason: body.reason });
+    const result = await service.archiveEntries(orgId, body.entries, {
+      reason: body.reason,
+      change: {
+        actorUserId: auth.user.id,
+        action: "archive",
+        label: `Archived ${body.entries.length} ${body.entries.length === 1 ? "fact" : "facts"}`,
+      },
+    });
     return json<ArchiveOrgMemoryResponse>(result);
+  });
+
+  const listOrgMemoryHistoryResponseSchema = z
+    .object({})
+    .passthrough()
+    .openapi("ListOrgMemoryHistoryResponse");
+  const restoreOrgMemoryHistoryResponseSchema = z
+    .object({})
+    .passthrough()
+    .openapi("RestoreOrgMemoryHistoryResponse");
+
+  // GET /v1/orgs/{orgId}/memory/history — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "get",
+      path: "/v1/orgs/{orgId}/memory/history",
+      tags: ["Organizations"],
+      summary: "List org memory change history",
+      operationId: "listOrgMemoryHistory",
+      request: { params: orgIdParam },
+      responses: {
+        200: {
+          description: "Change history",
+          content: { "application/json": { schema: listOrgMemoryHistoryResponseSchema } },
+        },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.get("/v1/orgs/:orgId/memory/history", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const service = requireService();
+    const changes = await service.listHistory(orgId);
+    return json({ changes });
+  });
+
+  // POST /v1/orgs/{orgId}/memory/history/undo — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "post",
+      path: "/v1/orgs/{orgId}/memory/history/undo",
+      tags: ["Organizations"],
+      summary: "Undo the latest org memory change",
+      operationId: "undoOrgMemoryChange",
+      request: { params: orgIdParam },
+      responses: {
+        200: {
+          description: "Restored previous revision",
+          content: { "application/json": { schema: restoreOrgMemoryHistoryResponseSchema } },
+        },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.post("/v1/orgs/:orgId/memory/history/undo", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const service = requireService();
+    const content = await service.undoLastChange(orgId, auth.user.id);
+    return json({ content });
+  });
+
+  // POST /v1/orgs/{orgId}/memory/history/{revisionId}/restore — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "post",
+      path: "/v1/orgs/{orgId}/memory/history/{revisionId}/restore",
+      tags: ["Organizations"],
+      summary: "Restore org memory to a previous revision",
+      operationId: "restoreOrgMemoryHistory",
+      request: {
+        params: orgIdParam.extend({
+          revisionId: z.string().openapi({ param: { name: "revisionId", in: "path" } }),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Restored revision",
+          content: { "application/json": { schema: restoreOrgMemoryHistoryResponseSchema } },
+        },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.post("/v1/orgs/:orgId/memory/history/:revisionId/restore", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const revisionId = decodeURIComponent(c.req.param("revisionId"));
+    const service = requireService();
+    const content = await service.restoreHistoryRevision(orgId, revisionId, auth.user.id);
+    return json({ content });
   });
 
   const listOrgMemoryProposalsResponseSchema = z

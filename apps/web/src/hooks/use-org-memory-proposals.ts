@@ -23,6 +23,7 @@ function invalidateProposalQueries(
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ["orgMemoryProposals", orgId] }),
     queryClient.invalidateQueries({ queryKey: queryKeys.orgMemory(orgId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.orgMemoryHistory(orgId) }),
   ]);
 }
 

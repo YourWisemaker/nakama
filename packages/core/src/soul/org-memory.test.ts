@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   appendOrgMemorySection,
+  applyApprovedOrgMemoryBullet,
   composeOrgMemorySummary,
   ORG_MEMORY_PREAMBLE,
   parseOrgMemoryContent,
@@ -31,7 +32,25 @@ describe("org memory parse/rebuild", () => {
 
   test("rebuild adds the preamble when missing", () => {
     const rebuilt = rebuildOrgMemoryContent({ preamble: "", pinned: ["a fact"], sections: [] });
-    expect(rebuilt).toBe(`${ORG_MEMORY_PREAMBLE}\n\n## Pinned\n\n- a fact\n`);
+    expect(rebuilt).toBe("## Org Memory\n\n## Pinned\n\n- a fact\n");
+  });
+
+  test("rebuild does not duplicate the pinned header", () => {
+    const rebuilt = rebuildOrgMemoryContent(
+      parseOrgMemoryContent("## Pinned\n\n- fact\n"),
+    );
+    expect(rebuilt).toBe("## Org Memory\n\n## Pinned\n\n- fact\n");
+    expect((rebuilt.match(/^## Pinned$/gm) ?? []).length).toBe(1);
+  });
+
+  test("applyApprovedOrgMemoryBullet replaces superseded pinned facts", () => {
+    const live = `${ORG_MEMORY_PREAMBLE}\n\n- Team standups are at 9am UTC\n`;
+    const next = applyApprovedOrgMemoryBullet(live, "Team standups are at 10am UTC", {
+      pin: true,
+    });
+    const parsed = parseOrgMemoryContent(next);
+    expect(parsed.pinned).toEqual(["Team standups are at 10am UTC"]);
+    expect((next.match(/^## Pinned$/gm) ?? []).length).toBe(1);
   });
 
   test("empty/missing MEMORY.md yields empty summary (no throw)", () => {
