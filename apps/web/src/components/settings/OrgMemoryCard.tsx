@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/context/use-auth";
 import { useOrgMemory, useUpdateOrgMemory } from "@/hooks/use-org-memory";
 import { useOrgMemoryProposals } from "@/hooks/use-org-memory-proposals";
@@ -189,18 +190,32 @@ export function OrgMemoryCard() {
     <>
       <Card className="w-full overflow-hidden shadow-none">
         <div className="border-b border-border px-4 py-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0 space-y-0.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-0.5">
               <p className="text-sm font-medium text-foreground">Org Memory</p>
               <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
-                Shared org facts injected into every profile. Review agent proposals before they go
-                live.
+                Shared facts for every agent. Review proposals before they go live.
               </p>
             </div>
-            <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={openEdit}>
-              <PencilIcon className="size-3.5" aria-hidden />
-              Edit
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    className="shrink-0"
+                    aria-label="Edit org memory"
+                    onClick={openEdit}
+                  >
+                    <PencilIcon className="size-3.5" aria-hidden />
+                  </Button>
+                }
+              />
+              <TooltipContent side="top" sideOffset={8}>
+                Edit
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -223,15 +238,17 @@ export function OrgMemoryCard() {
           </div>
         </div>
 
-        <div className="px-4 py-3">
-          {activeTab === "proposals" ? (
-            orgId ? <OrgMemoryProposalsPanel orgId={orgId} /> : null
-          ) : isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <OrgMemoryPinnedContent pinned={pinnedFacts} />
-          )}
-        </div>
+        {activeTab === "proposals" ? (
+          orgId ? <OrgMemoryProposalsPanel orgId={orgId} /> : null
+        ) : (
+          <div className="px-4 py-3">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <OrgMemoryPinnedContent pinned={pinnedFacts} />
+            )}
+          </div>
+        )}
 
         {showPinnedFooter ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">

@@ -270,7 +270,7 @@ function ProposalRow({
 
   return (
     <>
-      <div className="flex flex-wrap items-start gap-3 rounded-md border border-border p-3">
+      <div className="flex flex-wrap items-start gap-2 py-2 pl-4 pr-4">
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm text-foreground">{proposal.bullet}</p>
           {warnings.length > 0 ? (
@@ -309,23 +309,23 @@ export function OrgMemoryProposalsPanel({ orgId }: { orgId: string }) {
   const members = membersData?.members ?? [];
 
   if (isLoading) {
-    return <p className="text-xs text-muted-foreground">Loading proposals…</p>;
+    return <p className="px-4 py-2 text-xs text-muted-foreground">Loading proposals…</p>;
   }
 
   if (error) {
     return (
-      <p className="text-sm text-destructive" role="alert">
+      <p className="px-4 py-2 text-sm text-destructive" role="alert">
         {formatError(error)}
       </p>
     );
   }
 
   if (proposals.length === 0) {
-    return <p className="text-xs text-muted-foreground">No pending proposals.</p>;
+    return <p className="px-4 py-2 text-xs text-muted-foreground">No pending proposals.</p>;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-border">
       {proposals.map((proposal) => (
         <ProposalRow
           key={proposal.id}
