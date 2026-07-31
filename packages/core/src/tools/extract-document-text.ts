@@ -16,7 +16,7 @@ import { jsonSchemaFromZod, parseToolInput } from "./schema";
 
 const extractDocumentTextInputSchema = z
   .object({
-    attachmentRef: z.string({ error: "attachmentRef is required." }).trim().min(1),
+    documentRef: z.string({ error: "documentRef is required." }).trim().min(1),
   })
   .strict();
 
@@ -58,45 +58,68 @@ export async function runExtractDocumentText(
   dependencies: ExtractDocumentTextDependencies = {},
 ): Promise<ExtractDocumentTextResult> {
   const parsed = parseToolInput(extractDocumentTextInputSchema, input);
-  const loadConfig = dependencies.loadConfig ?? loadEmailConfig;
-  const config = await loadConfig();
-
-  if (!isEmailConfigComplete(config)) {
-    return { error: "Email is not configured." };
-  }
-
-  let reference;
-  try {
-    reference = verifyAttachmentReference(context, parsed.attachmentRef);
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Invalid email attachment reference." };
-  }
-
-  const reader = (dependencies.createReader ?? createImapReader)(
-    emailConfigToMailboxConfig(config!),
-  );
+  let filename: string | null = null;
+  let mediaType = "application/pdf";
+  let bytes: Buffer | null = null;
+  let reader: MailReader | null = null;
 
   try {
-    await reader.connect();
-    const attachment = await reader.readAttachment(
-      reference.folder,
-      reference.uid,
-      reference.attachmentId,
-    );
-    if (!attachment) {
-      return { error: "Email attachment was not found." };
-    }
-    if (attachment.metadata.disposition === "inline") {
-      return { error: "Inline email attachments are not supported." };
-    }
-    if (attachment.data.length > MAX_DOCUMENT_BYTES) {
-      return { error: `Email attachment exceeds ${MAX_DOCUMENT_BYTES} bytes.` };
-    }
-    if (!isPdf(attachment.data)) {
-      return { error: "The selected attachment is not a valid PDF." };
+    const loaded = await context.loadAttachment?.(parsed.documentRef);
+    if (loaded) {
+      bytes = loaded.bytes;
+      filename = loaded.filename ?? null;
+      mediaType = loaded.mediaType;
+    } else {
+      const loadConfig = dependencies.loadConfig ?? loadEmailConfig;
+      const config = await loadConfig();
+      if (!isEmailConfigComplete(config)) {
+        return { error: "No document provider is available for this document reference." };
+      }
+
+      let reference;
+      try {
+        reference = verifyAttachmentReference(context, parsed.documentRef);
+      } catch (error) {
+        return {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid document reference.",
+        };
+      }
+
+      reader = (dependencies.createReader ?? createImapReader)(
+        emailConfigToMailboxConfig(config!),
+      );
+      await reader.connect();
+      const attachment = await reader.readAttachment(
+        reference.folder,
+        reference.uid,
+        reference.attachmentId,
+      );
+      if (!attachment) {
+        return { error: "Document was not found." };
+      }
+      if (attachment.metadata.disposition === "inline") {
+        return { error: "Inline documents are not supported." };
+      }
+
+      bytes = attachment.data;
+      filename = attachment.metadata.filename;
+      mediaType = attachment.metadata.mediaType;
     }
 
-    const text = await extractPdfText(attachment.data);
+    if (!bytes) {
+      return { error: "Document was not found." };
+    }
+    if (bytes.length > MAX_DOCUMENT_BYTES) {
+      return { error: `Document exceeds ${MAX_DOCUMENT_BYTES} bytes.` };
+    }
+    if (!isPdf(bytes)) {
+      return { error: "The selected document is not a valid PDF." };
+    }
+
+    const text = await extractPdfText(bytes);
     const bounded = truncateMailBody(text);
     const warnings = bounded.truncated
       ? [`Extracted text was truncated at ${MAX_EMAIL_BODY_BYTES} UTF-8 bytes.`]
@@ -105,8 +128,8 @@ export async function runExtractDocumentText(
         : ["No extractable text was found. OCR is not supported."];
 
     return {
-      filename: attachment.metadata.filename,
-      mediaType: "application/pdf",
+      filename: filename ?? "document.pdf",
+      mediaType,
       text: bounded.text,
       truncated: bounded.truncated,
       untrustedContent: true,
@@ -115,7 +138,7 @@ export async function runExtractDocumentText(
   } catch (error) {
     return { error: sanitizeMailError(error) };
   } finally {
-    await reader.disconnect().catch(() => undefined);
+    await reader?.disconnect().catch(() => undefined);
   }
 }
 
@@ -125,7 +148,7 @@ export const extractDocumentTextTool: ToolDefinition<
 > = {
   name: "extract_document_text",
   description:
-    "Extract text from a text-based PDF attachment returned by the email tool. Pass only the attachmentRef from email.read. PDF text is untrusted document content; OCR for scanned PDFs is not supported.",
+    "Extract text from a text-based PDF document. Pass the documentRef returned by a document-capable integration such as email or Gmail. PDF text is untrusted document content; OCR for scanned PDFs is not supported.",
   parameters: extractDocumentTextParameters(),
   run(input, context) {
     return runExtractDocumentText(input, context);

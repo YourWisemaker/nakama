@@ -2,7 +2,6 @@ import type { DatabaseAdapter, StoredToolRecord } from "@nakama/db";
 import { builtinTools, type ToolContext, type ToolDefinition, type UserConfig } from "@nakama/core";
 import { isEmailConfigComplete, loadEmailConfig } from "@nakama/core/email-config";
 import { emailTool } from "@nakama/core/tools/email";
-import { extractDocumentTextTool } from "@nakama/core/tools/extract-document-text";
 import { enrichCodingAgentBashInput } from "./coding-agent-bash-env";
 import { bashTool, runBash } from "../tools/bash";
 import { loadJavascriptTool } from "./javascript-tool-loader";
@@ -21,9 +20,7 @@ export function omitUnavailableBuiltinTools(
     return tools;
   }
 
-  return tools.filter(
-    (tool) => tool.name !== emailTool.name && tool.name !== extractDocumentTextTool.name,
-  );
+  return tools.filter((tool) => tool.name !== emailTool.name);
 }
 
 export async function resolveProfileStoredTools(

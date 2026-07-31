@@ -117,7 +117,7 @@ describe("email tool", () => {
       size: 123,
       disposition: "attachment",
     });
-    expect("message" in result && result.message?.attachments?.[0]?.id).toContain(".");
+    expect("message" in result && result.message?.attachments?.[0]?.documentRef).toContain(".");
   });
 
   test("searches messages", async () => {

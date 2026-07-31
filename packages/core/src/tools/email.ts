@@ -105,7 +105,7 @@ export interface EmailToolSuccess {
     html?: string;
     truncated?: boolean;
     attachments?: Array<{
-      id: string;
+      documentRef: string;
       filename: string;
       mediaType: string;
       size: number;
@@ -231,7 +231,7 @@ async function sendEmail(
 export const emailTool: ToolDefinition<EmailToolInput, EmailToolResult> = {
   name: "email",
   description:
-    "List, read, search, and send email through the deployment mailbox configured in Settings. Use read to inspect attachment metadata, then pass an attachment reference to extract_document_text for supported PDF text extraction.",
+    "List, read, search, and send email through the deployment mailbox configured in Settings. Read exposes documentRef values for supported document attachments; pass one to extract_document_text when you need document text.",
   parameters: emailParameters(),
   run(input, context) {
     return runEmailTool(input, {}, context);
@@ -249,8 +249,11 @@ function toEmailMessage(
   return {
     ...message,
     attachments: message.attachments.map((attachment) => ({
-      ...attachment,
-      id: createAttachmentReference(context, {
+      filename: attachment.filename,
+      mediaType: attachment.mediaType,
+      size: attachment.size,
+      disposition: attachment.disposition,
+      documentRef: createAttachmentReference(context, {
         folder: message.folder,
         uid: message.uid,
         attachmentId: attachment.id,

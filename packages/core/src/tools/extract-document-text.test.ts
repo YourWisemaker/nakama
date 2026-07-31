@@ -77,14 +77,14 @@ function textPdf(text: string): Buffer {
 
 describe("extract_document_text tool", () => {
   test("extracts text from a valid PDF attachment", async () => {
-    const attachmentRef = createAttachmentReference(context, {
+    const documentRef = createAttachmentReference(context, {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
     });
 
     const result = await runExtractDocumentText(
-      { attachmentRef },
+      { documentRef },
       context,
       {
         loadConfig: async () => completeConfig,
@@ -101,15 +101,40 @@ describe("extract_document_text tool", () => {
     expect("text" in result && result.text).toContain("Hello PDF");
   });
 
+  test("extracts from a provider-neutral stored document reference", async () => {
+    const result = await runExtractDocumentText(
+      { documentRef: "att_provider_document" },
+      {
+        ...context,
+        loadAttachment: async (attachmentId) =>
+          attachmentId === "att_provider_document"
+            ? {
+                bytes: textPdf("Provider document"),
+                mediaType: "application/pdf",
+                filename: "provider.pdf",
+              }
+            : null,
+      },
+      { loadConfig: async () => ({}) as typeof completeConfig },
+    );
+
+    expect(result).toMatchObject({
+      filename: "provider.pdf",
+      mediaType: "application/pdf",
+      untrustedContent: true,
+    });
+    expect("text" in result && result.text).toContain("Provider document");
+  });
+
   test("rejects invalid PDF bytes", async () => {
-    const attachmentRef = createAttachmentReference(context, {
+    const documentRef = createAttachmentReference(context, {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
     });
 
     const result = await runExtractDocumentText(
-      { attachmentRef },
+      { documentRef },
       context,
       {
         loadConfig: async () => completeConfig,
@@ -117,18 +142,18 @@ describe("extract_document_text tool", () => {
       },
     );
 
-    expect(result).toEqual({ error: "The selected attachment is not a valid PDF." });
+    expect(result).toEqual({ error: "The selected document is not a valid PDF." });
   });
 
   test("rejects a reference from another session", async () => {
-    const attachmentRef = createAttachmentReference(context, {
+    const documentRef = createAttachmentReference(context, {
       folder: "INBOX",
       uid: 42,
       attachmentId: "0",
     });
 
     const result = await runExtractDocumentText(
-      { attachmentRef },
+      { documentRef },
       { ...context, sessionId: "other" },
       {
         loadConfig: async () => completeConfig,

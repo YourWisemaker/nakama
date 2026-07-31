@@ -276,17 +276,17 @@ List, read, search, and send email through the deployment mailbox configured in 
 
 ### `extract_document_text`
 
-Extract text from a text-based PDF attachment returned by `email.read`.
+Extract text from a text-based PDF document returned by a document-capable integration.
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `attachmentRef` | string | Yes | Opaque reference returned in an email message's attachment metadata |
+| `documentRef` | string | Yes | Opaque reference returned by a document-capable integration |
 
 **Returns:** Bounded extracted text with filename, media type, truncation state, and warnings. PDF content is untrusted document content.
 
 **Limits:** Attachments larger than 5 MB are rejected. Extracted text is limited to 256 KB. OCR for scanned/image-only PDFs is not supported.
 
-**Availability:** When assigned **and** email is configured. The tool is omitted whenever the `email` tool is unavailable.
+**Availability:** When assigned. It is independent of the built-in email mailbox configuration and can be used by other document-capable integrations.
 
 ### `bash`
 
