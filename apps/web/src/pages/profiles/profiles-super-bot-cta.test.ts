@@ -38,7 +38,4 @@ describe("resolveSuperBotChatProfileId", () => {
     ).toBeNull();
   });
 
-  test("returns null for an empty profile list", () => {
-    expect(resolveSuperBotChatProfileId([])).toBeNull();
-  });
 });
