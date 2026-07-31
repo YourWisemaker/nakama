@@ -1,34 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import type { CodingAgentProviderRouting } from "./coding-agent-provider-routing";
 import {
   buildCodingAgentCommandTemplate,
   formatCodingAgentCommandContext,
 } from "./coding-agent-command";
+import { makeAnthropicProvider } from "./coding-agent-fixtures";
 
-const inactiveRouting: CodingAgentProviderRouting = {
-  configured: false,
-  compatible: false,
-  active: false,
-  providerType: null,
-  providerLabel: null,
-  baseUrl: null,
-  apiKey: null,
-  model: null,
-  apiShape: null,
-  error: null,
-};
-
-const activeRouting: CodingAgentProviderRouting = {
-  configured: true,
-  compatible: true,
-  active: true,
-  providerType: "anthropic",
-  providerLabel: "Anthropic",
-  baseUrl: "https://api.anthropic.com",
-  apiKey: "sk-ant-test",
-  model: "claude-sonnet-4-6",
-  apiShape: "anthropic_messages",
-  error: null,
+const anthropicUserConfig = {
+  providers: [makeAnthropicProvider()],
+  defaultProviderId: "prov_anthropic",
 };
 
 describe("buildCodingAgentCommandTemplate", () => {
@@ -42,7 +21,6 @@ describe("buildCodingAgentCommandTemplate", () => {
       },
       "Add tests for auth",
       "/tmp/workspace",
-      inactiveRouting,
     );
 
     expect(template.command).toContain("claude");
@@ -62,7 +40,6 @@ describe("buildCodingAgentCommandTemplate", () => {
       },
       "Refactor auth module",
       "/tmp/workspace",
-      inactiveRouting,
     );
 
     expect(template.command).toContain("codex exec");
@@ -80,7 +57,6 @@ describe("buildCodingAgentCommandTemplate", () => {
       },
       "Fix lint errors",
       "/tmp/workspace",
-      inactiveRouting,
     );
 
     expect(template.command).toContain("opencode run");
@@ -100,7 +76,6 @@ describe("buildCodingAgentCommandTemplate", () => {
       },
       "Touch README",
       "/tmp/workspace",
-      inactiveRouting,
     );
 
     expect(template.command.startsWith("/opt/bin/claude --model sonnet")).toBe(true);
@@ -119,7 +94,6 @@ describe("formatCodingAgentCommandContext", () => {
         },
         "Ship feature",
         "/tmp/workspace",
-        inactiveRouting,
       ),
     );
 
@@ -138,7 +112,10 @@ describe("formatCodingAgentCommandContext", () => {
         },
         "Ship feature",
         "/tmp/workspace",
-        activeRouting,
+        {
+          userConfig: anthropicUserConfig,
+          profileModel: "claude-sonnet-4-6",
+        },
       ),
     );
 

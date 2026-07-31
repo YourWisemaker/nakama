@@ -4,7 +4,7 @@ import path from "node:path";
 import type { ProviderName } from "@nakama/core";
 import type { StoredCodingAgentHarnessKind } from "@nakama/db";
 import type { CodingAgentProviderRouting } from "./coding-agent-provider-routing";
-import { formatModelForHarness } from "./coding-agent-model-utils";
+import { formatModelForHarness } from "./coding-agent-spawn-env";
 
 export interface HarnessConfigDir {
   dir: string;

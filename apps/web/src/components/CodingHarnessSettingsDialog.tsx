@@ -146,7 +146,7 @@ export function CodingHarnessSettingsPanel({
             return;
           }
 
-          if (status.nextStep === "login") {
+          if (status.nextStep === "retry") {
             setHint(
               status.statusMessage ??
                 `${name} is installed but provider passthrough is not ready. Check Settings → Provider, then run readiness check.`,
@@ -348,7 +348,7 @@ export function CodingHarnessSettingsDialog({
         <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle>Coding agents</DialogTitle>
           <DialogDescription className="text-xs">
-            Pick an agent, make sure it is installed and logged in, then Nakama can enable code
+            Pick an agent, make sure it is installed and ready, then Nakama can enable code
             delegation.
           </DialogDescription>
         </DialogHeader>

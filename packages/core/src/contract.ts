@@ -1018,16 +1018,9 @@ export interface SendEmailTestResponse {
 
 export type CodingHarnessKind = "codex" | "claude_code" | "opencode";
 
-export interface CodingHarnessProviderPassthroughStatus {
+export interface CodingAgentProviderPassthroughSummary {
   active: boolean;
   configured: boolean;
-  providerLabel: string | null;
-  model: string | null;
-  compatibleWithSelectedHarness: boolean;
-  message?: string | null;
-}
-
-export interface CodingHarnessProviderPassthroughHarnessStatus {
   compatible: boolean;
   providerLabel: string | null;
   model: string | null;
@@ -1047,16 +1040,15 @@ export interface CodingHarnessStatus {
   version: string | null;
   authenticated: boolean | null;
   ready: boolean;
-  nextStep: "install" | "login" | "retry" | null;
+  nextStep: "install" | "retry" | null;
   statusMessage: string | null;
-  providerPassthrough?: CodingHarnessProviderPassthroughHarnessStatus | null;
 }
 
 export interface CodingHarnessSettingsResponse {
   configured: boolean;
   selectedHarnessId: string | null;
   activeHarnessId: string | null;
-  providerPassthrough: CodingHarnessProviderPassthroughStatus;
+  providerPassthrough: CodingAgentProviderPassthroughSummary;
   harnesses: CodingHarnessStatus[];
 }
 
@@ -1072,7 +1064,7 @@ export interface VerifyCodingHarnessResponse {
   installed: boolean;
   authenticated: boolean | null;
   ready: boolean;
-  nextStep: "install" | "login" | "retry" | null;
+  nextStep: "install" | "retry" | null;
   statusMessage: string | null;
   error: string | null;
 }

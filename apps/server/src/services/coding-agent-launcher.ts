@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import type { DatabaseAdapter, StoredCodingAgentHarnessKind, StoredProfileRecord } from "@nakama/db";
 import { getProfileSoulDir, NakamaApiError, type OrgRole, type ProfileSummary, type UserConfig } from "@nakama/core";
+import type { CodingAgentProviderPassthroughSummary } from "@nakama/core";
 import { canAccessSuperBotProfile, resolveProfileInput } from "@nakama/core/profiles";
 import {
   mergeCodingAgentSpawnEnv,
@@ -14,7 +15,8 @@ import {
   saveCodingAgentWorkspaceSettings,
 } from "./coding-agent-harness-service";
 import { resolveProfileModelId } from "./coding-agent-bash-env";
-import { resolveCodingAgentSpawnBundle } from "./coding-agent-spawn-context";
+import { resolveCodingAgentSpawnBundle } from "./coding-agent-spawn-env";
+import { toPassthroughSummary } from "./coding-agent-settings";
 
 export const CODING_AGENT_KIND_ALIASES: Record<string, StoredCodingAgentHarnessKind> = {
   claude: "claude_code",
@@ -33,12 +35,7 @@ export interface CodingAgentLaunchPlan {
   harnessKind: StoredCodingAgentHarnessKind;
   harnessName: string;
   model: string | null;
-  providerPassthrough?: {
-    active: boolean;
-    providerLabel: string | null;
-    model: string | null;
-    message: string | null;
-  };
+  providerPassthrough?: CodingAgentProviderPassthroughSummary;
 }
 
 export interface PrepareCodingAgentLaunchInput {
@@ -219,12 +216,7 @@ export async function prepareCodingAgentLaunch(
     model: profileModel,
     spawnEnv,
     passthroughArgs: input.passthroughArgs,
-    providerPassthrough: {
-      active: routing.active,
-      providerLabel: routing.providerLabel,
-      model: routing.model,
-      message: routing.error,
-    },
+    providerPassthrough: toPassthroughSummary(routing),
   });
 }
 

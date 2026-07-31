@@ -5,14 +5,9 @@ import {
   isProviderCompatibleWithHarness,
   resolveCodingAgentProviderRouting,
 } from "./coding-agent-provider-routing";
+import { makeAnthropicProvider } from "./coding-agent-fixtures";
 
-const anthropicProvider: ProviderInstance = {
-  id: "prov_anthropic",
-  type: "anthropic",
-  label: "Anthropic",
-  apiKey: "sk-ant-test",
-  createdAt: "2026-01-01T00:00:00.000Z",
-};
+const anthropicProvider = makeAnthropicProvider();
 
 const openaiProvider: ProviderInstance = {
   id: "prov_openai",
@@ -45,7 +40,6 @@ describe("coding-agent provider routing", () => {
     expect(routing.compatible).toBe(true);
     expect(routing.baseUrl).toBe("https://api.anthropic.com");
     expect(routing.apiKey).toBe("sk-ant-test");
-    expect(routing.apiShape).toBe("anthropic_messages");
   });
 
   test("openai provider routes to Codex with OpenAI-compatible URL", () => {
@@ -60,7 +54,6 @@ describe("coding-agent provider routing", () => {
 
     expect(routing.active).toBe(true);
     expect(routing.baseUrl).toBe("https://api.openai.com/v1");
-    expect(routing.apiShape).toBe("openai_chat");
   });
 
   test("gemini provider is incompatible with Claude Code", () => {

@@ -1,12 +1,80 @@
-import type { ProviderName } from "@nakama/core";
+import type { ProviderName, UserConfig } from "@nakama/core";
 import type { StoredCodingAgentHarnessKind } from "@nakama/db";
-import type { CodingAgentProviderRouting } from "./coding-agent-provider-routing";
+import {
+  resolveCodingAgentProviderRouting,
+  type CodingAgentProviderRouting,
+} from "./coding-agent-provider-routing";
 import {
   createHarnessConfigDir,
   writeCodexConfigToml,
   writeOpenCodeConfig,
 } from "./coding-agent-harness-config-files";
-import { formatModelForHarness, normalizeCodingAgentModel } from "./coding-agent-model-utils";
+
+export function normalizeCodingAgentModel(model: string | null | undefined): string | null {
+  if (!model?.trim()) {
+    return null;
+  }
+
+  const trimmed = model.trim();
+  const colonIndex = trimmed.indexOf(":");
+
+  if (colonIndex >= 0) {
+    const normalized = trimmed.slice(colonIndex + 1).trim();
+    return normalized || null;
+  }
+
+  const slashIndex = trimmed.lastIndexOf("/");
+
+  if (slashIndex >= 0) {
+    const normalized = trimmed.slice(slashIndex + 1).trim();
+    return normalized || null;
+  }
+
+  return trimmed;
+}
+
+export function formatModelForHarness(
+  harnessKind: StoredCodingAgentHarnessKind,
+  providerType: ProviderName,
+  model: string,
+): string {
+  if (providerType === "openrouter" || providerType === "opencode_go") {
+    return model.trim();
+  }
+
+  if (harnessKind === "claude_code" && providerType === "anthropic") {
+    return normalizeCodingAgentModel(model) ?? model.trim();
+  }
+
+  return normalizeCodingAgentModel(model) ?? model.trim();
+}
+
+export interface CodingAgentSpawnBundle {
+  routing: ReturnType<typeof resolveCodingAgentProviderRouting>;
+  spawn: CodingAgentSpawnEnvResult;
+}
+
+export async function resolveCodingAgentSpawnBundle(options: {
+  userConfig: UserConfig | null | undefined;
+  profileModel: string | null | undefined;
+  harnessKind: StoredCodingAgentHarnessKind;
+  env?: Record<string, string | undefined>;
+}): Promise<CodingAgentSpawnBundle> {
+  const routing = resolveCodingAgentProviderRouting({
+    userConfig: options.userConfig,
+    profileModel: options.profileModel,
+    harnessKind: options.harnessKind,
+    env: options.env,
+  });
+
+  const spawn = await buildSpawnEnvForHarness(
+    options.harnessKind,
+    routing,
+    routing.providerType ?? "openai",
+  );
+
+  return { routing, spawn };
+}
 
 export interface CodingAgentSpawnEnvResult {
   env: Record<string, string>;
@@ -28,8 +96,6 @@ export const CODING_AGENT_CREDENTIAL_ENV_KEYS = [
   "CODEX_HOME",
   "XDG_CONFIG_HOME",
 ] as const;
-
-export { formatModelForHarness, normalizeCodingAgentModel };
 
 export function buildClaudeCodeSpawnEnv(
   routing: CodingAgentProviderRouting,

@@ -225,21 +225,6 @@ function printLaunchSummary(plan: CodingAgentLaunchPlanResponse): void {
   console.log("");
 }
 
-function mergeCodingAgentSpawnEnv(
-  baseEnv: NodeJS.ProcessEnv,
-  spawnEnv: Record<string, string>,
-): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...baseEnv, ...spawnEnv };
-
-  for (const key of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"] as const) {
-    if (key in spawnEnv && spawnEnv[key] === "") {
-      delete env[key];
-    }
-  }
-
-  return env;
-}
-
 export async function execCodingAgentLaunch(plan: CodingAgentLaunchPlanResponse): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(plan.command, plan.args, {

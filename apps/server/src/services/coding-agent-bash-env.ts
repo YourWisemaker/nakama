@@ -6,7 +6,7 @@ import {
   loadCodingAgentWorkspaceSettings,
   resolveCodingAgentHarness,
 } from "./coding-agent-harness-service";
-import { resolveCodingAgentSpawnBundle } from "./coding-agent-spawn-context";
+import { resolveCodingAgentSpawnBundle } from "./coding-agent-spawn-env";
 
 export async function resolveProfileModelId(
   db: DatabaseAdapter,

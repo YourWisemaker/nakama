@@ -7,18 +7,7 @@ import {
   redactSpawnEnvForPrompt,
 } from "./coding-agent-spawn-env";
 
-const inactiveRouting = {
-  configured: false,
-  compatible: false,
-  active: false,
-  providerType: null,
-  providerLabel: null,
-  baseUrl: null,
-  apiKey: null,
-  model: null,
-  apiShape: null,
-  error: null,
-} as const;
+import { inactiveRouting, activeAnthropicRouting } from "./coding-agent-fixtures";
 
 describe("coding-agent spawn env", () => {
   test("normalizes profile model ids", () => {
@@ -32,18 +21,9 @@ describe("coding-agent spawn env", () => {
 
   test("builds Claude Code provider passthrough env", () => {
     const env = buildClaudeCodeSpawnEnv(
-      {
-        configured: true,
-        compatible: true,
-        active: true,
-        providerType: "anthropic",
-        providerLabel: "Anthropic",
-        baseUrl: "https://api.anthropic.com",
-        apiKey: "sk-ant-test",
+      activeAnthropicRouting({
         model: "anthropic:claude-opus-4-6",
-        apiShape: "anthropic_messages",
-        error: null,
-      },
+      }),
       "anthropic",
     );
 
@@ -56,18 +36,13 @@ describe("coding-agent spawn env", () => {
   test("builds Codex provider passthrough env", () => {
     expect(
       buildCodexSpawnEnv(
-        {
-          configured: true,
-          compatible: true,
-          active: true,
+        activeAnthropicRouting({
           providerType: "openai",
           providerLabel: "OpenAI",
           baseUrl: "https://api.openai.com/v1",
           apiKey: "sk-openai-test",
           model: "openai:gpt-4.1",
-          apiShape: "openai_chat",
-          error: null,
-        },
+        }),
         "openai",
       ),
     ).toEqual({

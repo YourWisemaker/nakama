@@ -19,8 +19,6 @@ const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 
-export type CodingAgentApiShape = "anthropic_messages" | "openai_chat";
-
 export interface CodingAgentProviderRouting {
   configured: boolean;
   compatible: boolean;
@@ -30,7 +28,6 @@ export interface CodingAgentProviderRouting {
   baseUrl: string | null;
   apiKey: string | null;
   model: string | null;
-  apiShape: CodingAgentApiShape | null;
   error: string | null;
 }
 
@@ -125,17 +122,6 @@ export function getProviderApiBaseUrl(
   return (override ?? DEFAULT_OPENAI_BASE_URL).replace(/\/$/, "");
 }
 
-export function resolveApiShapeForHarness(
-  providerType: ProviderName,
-  harnessKind: StoredCodingAgentHarnessKind,
-): CodingAgentApiShape {
-  if (harnessKind === "claude_code") {
-    return "anthropic_messages";
-  }
-
-  return "openai_chat";
-}
-
 function incompatibilityMessage(
   harnessKind: StoredCodingAgentHarnessKind,
   providerType: ProviderName,
@@ -166,7 +152,6 @@ export function resolveCodingAgentProviderRouting(options: {
     baseUrl: null,
     apiKey: null,
     model: null,
-    apiShape: null,
     error: null,
   };
 
@@ -244,8 +229,6 @@ export function resolveCodingAgentProviderRouting(options: {
     };
   }
 
-  const apiShape = resolveApiShapeForHarness(instance.type, options.harnessKind);
-
   return {
     configured: true,
     compatible: true,
@@ -255,7 +238,6 @@ export function resolveCodingAgentProviderRouting(options: {
     baseUrl,
     apiKey: apiKey ?? "",
     model,
-    apiShape,
     error: null,
   };
 }

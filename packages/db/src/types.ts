@@ -171,7 +171,7 @@ export interface StoredCodingAgentHarnessProbeCache {
   checkedAt: string;
   authenticated: boolean | null;
   ready: boolean;
-  nextStep: "install" | "login" | "retry" | null;
+  nextStep: "install" | "retry" | null;
   statusMessage: string | null;
 }
 

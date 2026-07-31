@@ -206,14 +206,13 @@ import {
 import { formatToolActivityLabel } from "../tools/sub-agent-activity";
 import { AgentQuestionnaireState } from "./agent-questionnaire-state";
 import {
-  getCodingHarnessInstallCommand,
-  getCodingHarnessInstallHint,
-  listCodingAgentHarnessStatuses,
-  loadCodingAgentWorkspaceSettings,
   resolveCodingAgentHarness,
-  saveCodingAgentWorkspaceSettings,
-  verifyCodingAgentHarness,
 } from "./coding-agent-harness-service";
+import {
+  getCodingHarnessSettings,
+  setCodingHarnessSettings,
+  verifyCodingHarnessSettings,
+} from "./coding-agent-settings";
 import { getAgentBrowserStatus } from "./agent-browser-service";
 import {
   buildCodingAgentCommandTemplate,
@@ -222,7 +221,6 @@ import {
 } from "./coding-agent-command";
 import { prepareCodingAgentLaunch as buildCodingAgentLaunchPlan } from "./coding-agent-launcher";
 import { normalizeCodingAgentModel } from "./coding-agent-spawn-env";
-import { resolveCodingAgentProviderRouting } from "./coding-agent-provider-routing";
 import { AgentTodoState } from "./agent-todo-state";
 import type { AutomationRunner } from "./automation-runner";
 import {
@@ -863,102 +861,17 @@ export class AgentService {
   }
 
   async getCodingHarnessSettings(): Promise<CodingHarnessSettingsResponse> {
-    const settings = await loadCodingAgentWorkspaceSettings(this.db);
-    const profileModel: string | null = null;
-    const routingByKind = new Map(
-      (["codex", "claude_code", "opencode"] as const).map((kind) => [
-        kind,
-        resolveCodingAgentProviderRouting({
-          userConfig: this.userConfig,
-          profileModel,
-          harnessKind: kind,
-        }),
-      ]),
-    );
-    const selectedHarness = settings.selectedHarnessId
-      ? settings.harnesses.find((harness) => harness.id === settings.selectedHarnessId)
-      : null;
-    const selectedRouting = selectedHarness
-      ? routingByKind.get(selectedHarness.kind) ?? null
-      : null;
-    const statuses = await listCodingAgentHarnessStatuses(this.db, {
-      probeContext: {
-        userConfig: this.userConfig,
-        profileModel,
-      },
-    });
-    const activeHarness =
-      statuses.find(
-        (harness) =>
-          harness.id === settings.selectedHarnessId &&
-          harness.enabled &&
-          harness.installed &&
-          harness.ready,
-      ) ??
-      statuses.find((harness) => harness.enabled && harness.installed && harness.ready) ??
-      null;
-
-    return {
-      configured: activeHarness !== null,
-      selectedHarnessId: settings.selectedHarnessId,
-      activeHarnessId: activeHarness?.id ?? null,
-      providerPassthrough: {
-        active: Boolean(
-          selectedRouting?.active &&
-            selectedRouting.configured &&
-            selectedRouting.compatible,
-        ),
-        configured: selectedRouting?.configured ?? false,
-        providerLabel: selectedRouting?.providerLabel ?? null,
-        model: selectedRouting?.model ?? null,
-        compatibleWithSelectedHarness: selectedRouting?.compatible ?? false,
-        message: selectedRouting?.error,
-      },
-      harnesses: statuses.map((harness) => {
-        const routing = routingByKind.get(harness.kind);
-        return {
-          id: harness.id,
-          kind: harness.kind,
-          name: harness.name,
-          command: harness.command,
-          enabled: harness.enabled,
-          installed: harness.installed,
-          version: harness.version,
-          authenticated: harness.authenticated,
-          ready: harness.ready,
-          nextStep: harness.nextStep,
-          statusMessage: harness.statusMessage,
-          selected: harness.id === settings.selectedHarnessId,
-          installHint: getCodingHarnessInstallHint(harness.kind),
-          installCommand: getCodingHarnessInstallCommand(harness.kind),
-          providerPassthrough: routing
-            ? {
-                compatible: routing.compatible,
-                providerLabel: routing.providerLabel,
-                model: routing.model,
-                message: routing.error,
-              }
-            : null,
-        };
-      }),
-    };
+    return getCodingHarnessSettings(this.db, this.userConfig);
   }
 
   async setCodingHarnessSettings(
     input: UpdateCodingHarnessSettingsRequest,
   ): Promise<CodingHarnessSettingsResponse> {
-    await saveCodingAgentWorkspaceSettings(this.db, {
-      selectedHarnessId: input.selectedHarnessId,
-      harnesses: input.harnesses,
-    });
-    return this.getCodingHarnessSettings();
+    return setCodingHarnessSettings(this.db, this.userConfig, input);
   }
 
   async verifyCodingHarness(harnessId?: string): Promise<VerifyCodingHarnessResponse> {
-    return verifyCodingAgentHarness(this.db, harnessId, {
-      userConfig: this.userConfig,
-      profileModel: null,
-    });
+    return verifyCodingHarnessSettings(this.db, this.userConfig, harnessId);
   }
 
   async getAgentBrowserStatus(): Promise<AgentBrowserStatusResponse> {
@@ -2808,22 +2721,20 @@ export class AgentService {
     profileId: string,
   ): Promise<string> {
     try {
+      const profile = await this.db.getProfile(profileId);
       const harness = await resolveCodingAgentHarness(this.db, null, {
         userConfig: this.userConfig,
-        profileModel: (await this.db.getProfile(profileId))?.model ?? null,
+        profileModel: profile?.model ?? null,
       });
       const workspaceRoot = getProfileSoulDir(orgId, profileId);
-      const profile = await this.db.getProfile(profileId);
-      const routing = resolveCodingAgentProviderRouting({
-        userConfig: this.userConfig,
-        profileModel: profile?.model,
-        harnessKind: harness.kind,
-      });
       const template = await buildCodingAgentCommandTemplate(
         harness,
         "<task prompt>",
         workspaceRoot,
-        routing,
+        {
+          userConfig: this.userConfig,
+          profileModel: profile?.model ?? null,
+        },
       );
       const backendSkillName = getBackendSkillName(harness.kind);
       const backendSkill = await readBundledSkillBody(backendSkillName);

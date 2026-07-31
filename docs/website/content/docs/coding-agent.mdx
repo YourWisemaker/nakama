@@ -99,6 +99,8 @@ The `bash` tool merges spawn env when:
 
 **Compatibility:** Integrations → Coding agents shows whether passthrough is active for the selected harness. Incompatible provider/harness pairs show a warning with a link to Settings → Provider.
 
+**Readiness checks:** Opening Integrations or loading harness settings runs a light check (binary on `PATH` + provider passthrough active). Use **Run readiness check** to run a deeper exec probe that spawns the harness with passthrough env. `configured` and `activeHarnessId` reflect only the **selected** harness — Nakama does not fall back to another ready harness.
+
 **Security:** Passthrough injects the real org provider API key into subprocess env on the host. Use on trusted single-tenant machines only.
 
 ### 2. Assign tools and skills to the profile
@@ -222,8 +224,8 @@ Harness settings are deployment-wide. Tool and skill assignment remain per profi
 | `nakama launch` returns Forbidden | Use `--org` with your org id; ensure you are not an org viewer |
 | Unknown profile `super_bot` | Use `Super Bot`, `super-bot`, or the profile id from the dashboard — Super Bot's id is not always literally `super_bot` |
 | CLI fails immediately | Binary missing from `PATH`, auth incomplete, or wrong harness selected |
-| Claude Code asks for `/login` | Gateway off or spawn env not applied — restart `dev:server`; launch output should say gateway routing enabled; run `/status` inside Claude Code |
-| Gateway 503 / no provider | Configure a model provider in Nakama Settings for the launch profile |
+| Claude Code asks for `/login` | Provider passthrough off or spawn env not applied — restart `dev:server`; launch output should say passthrough is active; check Settings → Provider |
+| Provider passthrough inactive / no provider | Configure a compatible model provider in Nakama Settings for the launch profile |
 | Run times out | Increase `bash` `timeoutMs`; split the task into smaller coding-agent runs |
 | Changes land outside the workspace | Command `cwd` or backend `--dir` may point outside the profile tree; `nakama launch` uses your shell cwd by default |
 
