@@ -1,27 +1,9 @@
 import { join } from "node:path";
+import type { OrgMemoryChangeLogEntry } from "../contract";
 import { pathExists, readDirectoryEntries, readText, writePrivateTextFile } from "../fs";
 import { getOrgMemoryHistoryDir } from "./resolve";
 
 export const ORG_MEMORY_HISTORY_MAX_ENTRIES = 50;
-
-export type OrgMemoryChangeAction =
-  | "edit"
-  | "approve"
-  | "add_fact"
-  | "pin"
-  | "unpin"
-  | "archive"
-  | "restore";
-
-export interface OrgMemoryChangeLogEntry {
-  id: string;
-  orgId: string;
-  createdAt: string;
-  actorUserId: string | null;
-  action: OrgMemoryChangeAction;
-  label: string;
-  restoredFromId?: string | null;
-}
 
 export interface OrgMemoryChangeLogRecord extends OrgMemoryChangeLogEntry {
   content: string;
