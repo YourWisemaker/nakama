@@ -1,4 +1,5 @@
 import type { OrgMemoryChangeLogEntry } from "@nakama/core/contract";
+import { HistoryIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -10,12 +11,16 @@ import { useOrgMembers } from "@/hooks/use-org-members";
 import { formatSessionRelativeTime, formatSessionTimestamp } from "@/lib/chat-history";
 import { formatError } from "@/lib/client";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 function shortenId(value: string): string {
   return value.length > 16 ? `${value.slice(0, 12)}…` : value;
 }
 
-function resolveActorLabel(userId: string | null, members: { userId: string; name?: string | null; email: string }[]): string | null {
+function resolveActorLabel(
+  userId: string | null,
+  members: { userId: string; name?: string | null; email: string }[],
+): string | null {
   if (!userId) {
     return null;
   }
@@ -47,24 +52,26 @@ function formatActionLabel(action: OrgMemoryChangeLogEntry["action"]): string {
   }
 }
 
-function HistoryRow({
+function HistoryTimelineItem({
   change,
   orgId,
   actorLabel,
-  canUndo,
+  isCurrent,
+  isLast,
 }: {
   change: OrgMemoryChangeLogEntry;
   orgId: string;
   actorLabel: string | null;
-  canUndo: boolean;
+  isCurrent: boolean;
+  isLast: boolean;
 }) {
   const restoreMutation = useRestoreOrgMemoryHistory(orgId);
   const busy = restoreMutation.isPending;
 
-  async function handleRestore() {
+  async function handleRevert() {
     try {
       await restoreMutation.mutateAsync(change.id);
-      toast("Org memory restored.");
+      toast("Org memory reverted.");
     } catch (err) {
       toast(formatError(err));
     }
@@ -74,31 +81,59 @@ function HistoryRow({
   const absoluteTime = formatSessionTimestamp(change.createdAt);
 
   return (
-    <div className="flex flex-wrap items-start gap-2 py-2 pl-4 pr-4">
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm text-foreground">{change.label}</p>
-        <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground/80">{formatActionLabel(change.action)}</span>
-          {" · "}
-          <time dateTime={change.createdAt} title={absoluteTime}>
-            {relativeTime}
-          </time>
-          {actorLabel ? <> · {actorLabel}</> : null}
-        </p>
-      </div>
-      {canUndo ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="shrink-0"
-          disabled={busy}
-          onClick={() => void handleRestore()}
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center self-stretch">
+        <div
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full border",
+            isCurrent
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-muted text-muted-foreground",
+          )}
+          aria-hidden
         >
-          {busy ? <Spinner className="mr-2" /> : null}
-          Restore
-        </Button>
-      ) : null}
+          <HistoryIcon className="size-3.5" strokeWidth={2.25} />
+        </div>
+        {!isLast ? <div className="mt-2 w-px flex-1 bg-border" /> : null}
+      </div>
+
+      <div className={cn("min-w-0 flex-1", !isLast && "pb-4")}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {formatActionLabel(change.action)}
+              </span>
+              {isCurrent ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-foreground">
+                  Current
+                </span>
+              ) : null}
+            </div>
+            <p className="text-sm leading-relaxed text-foreground">{change.label}</p>
+            <p className="text-xs text-muted-foreground">
+              <time dateTime={change.createdAt} title={absoluteTime}>
+                {relativeTime}
+              </time>
+              {actorLabel ? <> · {actorLabel}</> : null}
+            </p>
+          </div>
+
+          {!isCurrent ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              disabled={busy}
+              onClick={() => void handleRevert()}
+            >
+              {busy ? <Spinner className="mr-2" /> : null}
+              Revert
+            </Button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -136,7 +171,7 @@ export function OrgMemoryHistoryPanel({ orgId }: { orgId: string }) {
     <div>
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
         <p className="text-xs text-muted-foreground">
-          Snapshots of every change. Restore any revision or undo the latest change.
+          Timeline of every change. Revert to any earlier snapshot.
         </p>
         <Button
           type="button"
@@ -151,16 +186,17 @@ export function OrgMemoryHistoryPanel({ orgId }: { orgId: string }) {
       </div>
 
       {changes.length === 0 ? (
-        <p className="px-4 py-2 text-xs text-muted-foreground">No changes logged yet.</p>
+        <p className="px-4 py-3 text-xs text-muted-foreground">No changes logged yet.</p>
       ) : (
-        <div className="divide-y divide-border">
+        <div className="px-4 py-3">
           {changes.map((change, index) => (
-            <HistoryRow
+            <HistoryTimelineItem
               key={change.id}
               change={change}
               orgId={orgId}
               actorLabel={resolveActorLabel(change.actorUserId, members)}
-              canUndo={index > 0}
+              isCurrent={index === 0}
+              isLast={index === changes.length - 1}
             />
           ))}
         </div>

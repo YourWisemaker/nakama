@@ -188,15 +188,15 @@ function ProposalReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="gap-4 p-4 sm:max-w-md sm:p-6">
+      <DialogContent className="gap-4 overflow-hidden p-4 sm:max-w-md sm:p-6">
         <DialogHeader className="pr-8">
           <DialogTitle>Approve for org memory?</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
+        <div className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-1.5">
             <p className="text-xs text-black dark:text-white">Content:</p>
-            <p className="border-l-2 border-primary/40 bg-muted/50 px-3 py-2 font-mono text-xs leading-relaxed text-foreground">
+            <p className="max-w-full min-w-0 border-l-2 border-primary/40 bg-muted/50 px-3 py-2 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-foreground">
               {proposal.bullet}
             </p>
           </div>
@@ -270,11 +270,13 @@ function ProposalRow({
 
   return (
     <>
-      <div className="flex flex-wrap items-start gap-2 py-2 pl-4 pr-4">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm text-foreground">{proposal.bullet}</p>
+      <div className="flex items-start gap-2 overflow-hidden py-2 pl-4 pr-4">
+        <div className="min-w-0 flex-1 overflow-hidden space-y-1">
+          <p className="max-w-full min-w-0 break-all text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+            {proposal.bullet}
+          </p>
           {warnings.length > 0 ? (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="break-all text-xs text-amber-600 dark:text-amber-400">
               Warning: {warnings.join(" ")}
             </p>
           ) : null}
@@ -325,7 +327,7 @@ export function OrgMemoryProposalsPanel({ orgId }: { orgId: string }) {
   }
 
   return (
-    <div className="divide-y divide-border">
+    <div className="min-w-0 divide-y divide-border">
       {proposals.map((proposal) => (
         <ProposalRow
           key={proposal.id}

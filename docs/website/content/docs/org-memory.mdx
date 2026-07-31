@@ -16,9 +16,12 @@ Org memory lives at the organization level, alongside profile directories:
 ```text
 ~/.nakama/orgs/{orgId}/MEMORY.md
 ~/.nakama/orgs/{orgId}/memory-archive/
+~/.nakama/orgs/{orgId}/memory-history/
 ```
 
 Archived bullets move into monthly `.md` files under `memory-archive/` without deleting history.
+
+**Change history** snapshots live under `memory-history/` — one JSON metadata file and one markdown snapshot per revision (up to **50** entries, oldest pruned automatically). This is separate from `memory-archive/`, which stores bullets removed from the live pinned list.
 
 Platform-admin [data exports](/backup-restore) include org memory as part of the org workspace in the ZIP.
 
@@ -71,17 +74,51 @@ Viewers cannot call these tools. Automations and sub-agents run with member-leve
 
 Agents propose durable org facts via `propose_org_memory`; proposals land in a staging queue until an admin approves or rejects them in **Settings → Org Memory → Proposals**. Admins can still add facts directly from the UI (bypasses the queue). Do not propose secrets, credentials, or PII.
 
+When an admin approves a proposal, Nakama merges the new fact into live memory:
+
+1. **LLM merge** (when a provider is configured) — the server asks the model to update `MEMORY.md`, replace superseded facts, and keep unrelated bullets intact.
+2. **Mechanical fallback** — if the LLM call fails or no provider is available, Nakama appends the fact to pinned or the recent log and removes near-duplicate bullets using token overlap.
+
+Use **Pin on approve** in the review dialog when the fact should always appear in the injected summary.
+
 Proposal rows live in the SQLite database and are **not** included in workspace ZIP exports yet.
 
 ## Admin UI
 
 Org admins manage org memory from **Settings → Org Memory** (`/settings`).
 
-The card has **Live memory** and **Proposals** tabs. Live memory shows a preview and **Edit** dialog for raw markdown. Proposals lists pending agent suggestions with approve/reject actions and an optional **Pin on approve** toggle. A badge shows the pending count.
+The card has three tabs:
+
+| Tab | Purpose |
+|-----|---------|
+| **Live memory** | Preview pinned facts and open the **Edit** dialog for raw markdown |
+| **Proposals** | Review pending agent suggestions — approve, reject, optional **Pin on approve** |
+| **History** | Browse change snapshots, **Undo latest**, or **Restore** any older revision |
+
+A badge on **Proposals** shows the pending count.
+
+Every write logs a snapshot (manual edits, approvals, pin/unpin, archive, and restores). **Undo latest** rolls back to the previous revision. **Restore** on an older row replays that snapshot as the new live memory (and logs the restore as a new history entry).
 
 Use **Archive** when the pinned list grows large — it keeps the live file within limits while preserving history under `memory-archive/`.
 
 For per-bot continuity the agent manages itself, use the profile `update-profile-memory` skill — see [Profiles](/profiles#knowledge-base-and-memory).
+
+## HTTP API (admin)
+
+Org admins can also manage memory via the REST API (`X-Org-Id` required):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/v1/orgs/{orgId}/memory` | Read live memory |
+| `PUT` | `/v1/orgs/{orgId}/memory` | Replace live memory |
+| `GET` | `/v1/orgs/{orgId}/memory/history` | List change snapshots (newest first) |
+| `POST` | `/v1/orgs/{orgId}/memory/history/undo` | Undo the latest change |
+| `POST` | `/v1/orgs/{orgId}/memory/history/{revisionId}/restore` | Restore a specific snapshot |
+| `GET` | `/v1/orgs/{orgId}/memory/proposals` | List proposals |
+| `POST` | `/v1/orgs/{orgId}/memory/proposals/{id}/approve` | Approve a proposal |
+| `POST` | `/v1/orgs/{orgId}/memory/proposals/{id}/reject` | Reject a proposal |
+
+Members can read and search; viewers are blocked on all org memory routes.
 
 ## Roles and access
 

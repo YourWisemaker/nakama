@@ -14,7 +14,7 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="mx-auto w-full min-w-0 max-w-3xl">
       {totalCount === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">All caught up</p>
       ) : (
