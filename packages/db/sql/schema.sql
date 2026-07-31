@@ -336,6 +336,7 @@ CREATE TABLE IF NOT EXISTS workspace_settings (
   transcription_model TEXT,
   coding_agent_harnesses TEXT NOT NULL DEFAULT '[]',
   selected_coding_agent_harness TEXT,
+  coding_agent_provider_passthrough INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL
 );
 

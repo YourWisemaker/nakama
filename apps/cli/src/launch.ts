@@ -203,20 +203,26 @@ function printLaunchSummary(plan: CodingAgentLaunchPlanResponse): void {
   console.log(`Working directory: ${plan.cwd}`);
   console.log(`Command: ${commandLine}`);
 
+  if (plan.providerPassthrough?.active) {
+    const provider = plan.providerPassthrough.providerLabel ?? "provider";
+    const model = plan.providerPassthrough.model ?? plan.model ?? "default";
+    console.log(`Provider passthrough enabled (${provider} / ${model})`);
+    return;
+  }
+
   if (Object.keys(plan.env).length > 0) {
-    console.log("Spawn env: Nakama inference gateway routing enabled");
+    console.log("Spawn env: Nakama provider passthrough routing enabled");
     return;
   }
 
   if (plan.harnessKind === "claude_code") {
     console.log("");
     console.log(
-      "No gateway env was applied. Claude Code will ask for /login unless you already have Anthropic credentials.",
+      "No provider passthrough env was applied. Claude Code will ask for /login unless you already have Anthropic credentials.",
     );
     console.log(
-      "Enable the Nakama gateway on the server, then restart dev:server:",
+      "Configure an Anthropic provider in Nakama Settings → Provider, then retry.",
     );
-    console.log("  export NAKAMA_INFERENCE_GATEWAY_ENABLED=1");
   }
 
   console.log("");

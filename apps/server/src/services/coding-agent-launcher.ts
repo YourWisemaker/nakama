@@ -1,21 +1,21 @@
 import { spawn } from "node:child_process";
 import type { DatabaseAdapter, StoredCodingAgentHarnessKind, StoredProfileRecord } from "@nakama/db";
-import { getProfileSoulDir, NakamaApiError, type OrgRole, type ProfileSummary } from "@nakama/core";
-import { loadLocalAuthToken } from "@nakama/core/local-auth";
+import { getProfileSoulDir, NakamaApiError, type OrgRole, type ProfileSummary, type UserConfig } from "@nakama/core";
 import { canAccessSuperBotProfile, resolveProfileInput } from "@nakama/core/profiles";
 import {
-  buildSpawnEnvForHarness,
-  getInferenceGatewayBaseUrl,
   mergeCodingAgentSpawnEnv,
   normalizeCodingAgentModel,
+  redactSpawnEnvForApi,
 } from "./coding-agent-spawn-env";
 import {
   getCodingHarnessInstallCommand,
   getCodingHarnessInstallHint,
   resolveCodingAgentHarness,
   saveCodingAgentWorkspaceSettings,
+  loadCodingAgentWorkspaceSettings,
 } from "./coding-agent-harness-service";
 import { resolveProfileModelId } from "./coding-agent-bash-env";
+import { resolveCodingAgentSpawnBundle } from "./coding-agent-spawn-context";
 
 export const CODING_AGENT_KIND_ALIASES: Record<string, StoredCodingAgentHarnessKind> = {
   claude: "claude_code",
@@ -34,6 +34,12 @@ export interface CodingAgentLaunchPlan {
   harnessKind: StoredCodingAgentHarnessKind;
   harnessName: string;
   model: string | null;
+  providerPassthrough?: {
+    active: boolean;
+    providerLabel: string | null;
+    model: string | null;
+    message: string | null;
+  };
 }
 
 export interface PrepareCodingAgentLaunchInput {
@@ -44,6 +50,7 @@ export interface PrepareCodingAgentLaunchInput {
   cwd?: string | null;
   passthroughArgs?: string[];
   persistSelection?: boolean;
+  userConfig?: UserConfig | null;
 }
 
 export interface CodingAgentLaunchAccess {
@@ -136,6 +143,7 @@ export function buildCodingAgentLaunchPlan(input: {
   model: string | null;
   spawnEnv: Record<string, string>;
   passthroughArgs?: string[];
+  providerPassthrough?: CodingAgentLaunchPlan["providerPassthrough"];
 }): CodingAgentLaunchPlan {
   const baseArgs = [...input.harness.args];
   const passthrough = input.passthroughArgs ?? [];
@@ -150,6 +158,7 @@ export function buildCodingAgentLaunchPlan(input: {
     harnessKind: input.harness.kind,
     harnessName: input.harness.name,
     model: input.model,
+    providerPassthrough: input.providerPassthrough,
   };
 }
 
@@ -181,30 +190,24 @@ export async function prepareCodingAgentLaunch(
 
   assertCanLaunchCodingAgentProfile(profile, access);
 
+  const workspace = await loadCodingAgentWorkspaceSettings(db);
   const preferredKind = resolveCodingAgentKindAlias(input.backend);
-  const harness = await resolveCodingAgentHarness(db, preferredKind);
-
-  if (!harness.installed) {
-    throw new Error(
-      [
-        `${harness.name} is not installed.`,
-        `Install with: ${getCodingHarnessInstallCommand(harness.kind)}`,
-        getCodingHarnessInstallHint(harness.kind),
-      ].join(" "),
-    );
-  }
-
   const profileModel = normalizeCodingAgentModel(
     input.model?.trim() || (await resolveProfileModelId(db, resolvedProfileId)),
   );
-  const gatewayBaseUrl = getInferenceGatewayBaseUrl();
-  const authToken = gatewayBaseUrl ? await resolveInferenceAuthToken() : null;
-  const spawnEnv = buildSpawnEnvForHarness(harness.kind, {
-    model: profileModel,
-    gatewayBaseUrl,
-    authToken,
-    orgId,
-    profileId: resolvedProfileId,
+  const harness = await resolveCodingAgentHarness(db, preferredKind, {
+    userConfig: input.userConfig,
+    profileModel,
+    workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
+  });
+  const { routing, spawn } = await resolveCodingAgentSpawnBundle({
+    userConfig: input.userConfig,
+    profileModel,
+    harnessKind: harness.kind,
+    workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
+  });
+  const spawnEnv = redactSpawnEnvForApi(spawn.env, {
+    includeSecrets: access.localCli === true,
   });
   const cwd = input.cwd?.trim() || getProfileSoulDir(orgId, resolvedProfileId);
 
@@ -220,6 +223,12 @@ export async function prepareCodingAgentLaunch(
     model: profileModel,
     spawnEnv,
     passthroughArgs: input.passthroughArgs,
+    providerPassthrough: {
+      active: routing.active,
+      providerLabel: routing.providerLabel,
+      model: routing.model,
+      message: routing.error,
+    },
   });
 }
 
@@ -236,12 +245,4 @@ export async function execCodingAgentLaunch(plan: CodingAgentLaunchPlan): Promis
       resolve(code ?? 1);
     });
   });
-}
-
-async function resolveInferenceAuthToken(): Promise<string | null> {
-  try {
-    return await loadLocalAuthToken();
-  } catch {
-    return null;
-  }
 }

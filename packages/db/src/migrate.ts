@@ -728,6 +728,7 @@ function migrateWorkspaceSettingsTable(db: Database): void {
       transcription_model TEXT,
       coding_agent_harnesses TEXT NOT NULL DEFAULT '[]',
       selected_coding_agent_harness TEXT,
+      coding_agent_provider_passthrough INTEGER NOT NULL DEFAULT 1,
       updated_at TEXT NOT NULL
     );
   `);
@@ -752,6 +753,12 @@ function migrateWorkspaceSettingsTable(db: Database): void {
   if (!columnNames.has("selected_coding_agent_harness")) {
     db.exec(`
       ALTER TABLE workspace_settings ADD COLUMN selected_coding_agent_harness TEXT;
+    `);
+  }
+
+  if (!columnNames.has("coding_agent_provider_passthrough")) {
+    db.exec(`
+      ALTER TABLE workspace_settings ADD COLUMN coding_agent_provider_passthrough INTEGER NOT NULL DEFAULT 1;
     `);
   }
 }

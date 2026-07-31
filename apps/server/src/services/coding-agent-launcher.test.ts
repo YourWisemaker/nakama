@@ -113,6 +113,7 @@ describe("coding-agent launcher", () => {
         },
       ],
       selectedCodingAgentHarness: "coding-harness-claude-code",
+      codingAgentProviderPassthrough: true,
       updatedAt: new Date().toISOString(),
     });
 

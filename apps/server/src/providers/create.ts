@@ -113,7 +113,7 @@ function createProvider(options: CreateProviderOptions): ProviderClient {
   }
 }
 
-function readApiKeyForInstance(
+export function readApiKeyForInstance(
   instance: ProviderInstance,
   env: Record<string, string | undefined>,
 ): string | undefined {

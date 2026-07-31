@@ -27,7 +27,7 @@ export const pageDescriptions: Record<string, string> = {
   'integrations.md': 'See which dashboard integration sections manage channels, coding-agent harnesses, Composio, and related deployment settings.',
   'mcp.md': 'Connect external MCP servers to Nakama profiles and expose new tools safely.',
   'composio.md': 'Connect SaaS apps through Composio with org-scoped OAuth and profile toolkit assignment.',
-  'coding-agent.md': 'Launch Codex, Claude Code, or OpenCode from Nakama chat or the CLI, with optional inference gateway routing through your Nakama provider.',
+  'coding-agent.md': 'Launch Codex, Claude Code, or OpenCode from Nakama chat or the CLI, with optional provider passthrough from your Nakama LLM provider.',
   'agent-browser.md': 'Drive interactive, login-walled websites from Nakama chat or automations with the agent-browser skill and bash.',
   'telegram.md': 'Set up Nakama as a Telegram bot with pairing, commands, and group behavior.',
   'whatsapp.md': 'Set up Nakama on WhatsApp with linking, commands, and troubleshooting.',

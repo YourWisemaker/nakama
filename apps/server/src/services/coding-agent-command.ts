@@ -2,8 +2,10 @@ import type { StoredCodingAgentHarnessKind } from "@nakama/db";
 import type { CodingAgentHarnessStatus } from "./coding-agent-harness-service";
 import {
   buildSpawnEnvForHarness,
-  type CodingAgentSpawnEnvOptions,
+  redactSpawnEnvForPrompt,
+  type CodingAgentSpawnEnvResult,
 } from "./coding-agent-spawn-env";
+import type { CodingAgentProviderRouting } from "./coding-agent-provider-routing";
 
 export interface CodingAgentCommandTemplate {
   backend: StoredCodingAgentHarnessKind;
@@ -13,15 +15,20 @@ export interface CodingAgentCommandTemplate {
   notes: string[];
 }
 
-export function buildCodingAgentCommandTemplate(
+export async function buildCodingAgentCommandTemplate(
   harness: Pick<CodingAgentHarnessStatus, "kind" | "name" | "command" | "args">,
   taskPrompt: string,
   cwd: string,
-  spawnEnvOptions: CodingAgentSpawnEnvOptions = {},
-): CodingAgentCommandTemplate {
+  routing: CodingAgentProviderRouting,
+): Promise<CodingAgentCommandTemplate> {
   const escapedTask = shellEscape(taskPrompt.trim());
   const baseCommand = [harness.command, ...harness.args].join(" ");
-  const spawnEnv = buildSpawnEnvForHarness(harness.kind, spawnEnvOptions);
+  const spawnResult: CodingAgentSpawnEnvResult = await buildSpawnEnvForHarness(
+    harness.kind,
+    routing,
+    routing.providerType ?? "openai",
+  );
+  const spawnEnv = spawnResult.env;
   const shared = {
     backend: harness.kind,
     harnessName: harness.name,
@@ -104,10 +111,10 @@ export function formatCodingAgentCommandContext(
   if (Object.keys(template.spawnEnv).length > 0) {
     lines.push(
       "",
-      "When the inference gateway is enabled, Nakama injects these env vars at spawn time:",
+      "When Nakama provider passthrough is active, these env vars are merged at spawn time:",
       "",
       "```json",
-      JSON.stringify(template.spawnEnv, null, 2),
+      JSON.stringify(redactSpawnEnvForPrompt(template.spawnEnv), null, 2),
       "```",
     );
   }

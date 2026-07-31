@@ -194,6 +194,45 @@ export function CodingHarnessSettingsPanel({
             <p className="text-sm text-muted-foreground">
               Nakama can hand off coding tasks to a CLI agent on this server.
             </p>
+            {settings.providerPassthrough ? (
+              <p className="text-sm text-muted-foreground">
+                {settings.providerPassthrough.active ? (
+                  <>
+                    Provider passthrough active
+                    {settings.providerPassthrough.providerLabel
+                      ? ` (${settings.providerPassthrough.providerLabel}`
+                      : ""}
+                    {settings.providerPassthrough.model
+                      ? ` / ${settings.providerPassthrough.model}`
+                      : settings.providerPassthrough.providerLabel
+                        ? ")"
+                        : ""}
+                    {settings.providerPassthrough.providerLabel &&
+                    settings.providerPassthrough.model
+                      ? ")"
+                      : ""}
+                    .
+                  </>
+                ) : settings.providerPassthrough.workspaceEnabled ? (
+                  <>
+                    Provider passthrough is enabled but not active.{" "}
+                    {settings.providerPassthrough.message ? (
+                      settings.providerPassthrough.message
+                    ) : (
+                      <>
+                        Configure a compatible provider in{" "}
+                        <Link to="/settings?section=provider" className="underline">
+                          Settings → Provider
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </>
+                ) : (
+                  "Provider passthrough is disabled — harnesses use vendor login on this host."
+                )}
+              </p>
+            ) : null}
           </div>
           {!embedded ? (
             <Button

@@ -221,11 +221,8 @@ import {
   getBackendSkillName,
 } from "./coding-agent-command";
 import { prepareCodingAgentLaunch as buildCodingAgentLaunchPlan } from "./coding-agent-launcher";
-import {
-  getInferenceGatewayBaseUrl,
-  normalizeCodingAgentModel,
-} from "./coding-agent-spawn-env";
-import { loadLocalAuthToken } from "@nakama/core/local-auth";
+import { normalizeCodingAgentModel } from "./coding-agent-spawn-env";
+import { resolveCodingAgentProviderRouting } from "./coding-agent-provider-routing";
 import { AgentTodoState } from "./agent-todo-state";
 import type { AutomationRunner } from "./automation-runner";
 import {
@@ -497,6 +494,7 @@ export class AgentService {
       transcriptionModel: existing?.transcriptionModel ?? this.userConfig?.transcriptionModel ?? null,
       codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
+      codingAgentProviderPassthrough: existing?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -548,6 +546,7 @@ export class AgentService {
       transcriptionModel: model,
       codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
+      codingAgentProviderPassthrough: existing?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -635,6 +634,7 @@ export class AgentService {
       transcriptionModel: legacyModel,
       codingAgentHarnesses: stored?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: stored?.selectedCodingAgentHarness ?? null,
+      codingAgentProviderPassthrough: stored?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -682,6 +682,7 @@ export class AgentService {
       transcriptionModel: legacyTranscriptionModel,
       codingAgentHarnesses: stored?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: stored?.selectedCodingAgentHarness ?? null,
+      codingAgentProviderPassthrough: stored?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -867,7 +868,31 @@ export class AgentService {
 
   async getCodingHarnessSettings(): Promise<CodingHarnessSettingsResponse> {
     const settings = await loadCodingAgentWorkspaceSettings(this.db);
-    const statuses = await listCodingAgentHarnessStatuses(this.db);
+    const profileModel: string | null = null;
+    const routingByKind = new Map(
+      (["codex", "claude_code", "opencode"] as const).map((kind) => [
+        kind,
+        resolveCodingAgentProviderRouting({
+          userConfig: this.userConfig,
+          profileModel,
+          harnessKind: kind,
+          workspacePassthroughEnabled: settings.providerPassthroughEnabled,
+        }),
+      ]),
+    );
+    const selectedHarness = settings.selectedHarnessId
+      ? settings.harnesses.find((harness) => harness.id === settings.selectedHarnessId)
+      : null;
+    const selectedRouting = selectedHarness
+      ? routingByKind.get(selectedHarness.kind) ?? null
+      : null;
+    const statuses = await listCodingAgentHarnessStatuses(this.db, {
+      probeContext: {
+        userConfig: this.userConfig,
+        profileModel,
+        workspacePassthroughEnabled: settings.providerPassthroughEnabled,
+      },
+    });
     const activeHarness =
       statuses.find(
         (harness) =>
@@ -883,34 +908,70 @@ export class AgentService {
       configured: activeHarness !== null,
       selectedHarnessId: settings.selectedHarnessId,
       activeHarnessId: activeHarness?.id ?? null,
-      harnesses: statuses.map((harness) => ({
-        id: harness.id,
-        kind: harness.kind,
-        name: harness.name,
-        command: harness.command,
-        enabled: harness.enabled,
-        installed: harness.installed,
-        version: harness.version,
-        authenticated: harness.authenticated,
-        ready: harness.ready,
-        nextStep: harness.nextStep,
-        statusMessage: harness.statusMessage,
-        selected: harness.id === settings.selectedHarnessId,
-        installHint: getCodingHarnessInstallHint(harness.kind),
-        installCommand: getCodingHarnessInstallCommand(harness.kind),
-      })),
+      providerPassthrough: {
+        workspaceEnabled: settings.providerPassthroughEnabled,
+        active: Boolean(
+          settings.providerPassthroughEnabled &&
+            selectedRouting?.active &&
+            selectedRouting.configured &&
+            selectedRouting.compatible,
+        ),
+        configured: selectedRouting?.configured ?? false,
+        providerLabel: selectedRouting?.providerLabel ?? null,
+        model: selectedRouting?.model ?? null,
+        compatibleWithSelectedHarness: selectedRouting?.compatible ?? false,
+        message: selectedRouting?.error,
+      },
+      harnesses: statuses.map((harness) => {
+        const routing = routingByKind.get(harness.kind);
+        return {
+          id: harness.id,
+          kind: harness.kind,
+          name: harness.name,
+          command: harness.command,
+          enabled: harness.enabled,
+          installed: harness.installed,
+          version: harness.version,
+          authenticated: harness.authenticated,
+          ready: harness.ready,
+          nextStep: harness.nextStep,
+          statusMessage: harness.statusMessage,
+          selected: harness.id === settings.selectedHarnessId,
+          installHint: getCodingHarnessInstallHint(harness.kind),
+          installCommand: getCodingHarnessInstallCommand(harness.kind),
+          providerPassthrough:
+            routing && settings.providerPassthroughEnabled
+              ? {
+                  compatible: routing.compatible,
+                  providerLabel: routing.providerLabel,
+                  model: routing.model,
+                  message: routing.error,
+                }
+              : null,
+        };
+      }),
     };
   }
 
   async setCodingHarnessSettings(
     input: UpdateCodingHarnessSettingsRequest,
   ): Promise<CodingHarnessSettingsResponse> {
-    await saveCodingAgentWorkspaceSettings(this.db, input);
+    await saveCodingAgentWorkspaceSettings(this.db, {
+      selectedHarnessId: input.selectedHarnessId,
+      providerPassthroughEnabled: input.providerPassthroughEnabled,
+      harnesses: input.harnesses,
+    });
     return this.getCodingHarnessSettings();
   }
 
   async verifyCodingHarness(harnessId?: string): Promise<VerifyCodingHarnessResponse> {
-    return verifyCodingAgentHarness(this.db, harnessId);
+    const settings = await loadCodingAgentWorkspaceSettings(this.db);
+
+    return verifyCodingAgentHarness(this.db, harnessId, {
+      userConfig: this.userConfig,
+      profileModel: null,
+      workspacePassthroughEnabled: settings.providerPassthroughEnabled,
+    });
   }
 
   async getAgentBrowserStatus(): Promise<AgentBrowserStatusResponse> {
@@ -937,6 +998,7 @@ export class AgentService {
         cwd: input.cwd,
         passthroughArgs: input.passthroughArgs,
         persistSelection: options.persistSelection === true,
+        userConfig: this.userConfig,
       },
       {
         orgRole: options.orgRole,
@@ -2496,7 +2558,9 @@ export class AgentService {
     } = {},
   ): Promise<ToolDefinition[]> {
     const storedTools = await this.db.listToolsForProfile(profile.id);
-    const tools = await resolveProfileStoredTools(storedTools, this.db);
+    const tools = await resolveProfileStoredTools(storedTools, this.db, [], {
+      userConfig: this.userConfig,
+    });
     const includeAutomationTools = options.includeAutomationTools ?? true;
     const includeTodoTools = options.includeTodoTools ?? true;
     const includeQuestionTools = options.includeQuestionTools ?? true;
@@ -2757,31 +2821,25 @@ export class AgentService {
     profileId: string,
   ): Promise<string> {
     try {
-      const harness = await resolveCodingAgentHarness(this.db);
+      const workspace = await loadCodingAgentWorkspaceSettings(this.db);
+      const harness = await resolveCodingAgentHarness(this.db, null, {
+        userConfig: this.userConfig,
+        profileModel: (await this.db.getProfile(profileId))?.model ?? null,
+        workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
+      });
       const workspaceRoot = getProfileSoulDir(orgId, profileId);
       const profile = await this.db.getProfile(profileId);
-      const gatewayBaseUrl = getInferenceGatewayBaseUrl();
-      let authToken: string | null = null;
-
-      if (gatewayBaseUrl) {
-        try {
-          authToken = await loadLocalAuthToken();
-        } catch {
-          authToken = null;
-        }
-      }
-
-      const template = buildCodingAgentCommandTemplate(
+      const routing = resolveCodingAgentProviderRouting({
+        userConfig: this.userConfig,
+        profileModel: profile?.model,
+        harnessKind: harness.kind,
+        workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
+      });
+      const template = await buildCodingAgentCommandTemplate(
         harness,
         "<task prompt>",
         workspaceRoot,
-        {
-          model: normalizeCodingAgentModel(profile?.model),
-          gatewayBaseUrl,
-          authToken,
-          orgId,
-          profileId,
-        },
+        routing,
       );
       const backendSkillName = getBackendSkillName(harness.kind);
       const backendSkill = await readBundledSkillBody(backendSkillName);
