@@ -1,9 +1,12 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
+import { MAX_DOCUMENT_BYTES } from "../message-content";
 import type { MailboxConfig } from "./types";
 import {
   formatMailAddress,
+  MAX_EMAIL_MESSAGE_BYTES,
   truncateMailBody,
+  type MailAttachment,
   type MailMessage,
   type MailMessageSummary,
   type MailReader,
@@ -24,6 +27,24 @@ function toIsoDate(value: Date | string | undefined): string {
 
 function asUidList(uids: number[] | false): number[] {
   return uids === false ? [] : uids;
+}
+
+function attachmentMetadata(
+  attachment: { filename?: string; contentType?: string; size?: number; contentDisposition?: string },
+  id: string,
+): MailAttachment {
+  return {
+    id,
+    filename: (attachment.filename || "attachment").replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 255),
+    mediaType: attachment.contentType?.toLowerCase() || "application/octet-stream",
+    size: attachment.size ?? 0,
+    disposition:
+      attachment.contentDisposition === "inline"
+        ? "inline"
+        : attachment.contentDisposition === "attachment"
+          ? "attachment"
+          : null,
+  };
 }
 
 export function createImapReader(config: MailboxConfig): MailReader {
@@ -106,6 +127,10 @@ export function createImapReader(config: MailboxConfig): MailReader {
       const lock = await client.getMailboxLock(folder);
 
       try {
+        const overview = await client.fetchOne(uid, { size: true }, { uid: true });
+        if (overview?.size != null && overview.size > MAX_EMAIL_MESSAGE_BYTES) {
+          throw new Error(`Email message exceeds ${MAX_EMAIL_MESSAGE_BYTES} bytes.`);
+        }
         for await (const message of client.fetch(
           uid,
           { source: true, envelope: true, internalDate: true },
@@ -115,6 +140,9 @@ export function createImapReader(config: MailboxConfig): MailReader {
 
           if (!source) {
             continue;
+          }
+          if (source.length > MAX_EMAIL_MESSAGE_BYTES) {
+            throw new Error(`Email message exceeds ${MAX_EMAIL_MESSAGE_BYTES} bytes.`);
           }
 
           const parsed = await simpleParser(source);
@@ -135,7 +163,53 @@ export function createImapReader(config: MailboxConfig): MailReader {
             ...(textBody ? { text: truncated.text } : {}),
             ...(!textBody && htmlBody ? { html: truncated.text } : {}),
             ...(truncated.truncated ? { truncated: true } : {}),
+            ...(parsed.attachments.length > 0
+              ? {
+                  attachments: parsed.attachments.map((attachment, index) =>
+                    attachmentMetadata(attachment, String(index)),
+                  ),
+                }
+              : {}),
           } satisfies MailMessage;
+        }
+
+        return null;
+      } finally {
+        lock.release();
+      }
+    },
+    async readAttachment(folder, uid, attachmentId) {
+      await ensureConnected();
+      const lock = await client.getMailboxLock(folder);
+
+      try {
+        const overview = await client.fetchOne(uid, { size: true }, { uid: true });
+        if (overview?.size != null && overview.size > MAX_EMAIL_MESSAGE_BYTES) {
+          throw new Error(`Email message exceeds ${MAX_EMAIL_MESSAGE_BYTES} bytes.`);
+        }
+        for await (const message of client.fetch(
+          uid,
+          { source: true },
+          { uid: true },
+        )) {
+          if (!message.source || message.source.length > MAX_EMAIL_MESSAGE_BYTES) {
+            throw new Error(`Email message exceeds ${MAX_EMAIL_MESSAGE_BYTES} bytes.`);
+          }
+          const parsed = await simpleParser(message.source);
+          const index = Number.parseInt(attachmentId, 10);
+          const attachment = Number.isInteger(index) ? parsed.attachments[index] : undefined;
+          if (!attachment) {
+            return null;
+          }
+
+          const metadata = attachmentMetadata(attachment, attachmentId);
+          if (metadata.size > MAX_DOCUMENT_BYTES) {
+            throw new Error(`Email attachment exceeds ${MAX_DOCUMENT_BYTES} bytes.`);
+          }
+          if (attachment.content.length > MAX_DOCUMENT_BYTES) {
+            throw new Error(`Email attachment exceeds ${MAX_DOCUMENT_BYTES} bytes.`);
+          }
+          return { metadata, data: attachment.content };
         }
 
         return null;

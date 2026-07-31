@@ -25,6 +25,18 @@ export function createFakeMailReader(messages: MailMessage[] = []): MailReader &
       const message = store.find((entry) => entry.folder === folder && entry.uid === uid);
       return message ? { ...message } : null;
     },
+    async readAttachment(folder, uid, attachmentId) {
+      const message = store.find((entry) => entry.folder === folder && entry.uid === uid);
+      const attachment = message?.attachments?.find((entry) => entry.id === attachmentId);
+      if (!attachment) {
+        return null;
+      }
+
+      return {
+        metadata: attachment,
+        data: Buffer.alloc(attachment.size),
+      };
+    },
     async searchMessages(folder, query, limit) {
       const needle = query.trim().toLowerCase();
 
