@@ -6,8 +6,6 @@ import { ORG_MEMORY_PREAMBLE, parseOrgMemoryContent } from "@nakama/core";
 import { createInMemoryDatabaseAdapter } from "@nakama/db";
 import { OrgMemoryService } from "./org-memory-service";
 
-const originalConfigDir = process.env.NAKAMA_CONFIG_DIR;
-
 describe("OrgMemoryService", () => {
   let tempDir = "";
 
@@ -16,17 +14,14 @@ describe("OrgMemoryService", () => {
       await rm(tempDir, { recursive: true, force: true });
       tempDir = "";
     }
-    if (originalConfigDir === undefined) {
-      delete process.env.NAKAMA_CONFIG_DIR;
-    } else {
-      process.env.NAKAMA_CONFIG_DIR = originalConfigDir;
-    }
   });
 
   async function setup(withDb = false): Promise<OrgMemoryService> {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-org-memory-"));
-    process.env.NAKAMA_CONFIG_DIR = tempDir;
-    return new OrgMemoryService(withDb ? createInMemoryDatabaseAdapter() : null);
+    return new OrgMemoryService(
+      withDb ? createInMemoryDatabaseAdapter() : null,
+      { configDir: tempDir },
+    );
   }
 
   test("getMemory returns the canonical preamble when the file is missing", async () => {

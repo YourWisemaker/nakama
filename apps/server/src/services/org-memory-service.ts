@@ -78,6 +78,7 @@ export interface OrgMemoryApprovedBulletMerger {
 
 export interface OrgMemoryServiceOptions {
   approvedBulletMerger?: OrgMemoryApprovedBulletMerger;
+  configDir?: string;
 }
 
 export interface OrgMemoryChangeContext {
@@ -98,7 +99,7 @@ export class OrgMemoryService {
    * does not yet exist (so callers always get a usable string).
    */
   async getMemory(orgId: string): Promise<string> {
-    const existing = await readTextIfExists(getOrgMemoryFilePath(orgId));
+    const existing = await readTextIfExists(getOrgMemoryFilePath(orgId, this.options.configDir));
     if (!existing || existing.trim().length === 0) {
       return `${ORG_MEMORY_PREAMBLE}\n`;
     }
@@ -129,11 +130,11 @@ export class OrgMemoryService {
   }
 
   async listHistory(orgId: string, limit?: number): Promise<OrgMemoryChangeLogEntry[]> {
-    return listOrgMemoryHistory(orgId, limit);
+    return listOrgMemoryHistory(orgId, limit, this.options.configDir);
   }
 
   async getHistoryRevision(orgId: string, revisionId: string) {
-    const record = await getOrgMemoryHistoryEntry(orgId, revisionId);
+    const record = await getOrgMemoryHistoryEntry(orgId, revisionId, this.options.configDir);
     if (!record) {
       throw new NakamaApiError("Org memory history revision not found.", 404);
     }
@@ -147,7 +148,7 @@ export class OrgMemoryService {
     revisionId: string,
     actorUserId: string,
   ): Promise<string> {
-    const record = await getOrgMemoryHistoryEntry(orgId, revisionId);
+    const record = await getOrgMemoryHistoryEntry(orgId, revisionId, this.options.configDir);
     if (!record) {
       throw new NakamaApiError("Org memory history revision not found.", 404);
     }
@@ -162,7 +163,7 @@ export class OrgMemoryService {
   }
 
   async undoLastChange(orgId: string, actorUserId: string): Promise<string> {
-    const history = await listOrgMemoryHistory(orgId, 2);
+    const history = await listOrgMemoryHistory(orgId, 2, this.options.configDir);
     if (history.length < 2) {
       throw new NakamaApiError("No previous org memory revision to restore.", 404);
     }
@@ -294,7 +295,7 @@ export class OrgMemoryService {
 
     const archivedAt = options.archivedAt ?? new Date();
     const yearMonth = `${archivedAt.getFullYear()}-${String(archivedAt.getMonth() + 1).padStart(2, "0")}`;
-    const archiveDir = getOrgMemoryArchiveDir(orgId);
+    const archiveDir = getOrgMemoryArchiveDir(orgId, this.options.configDir);
     const archivePath = join(archiveDir, `${yearMonth}.md`);
     const appendLines = [`<!-- archived: ${archivedAt.toISOString()} -->`];
     if (options.reason?.trim()) {
@@ -504,7 +505,7 @@ export class OrgMemoryService {
       return { query, matches };
     }
 
-    const live = await readTextIfExists(getOrgMemoryFilePath(orgId));
+    const live = await readTextIfExists(getOrgMemoryFilePath(orgId, this.options.configDir));
     if (live) {
       const parsed = parseOrgMemoryContent(live);
       for (const bullet of parsed.pinned) {
@@ -526,7 +527,7 @@ export class OrgMemoryService {
       }
     }
 
-    const archiveDir = getOrgMemoryArchiveDir(orgId);
+    const archiveDir = getOrgMemoryArchiveDir(orgId, this.options.configDir);
     if (await pathExists(archiveDir)) {
       const entries = await readDirectoryEntries(archiveDir);
       const files = entries
@@ -611,8 +612,8 @@ export class OrgMemoryService {
       return;
     }
 
-    await writePrivateTextFile(getOrgMemoryFilePath(orgId), content, {
-      ensureDir: getOrgMemoryDir(orgId),
+    await writePrivateTextFile(getOrgMemoryFilePath(orgId, this.options.configDir), content, {
+      ensureDir: getOrgMemoryDir(orgId, this.options.configDir),
     });
 
     const entry: OrgMemoryChangeLogEntry = {
@@ -624,7 +625,7 @@ export class OrgMemoryService {
       label: change.label,
       restoredFromId: change.restoredFromId ?? null,
     };
-    await appendOrgMemoryHistory(orgId, entry, content);
+    await appendOrgMemoryHistory(orgId, entry, content, this.options.configDir);
   }
 }
 
