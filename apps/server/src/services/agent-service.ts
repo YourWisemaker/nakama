@@ -2592,6 +2592,7 @@ export class AgentService {
         sessionId,
         userId: userId ?? undefined,
         orgRole: orgRole ?? undefined,
+        loadAttachment,
       }),
       resolvePromptContext: async (context) => {
         const parts: string[] = [];

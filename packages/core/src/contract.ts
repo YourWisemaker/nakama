@@ -1,3 +1,5 @@
+import type { LoadAttachmentBytes } from "./attachments/content";
+
 export type AutomationTrigger =
   | { type: "manual" }
   | { type: "schedule"; cron: string; timezone?: string }
@@ -1809,6 +1811,8 @@ export interface ToolContext {
   workspaceRoot?: string;
   /** Org role of the invoking user. Org-memory tools gate on this; undefined means deny-by-default. */
   orgRole?: OrgRole;
+  /** Loads a provider-neutral document/image reference scoped to this execution. */
+  loadAttachment?: LoadAttachmentBytes;
   /** Emits concise live status lines while a sub-agent child loop runs (parent web UI). */
   emitSubAgentActivity?: (label: string) => void;
 }
