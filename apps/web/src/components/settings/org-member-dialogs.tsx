@@ -1,5 +1,7 @@
 import type { OrgMemberSummary, OrgRole } from "@nakama/core/contract";
+import { useQuery } from "@tanstack/react-query";
 import { CopyIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { OrgMemberRoleSelect } from "@/components/settings/org-member-role-select";
+import { emailSettingsQueryOptions } from "@/hooks/use-email-settings";
 
 export type OrgMemberAddCredentials = {
   email: string;
@@ -39,12 +42,29 @@ export function OrgMemberInviteDialog({
   onInviteRoleChange: (role: OrgRole) => void;
   onSubmit: (event: React.FormEvent) => void;
 }) {
+  const { data: emailSettings, isLoading: emailSettingsLoading } = useQuery(emailSettingsQueryOptions);
+  const emailConfigured = emailSettings?.configured === true;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite member</DialogTitle>
+          <DialogDescription>
+            Send an invite by email. The recipient gets a link to join this organization.
+          </DialogDescription>
         </DialogHeader>
+        {!emailSettingsLoading && !emailConfigured ? (
+          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            Configure the shared email mailbox before you can invite members by email.{" "}
+            <Link
+              to="/system?tab=tools"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Configure in System → Tools
+            </Link>
+          </p>
+        ) : null}
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label htmlFor="invite-email" className="mb-1 block text-sm font-medium">

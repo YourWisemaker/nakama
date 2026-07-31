@@ -36,6 +36,7 @@
     "./whatsapp-config": "./src/whatsapp-config.ts",
     "./whatsapp-worker": "./src/whatsapp-worker.ts",
     "./skills/bundled-names": "./src/skills/bundled-names.ts",
+    "./soul/org-memory": "./src/soul/org-memory.ts",
     "./tools/protected": "./src/tools/protected.ts",
     "./tools/email": "./src/tools/email.ts",
     "./mcp/preinstalled": "./src/mcp/preinstalled.ts"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { OrgMemoryProposal } from "@nakama/core/contract";
-import { detectOrgMemoryInjectionWarnings } from "@nakama/core";
+import { detectOrgMemoryInjectionWarnings } from "@nakama/core/soul/org-memory";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";

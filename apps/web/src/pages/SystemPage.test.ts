@@ -5,16 +5,23 @@ describe("SystemPage tab access", () => {
   test("shows status to all system users and data portability only to platform admins", () => {
     expect(visibleSystemTabs(true).map((tab) => tab.id)).toEqual([
       "status",
+      "organization",
       "tools",
       "mcp",
       "data",
     ]);
-    expect(visibleSystemTabs(false).map((tab) => tab.id)).toEqual(["status", "tools"]);
+    expect(visibleSystemTabs(false).map((tab) => tab.id)).toEqual([
+      "status",
+      "organization",
+      "tools",
+    ]);
   });
 
   test("resolves status for all system users and forces non-platform users off admin tabs", () => {
     expect(resolveSystemTab("status", true)).toBe("status");
     expect(resolveSystemTab("status", false)).toBe("status");
+    expect(resolveSystemTab("organization", true)).toBe("organization");
+    expect(resolveSystemTab("organization", false)).toBe("organization");
     expect(resolveSystemTab("data", true)).toBe("data");
     expect(resolveSystemTab("data", false)).toBe("tools");
     expect(resolveSystemTab("unknown", true)).toBe("tools");
