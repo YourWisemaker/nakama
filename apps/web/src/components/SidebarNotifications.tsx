@@ -64,7 +64,7 @@ export function SidebarNotifications() {
           <p className="px-2 py-3 text-center text-xs text-muted-foreground">All caught up</p>
         ) : (
           <>
-            <div className="border-b border-border px-1.5 py-1.5">
+            <div className="px-1.5 py-1.5">
               <p className="text-sm font-medium leading-tight text-foreground">Notifications</p>
               <p className="text-[11px] leading-tight text-muted-foreground">
                 Automation runs and org memory proposals
@@ -79,7 +79,7 @@ export function SidebarNotifications() {
               )}
             </div>
 
-            <div className="border-t border-border px-1.5 py-1">
+            <div className="px-1.5 pb-1 pt-0.5">
               <Button
                 type="button"
                 variant="ghost"

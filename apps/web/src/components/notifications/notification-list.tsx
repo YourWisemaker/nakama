@@ -39,7 +39,7 @@ export function NotificationListItem({
       onClick={onNavigate}
       className={cn(
         "flex rounded-md transition-colors hover:bg-muted/60",
-        compact ? "gap-2.5 px-2 py-2" : "gap-2 border border-border px-3 py-3",
+        compact ? "gap-2.5 px-2 py-2" : "gap-2.5 px-2 py-2.5",
       )}
     >
       <NotificationIcon kind={item.kind} size={compact ? "sm" : "md"} />
@@ -47,11 +47,6 @@ export function NotificationListItem({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium leading-tight text-foreground">{item.title}</p>
-            {!compact && item.kindLabel ? (
-              <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                {item.kindLabel}
-              </p>
-            ) : null}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
             {item.count > 1 ? (
