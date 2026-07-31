@@ -108,7 +108,7 @@ function OrgMemoryPinnedContent({ pinned }: { pinned: string[] }) {
             <ul className="space-y-1.5">
               {details.map((detail, index) => (
                 <li
-                  key={`${index}-${detail.slice(0, 24)}`}
+                  key={detail}
                   className={cn(
                     "text-sm leading-relaxed",
                     index === details.length - 1

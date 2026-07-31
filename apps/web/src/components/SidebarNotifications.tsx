@@ -28,17 +28,21 @@ export function SidebarNotifications() {
       }
       className="relative flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/55 hover:text-foreground"
     >
-      <BellIcon className="size-4" strokeWidth={1.75} aria-hidden />
-      {showBadge ? (
-        <span
-          className="absolute right-0 top-0 inline-flex h-[18px] min-w-[18px] translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-sidebar bg-primary px-1 text-[10px] font-bold leading-none tabular-nums text-primary-foreground"
-          aria-hidden
-        >
-          {badgeLabel}
-        </span>
-      ) : null}
+      <span className="relative shrink-0">
+        <BellIcon className="size-4" strokeWidth={1.75} aria-hidden />
+        {showBadge ? (
+          <span
+            className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-sidebar bg-primary px-0.5 text-[9px] font-bold leading-none tabular-nums text-primary-foreground"
+            aria-hidden
+          >
+            {badgeLabel}
+          </span>
+        ) : null}
+      </span>
     </button>
   );
+
+  const isEmpty = !isLoading && items.length === 0;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,37 +60,38 @@ export function SidebarNotifications() {
       </Tooltip>
 
       <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-1">
-        <div className="border-b border-border px-1.5 py-1.5">
-          <p className="text-sm font-medium leading-tight text-foreground">Notifications</p>
-          <p className="text-[11px] leading-tight text-muted-foreground">
-            Automation runs and org memory proposals
-          </p>
-        </div>
+        {isEmpty ? (
+          <p className="px-2 py-3 text-center text-xs text-muted-foreground">All caught up</p>
+        ) : (
+          <>
+            <div className="border-b border-border px-1.5 py-1.5">
+              <p className="text-sm font-medium leading-tight text-foreground">Notifications</p>
+              <p className="text-[11px] leading-tight text-muted-foreground">
+                Automation runs and org memory proposals
+              </p>
+            </div>
 
-        <div className="max-h-72 overflow-y-auto">
-          {isLoading ? (
-            <p className="px-1.5 py-2 text-xs text-muted-foreground">Loading…</p>
-          ) : (
-            <NotificationList
-              items={items}
-              compact
-              onNavigate={() => setOpen(false)}
-              emptyMessage="You're all caught up."
-            />
-          )}
-        </div>
+            <div className="max-h-72 overflow-y-auto">
+              {isLoading ? (
+                <p className="px-1.5 py-2 text-xs text-muted-foreground">Loading…</p>
+              ) : (
+                <NotificationList items={items} compact onNavigate={() => setOpen(false)} />
+              )}
+            </div>
 
-        <div className="border-t border-border px-1.5 py-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 w-full justify-center text-xs"
-            render={<Link to={PAGE_PATHS.notifications} onClick={() => setOpen(false)} />}
-          >
-            View all
-          </Button>
-        </div>
+            <div className="border-t border-border px-1.5 py-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-full justify-center text-xs"
+                render={<Link to={PAGE_PATHS.notifications} onClick={() => setOpen(false)} />}
+              >
+                View all
+              </Button>
+            </div>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );

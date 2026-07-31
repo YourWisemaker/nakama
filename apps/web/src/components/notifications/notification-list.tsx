@@ -38,8 +38,8 @@ export function NotificationListItem({
       to={item.href}
       onClick={onNavigate}
       className={cn(
-        "flex gap-2 rounded-md transition-colors hover:bg-muted/60",
-        compact ? "px-1.5 py-1.5" : "border border-border px-3 py-3",
+        "flex rounded-md transition-colors hover:bg-muted/60",
+        compact ? "gap-2.5 px-2 py-2" : "gap-2 border border-border px-3 py-3",
       )}
     >
       <NotificationIcon kind={item.kind} size={compact ? "sm" : "md"} />
@@ -72,7 +72,7 @@ export function NotificationListItem({
         <p
           className={cn(
             "text-muted-foreground",
-            compact ? "mt-0.5 line-clamp-2 text-xs leading-snug" : "mt-1.5 text-sm leading-relaxed",
+            compact ? "mt-1 line-clamp-2 text-xs leading-snug" : "mt-1.5 text-sm leading-relaxed",
           )}
         >
           {item.description}
@@ -98,7 +98,7 @@ export function NotificationList({
   }
 
   return (
-    <div className={cn(compact ? "space-y-0" : "space-y-2")}>
+    <div className={cn(compact ? "space-y-1 py-0.5" : "space-y-2")}>
       {items.map((item) => (
         <NotificationListItem
           key={item.id}
