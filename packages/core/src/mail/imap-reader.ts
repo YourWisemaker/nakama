@@ -128,7 +128,7 @@ export function createImapReader(config: MailboxConfig): MailReader {
 
       try {
         const overview = await client.fetchOne(uid, { size: true }, { uid: true });
-        if (overview?.size != null && overview.size > MAX_EMAIL_MESSAGE_BYTES) {
+        if (overview && overview.size != null && overview.size > MAX_EMAIL_MESSAGE_BYTES) {
           throw new Error(`Email message exceeds ${MAX_EMAIL_MESSAGE_BYTES} bytes.`);
         }
         for await (const message of client.fetch(
@@ -184,7 +184,7 @@ export function createImapReader(config: MailboxConfig): MailReader {
 
       try {
         const overview = await client.fetchOne(uid, { size: true }, { uid: true });
-        if (overview?.size != null && overview.size > MAX_EMAIL_MESSAGE_BYTES) {
+        if (overview && overview.size != null && overview.size > MAX_EMAIL_MESSAGE_BYTES) {
           throw new Error(`Email message exceeds ${MAX_EMAIL_MESSAGE_BYTES} bytes.`);
         }
         for await (const message of client.fetch(

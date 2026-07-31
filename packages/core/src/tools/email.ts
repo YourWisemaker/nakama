@@ -9,7 +9,7 @@ import { createFakeMailReader, createFakeMailSender } from "../mail/fake";
 import { createImapReader } from "../mail/imap-reader";
 import { createSmtpSender } from "../mail/smtp-sender";
 import { sanitizeMailError } from "../mail/sanitize";
-import type { MailReader, MailSender } from "../mail/types";
+import type { MailMessage, MailReader, MailSender } from "../mail/types";
 import { MAX_EMAIL_BODY_BYTES } from "../mail/types";
 import { createAttachmentReference } from "../mail/attachment-reference";
 import { jsonSchemaFromZod, parseToolInput } from "./schema";
@@ -239,16 +239,17 @@ export const emailTool: ToolDefinition<EmailToolInput, EmailToolResult> = {
 };
 
 function toEmailMessage(
-  message: NonNullable<Extract<EmailToolSuccess, { message?: unknown }>["message"]>,
+  message: MailMessage,
   context: ToolContext,
 ): NonNullable<Extract<EmailToolSuccess, { message?: unknown }>["message"]> {
-  if (!message.attachments) {
-    return message;
+  const { attachments, ...messageWithoutAttachments } = message;
+  if (!attachments) {
+    return messageWithoutAttachments;
   }
 
   return {
-    ...message,
-    attachments: message.attachments.map((attachment) => ({
+    ...messageWithoutAttachments,
+    attachments: attachments.map((attachment) => ({
       filename: attachment.filename,
       mediaType: attachment.mediaType,
       size: attachment.size,
