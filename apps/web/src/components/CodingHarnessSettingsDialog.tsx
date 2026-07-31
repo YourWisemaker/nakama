@@ -149,7 +149,7 @@ export function CodingHarnessSettingsPanel({
           if (status.nextStep === "login") {
             setHint(
               status.statusMessage ??
-                `${name} is installed. Finish login on this server, then run readiness check.`,
+                `${name} is installed but provider passthrough is not ready. Check Settings → Provider, then run readiness check.`,
             );
             return;
           }
@@ -213,9 +213,9 @@ export function CodingHarnessSettingsPanel({
                       : ""}
                     .
                   </>
-                ) : settings.providerPassthrough.workspaceEnabled ? (
+                ) : (
                   <>
-                    Provider passthrough is enabled but not active.{" "}
+                    Provider passthrough is not active.{" "}
                     {settings.providerPassthrough.message ? (
                       settings.providerPassthrough.message
                     ) : (
@@ -228,8 +228,6 @@ export function CodingHarnessSettingsPanel({
                       </>
                     )}
                   </>
-                ) : (
-                  "Provider passthrough is disabled — harnesses use vendor login on this host."
                 )}
               </p>
             ) : null}

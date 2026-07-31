@@ -1019,7 +1019,6 @@ export interface SendEmailTestResponse {
 export type CodingHarnessKind = "codex" | "claude_code" | "opencode";
 
 export interface CodingHarnessProviderPassthroughStatus {
-  workspaceEnabled: boolean;
   active: boolean;
   configured: boolean;
   providerLabel: string | null;
@@ -1123,7 +1122,6 @@ export type AgentBrowserInstallEvent =
 
 export interface UpdateCodingHarnessSettingsRequest {
   selectedHarnessId?: string | null;
-  providerPassthroughEnabled?: boolean;
   harnesses?: Array<{
     id: string;
     command?: string;

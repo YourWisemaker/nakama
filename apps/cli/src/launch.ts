@@ -218,10 +218,7 @@ function printLaunchSummary(plan: CodingAgentLaunchPlanResponse): void {
   if (plan.harnessKind === "claude_code") {
     console.log("");
     console.log(
-      "No provider passthrough env was applied. Claude Code will ask for /login unless you already have Anthropic credentials.",
-    );
-    console.log(
-      "Configure an Anthropic provider in Nakama Settings → Provider, then retry.",
+      "Provider passthrough is not active. Configure a compatible provider in Nakama Settings → Provider.",
     );
   }
 

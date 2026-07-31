@@ -7,6 +7,19 @@ import {
   redactSpawnEnvForPrompt,
 } from "./coding-agent-spawn-env";
 
+const inactiveRouting = {
+  configured: false,
+  compatible: false,
+  active: false,
+  providerType: null,
+  providerLabel: null,
+  baseUrl: null,
+  apiKey: null,
+  model: null,
+  apiShape: null,
+  error: null,
+} as const;
+
 describe("coding-agent spawn env", () => {
   test("normalizes profile model ids", () => {
     expect(normalizeCodingAgentModel("anthropic:claude-sonnet-4-6")).toBe("claude-sonnet-4-6");
@@ -14,27 +27,12 @@ describe("coding-agent spawn env", () => {
   });
 
   test("returns no env overrides when routing is inactive", () => {
-    expect(
-      buildClaudeCodeSpawnEnv({
-        workspaceEnabled: true,
-        configured: false,
-        compatible: false,
-        active: false,
-        providerType: null,
-        providerLabel: null,
-        baseUrl: null,
-        apiKey: null,
-        model: null,
-        apiShape: null,
-        error: null,
-      }),
-    ).toEqual({});
+    expect(buildClaudeCodeSpawnEnv(inactiveRouting)).toEqual({});
   });
 
   test("builds Claude Code provider passthrough env", () => {
     const env = buildClaudeCodeSpawnEnv(
       {
-        workspaceEnabled: true,
         configured: true,
         compatible: true,
         active: true,
@@ -59,7 +57,6 @@ describe("coding-agent spawn env", () => {
     expect(
       buildCodexSpawnEnv(
         {
-          workspaceEnabled: true,
           configured: true,
           compatible: true,
           active: true,

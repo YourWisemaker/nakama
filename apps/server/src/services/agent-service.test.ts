@@ -316,7 +316,6 @@ describe("AgentService coding delegation context", () => {
         },
       ],
       selectedCodingAgentHarness: "coding-harness-opencode",
-      codingAgentProviderPassthrough: true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -338,7 +337,6 @@ describe("AgentService coding delegation context", () => {
       transcriptionModel: null,
       codingAgentHarnesses: [],
       selectedCodingAgentHarness: null,
-      codingAgentProviderPassthrough: true,
       updatedAt: new Date().toISOString(),
     });
 

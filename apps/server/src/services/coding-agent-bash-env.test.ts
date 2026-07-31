@@ -29,7 +29,6 @@ describe("enrichCodingAgentBashInput", () => {
         },
       ],
       selectedCodingAgentHarness: "coding-harness-claude-code",
-      codingAgentProviderPassthrough: true,
       updatedAt: new Date().toISOString(),
     });
     await db.upsertProfile({

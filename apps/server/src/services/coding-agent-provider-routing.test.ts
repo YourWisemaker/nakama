@@ -78,22 +78,6 @@ describe("coding-agent provider routing", () => {
     expect(routing.error).toContain("Anthropic");
   });
 
-  test("returns empty routing when workspace passthrough is disabled", () => {
-    const routing = resolveCodingAgentProviderRouting({
-      userConfig: {
-        providers: [anthropicProvider],
-        defaultProviderId: anthropicProvider.id,
-      },
-      profileModel: "anthropic:claude-sonnet-4-6",
-      harnessKind: "claude_code",
-      workspacePassthroughEnabled: false,
-    });
-
-    expect(routing.workspaceEnabled).toBe(false);
-    expect(routing.active).toBe(false);
-    expect(routing.baseUrl).toBeNull();
-  });
-
   test("compatibility matrix covers harness/provider pairs", () => {
     expect(isProviderCompatibleWithHarness("anthropic", "claude_code")).toBe(true);
     expect(isProviderCompatibleWithHarness("openrouter", "claude_code")).toBe(false);

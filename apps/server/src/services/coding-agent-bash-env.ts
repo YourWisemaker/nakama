@@ -42,23 +42,18 @@ export async function enrichCodingAgentBashInput(
     return input;
   }
 
-  const harness = await resolveCodingAgentHarness(db, null, {
-    userConfig,
-    profileModel:
-      context.profileId !== undefined && context.profileId.length > 0
-        ? await resolveProfileModelId(db, context.profileId)
-        : null,
-    workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
-  });
   const profileModel =
     context.profileId !== undefined && context.profileId.length > 0
       ? await resolveProfileModelId(db, context.profileId)
       : null;
+  const harness = await resolveCodingAgentHarness(db, null, {
+    userConfig,
+    profileModel,
+  });
   const { spawn } = await resolveCodingAgentSpawnBundle({
     userConfig,
     profileModel,
     harnessKind: harness.kind,
-    workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
   });
   const explicitEnv = readStringRecord(record.env);
   const mergedEnv = mergeCodingAgentSpawnEnv(process.env, spawn.env, {

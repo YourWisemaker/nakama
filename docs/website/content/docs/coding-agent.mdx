@@ -99,9 +99,7 @@ The `bash` tool merges spawn env when:
 
 **Compatibility:** Integrations → Coding agents shows whether passthrough is active for the selected harness. Incompatible provider/harness pairs show a warning with a link to Settings → Provider.
 
-**Security:** Passthrough injects the real org provider API key into subprocess env on the host. Use on trusted single-tenant machines only. Any org member who can invoke coding agents receives provider credentials in the spawn environment.
-
-**Disable passthrough:** Turn off provider passthrough in Integrations → Coding agents to fall back to vendor login on the host (`claude /login`, etc.).
+**Security:** Passthrough injects the real org provider API key into subprocess env on the host. Use on trusted single-tenant machines only.
 
 ### 2. Assign tools and skills to the profile
 
@@ -131,7 +129,7 @@ The CLI ensures the server is running, resolves org context, builds a launch pla
 | Flag | Purpose |
 |------|---------|
 | `--org ID` | Organization for `X-Org-Id` (required when you belong to multiple orgs) |
-| `--profile ID` | Profile for model routing through the gateway (aliases: `super_bot`, `super-bot`, `Super Bot`) |
+| `--profile ID` | Profile for provider/model routing (aliases: `super_bot`, `super-bot`, `Super Bot`) |
 | `--model MODEL` | Override the profile model for this launch |
 | `--cwd DIR` | Working directory (defaults to your current shell directory) |
 | `--yes` | Skip the profile picker when no `--profile` is set |
@@ -158,9 +156,9 @@ bun run dev:cli -- launch codex --model gpt-4.1 -- --help
 After launch, the CLI prints either:
 
 - `Provider passthrough enabled (Anthropic / claude-sonnet-4-6)` — the harness should **not** ask for `/login`
-- A warning that no passthrough env was applied — configure a compatible provider in Settings → Provider
+- A warning that passthrough is not active — configure a compatible provider in Settings → Provider
 
-Without passthrough, the coding CLI uses vendor authentication on the host (`claude /login`, Codex login, etc.).
+Coding agents always use Nakama provider passthrough; harness-native vendor login (`claude /login`, etc.) is not supported yet.
 
 ## When to use a coding agent vs Nakama alone
 

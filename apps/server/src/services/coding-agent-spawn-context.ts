@@ -15,14 +15,12 @@ export async function resolveCodingAgentSpawnBundle(options: {
   userConfig: UserConfig | null | undefined;
   profileModel: string | null | undefined;
   harnessKind: StoredCodingAgentHarnessKind;
-  workspacePassthroughEnabled?: boolean;
   env?: Record<string, string | undefined>;
 }): Promise<CodingAgentSpawnBundle> {
   const routing = resolveCodingAgentProviderRouting({
     userConfig: options.userConfig,
     profileModel: options.profileModel,
     harnessKind: options.harnessKind,
-    workspacePassthroughEnabled: options.workspacePassthroughEnabled,
     env: options.env,
   });
 

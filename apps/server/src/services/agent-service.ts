@@ -494,7 +494,6 @@ export class AgentService {
       transcriptionModel: existing?.transcriptionModel ?? this.userConfig?.transcriptionModel ?? null,
       codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
-      codingAgentProviderPassthrough: existing?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -546,7 +545,6 @@ export class AgentService {
       transcriptionModel: model,
       codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
-      codingAgentProviderPassthrough: existing?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -634,7 +632,6 @@ export class AgentService {
       transcriptionModel: legacyModel,
       codingAgentHarnesses: stored?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: stored?.selectedCodingAgentHarness ?? null,
-      codingAgentProviderPassthrough: stored?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -682,7 +679,6 @@ export class AgentService {
       transcriptionModel: legacyTranscriptionModel,
       codingAgentHarnesses: stored?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: stored?.selectedCodingAgentHarness ?? null,
-      codingAgentProviderPassthrough: stored?.codingAgentProviderPassthrough ?? true,
       updatedAt: new Date().toISOString(),
     });
 
@@ -876,7 +872,6 @@ export class AgentService {
           userConfig: this.userConfig,
           profileModel,
           harnessKind: kind,
-          workspacePassthroughEnabled: settings.providerPassthroughEnabled,
         }),
       ]),
     );
@@ -890,7 +885,6 @@ export class AgentService {
       probeContext: {
         userConfig: this.userConfig,
         profileModel,
-        workspacePassthroughEnabled: settings.providerPassthroughEnabled,
       },
     });
     const activeHarness =
@@ -909,10 +903,8 @@ export class AgentService {
       selectedHarnessId: settings.selectedHarnessId,
       activeHarnessId: activeHarness?.id ?? null,
       providerPassthrough: {
-        workspaceEnabled: settings.providerPassthroughEnabled,
         active: Boolean(
-          settings.providerPassthroughEnabled &&
-            selectedRouting?.active &&
+          selectedRouting?.active &&
             selectedRouting.configured &&
             selectedRouting.compatible,
         ),
@@ -939,15 +931,14 @@ export class AgentService {
           selected: harness.id === settings.selectedHarnessId,
           installHint: getCodingHarnessInstallHint(harness.kind),
           installCommand: getCodingHarnessInstallCommand(harness.kind),
-          providerPassthrough:
-            routing && settings.providerPassthroughEnabled
-              ? {
-                  compatible: routing.compatible,
-                  providerLabel: routing.providerLabel,
-                  model: routing.model,
-                  message: routing.error,
-                }
-              : null,
+          providerPassthrough: routing
+            ? {
+                compatible: routing.compatible,
+                providerLabel: routing.providerLabel,
+                model: routing.model,
+                message: routing.error,
+              }
+            : null,
         };
       }),
     };
@@ -958,19 +949,15 @@ export class AgentService {
   ): Promise<CodingHarnessSettingsResponse> {
     await saveCodingAgentWorkspaceSettings(this.db, {
       selectedHarnessId: input.selectedHarnessId,
-      providerPassthroughEnabled: input.providerPassthroughEnabled,
       harnesses: input.harnesses,
     });
     return this.getCodingHarnessSettings();
   }
 
   async verifyCodingHarness(harnessId?: string): Promise<VerifyCodingHarnessResponse> {
-    const settings = await loadCodingAgentWorkspaceSettings(this.db);
-
     return verifyCodingAgentHarness(this.db, harnessId, {
       userConfig: this.userConfig,
       profileModel: null,
-      workspacePassthroughEnabled: settings.providerPassthroughEnabled,
     });
   }
 
@@ -2821,11 +2808,9 @@ export class AgentService {
     profileId: string,
   ): Promise<string> {
     try {
-      const workspace = await loadCodingAgentWorkspaceSettings(this.db);
       const harness = await resolveCodingAgentHarness(this.db, null, {
         userConfig: this.userConfig,
         profileModel: (await this.db.getProfile(profileId))?.model ?? null,
-        workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
       });
       const workspaceRoot = getProfileSoulDir(orgId, profileId);
       const profile = await this.db.getProfile(profileId);
@@ -2833,7 +2818,6 @@ export class AgentService {
         userConfig: this.userConfig,
         profileModel: profile?.model,
         harnessKind: harness.kind,
-        workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
       });
       const template = await buildCodingAgentCommandTemplate(
         harness,

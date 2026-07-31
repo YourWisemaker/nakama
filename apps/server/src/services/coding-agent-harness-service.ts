@@ -70,7 +70,6 @@ export function buildCodingHarnessInstallPlan(
 export interface CodingAgentWorkspaceSettings {
   harnesses: StoredCodingAgentHarnessRecord[];
   selectedHarnessId: string | null;
-  providerPassthroughEnabled: boolean;
 }
 
 const PROBE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -78,7 +77,6 @@ const PROBE_CACHE_TTL_MS = 5 * 60 * 1000;
 export interface CodingAgentHarnessProbeContext {
   userConfig?: UserConfig | null;
   profileModel?: string | null;
-  workspacePassthroughEnabled?: boolean;
 }
 
 export interface ListCodingAgentHarnessStatusesOptions {
@@ -130,7 +128,6 @@ export async function loadCodingAgentWorkspaceSettings(
   return {
     harnesses: mergeHarnesses(stored?.codingAgentHarnesses ?? []),
     selectedHarnessId: stored?.selectedCodingAgentHarness ?? null,
-    providerPassthroughEnabled: stored?.codingAgentProviderPassthrough ?? true,
   };
 }
 
@@ -253,7 +250,6 @@ export async function saveCodingAgentWorkspaceSettings(
   db: DatabaseAdapter,
   input: {
     selectedHarnessId?: string | null;
-    providerPassthroughEnabled?: boolean;
     harnesses?: Array<{
       id: string;
       command?: string;
@@ -286,23 +282,18 @@ export async function saveCodingAgentWorkspaceSettings(
         ? input.selectedHarnessId
         : null;
 
-  const providerPassthroughEnabled =
-    input.providerPassthroughEnabled ?? settings.providerPassthroughEnabled;
-
   await db.upsertWorkspaceSettings({
     id: stored?.id ?? WORKSPACE_SETTINGS_ID,
     visionModel: stored?.visionModel ?? null,
     transcriptionModel: stored?.transcriptionModel ?? null,
     codingAgentHarnesses: nextHarnesses,
     selectedCodingAgentHarness: selectedHarnessId,
-    codingAgentProviderPassthrough: providerPassthroughEnabled,
     updatedAt: new Date().toISOString(),
   });
 
   return {
     harnesses: nextHarnesses,
     selectedHarnessId,
-    providerPassthroughEnabled,
   };
 }
 
@@ -553,7 +544,6 @@ async function saveHarnessProbeCache(
     transcriptionModel: stored?.transcriptionModel ?? null,
     codingAgentHarnesses: nextHarnesses,
     selectedCodingAgentHarness: settings.selectedHarnessId,
-    codingAgentProviderPassthrough: stored?.codingAgentProviderPassthrough ?? true,
     updatedAt: new Date().toISOString(),
   });
 }
@@ -571,7 +561,6 @@ async function clearHarnessProbeCache(db: DatabaseAdapter, harnessId: string): P
     transcriptionModel: stored?.transcriptionModel ?? null,
     codingAgentHarnesses: nextHarnesses,
     selectedCodingAgentHarness: settings.selectedHarnessId,
-    codingAgentProviderPassthrough: stored?.codingAgentProviderPassthrough ?? true,
     updatedAt: new Date().toISOString(),
   });
 }
@@ -718,14 +707,11 @@ async function probeHarnessReadiness(
   nextStep: "login" | "retry" | null;
   statusMessage: string | null;
 }> {
-  const workspace = probeContext?.workspacePassthroughEnabled ?? true;
   const { spawn, routing } = await resolveCodingAgentSpawnBundle({
     userConfig: probeContext?.userConfig,
     profileModel: probeContext?.profileModel ?? null,
     harnessKind: harness.kind,
-    workspacePassthroughEnabled: workspace,
   });
-  const providerPassthroughActive = routing.active;
   const tempDir = await mkdtemp(path.join(tmpdir(), "nakama-coding-agent-probe-"));
 
   try {
@@ -746,29 +732,18 @@ async function probeHarnessReadiness(
         authenticated: true,
         ready: true,
         nextStep: null,
-        statusMessage: providerPassthroughActive
-          ? `${harness.name} is installed and ready via Nakama provider passthrough.`
-          : `${harness.name} is installed and ready.`,
+        statusMessage: `${harness.name} is installed and ready via Nakama provider passthrough.`,
       };
     }
 
     if (looksLikeAuthenticationFailure(combinedOutput)) {
-      if (providerPassthroughActive) {
-        return {
-          authenticated: false,
-          ready: false,
-          nextStep: "retry",
-          statusMessage:
-            routing.error ??
-            `${harness.name} could not authenticate with the configured Nakama provider. Check Settings → Provider.`,
-        };
-      }
-
       return {
         authenticated: false,
         ready: false,
-        nextStep: "login",
-        statusMessage: `${harness.name} is installed but still needs login.`,
+        nextStep: "retry",
+        statusMessage:
+          routing.error ??
+          `${harness.name} could not authenticate with the configured Nakama provider. Check Settings → Provider.`,
       };
     }
 
@@ -894,15 +869,10 @@ function looksLikeAuthenticationFailure(output: string): boolean {
 }
 
 function authenticationHelpForHarness(kind: StoredCodingAgentHarnessKind): string {
-  if (kind === "codex") {
-    return "Codex is installed, but it still needs authentication. Run `codex login` on this machine, then check again.";
-  }
+  const label =
+    kind === "codex" ? "Codex" : kind === "claude_code" ? "Claude Code" : "OpenCode";
 
-  if (kind === "claude_code") {
-    return "Claude Code is installed, but it still needs authentication. Finish Claude Code login on this machine, then check again.";
-  }
-
-  return "OpenCode is installed, but it still needs authentication. Finish OpenCode login on this machine, then check again.";
+  return `${label} is installed but could not authenticate via Nakama provider passthrough. Configure a compatible provider in Settings → Provider, then check again.`;
 }
 
 async function runInstallCommand(

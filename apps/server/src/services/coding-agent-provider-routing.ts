@@ -22,7 +22,6 @@ const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 export type CodingAgentApiShape = "anthropic_messages" | "openai_chat";
 
 export interface CodingAgentProviderRouting {
-  workspaceEnabled: boolean;
   configured: boolean;
   compatible: boolean;
   active: boolean;
@@ -156,12 +155,9 @@ export function resolveCodingAgentProviderRouting(options: {
   userConfig: UserConfig | null | undefined;
   profileModel: string | null | undefined;
   harnessKind: StoredCodingAgentHarnessKind;
-  workspacePassthroughEnabled?: boolean;
   env?: Record<string, string | undefined>;
 }): CodingAgentProviderRouting {
-  const workspaceEnabled = options.workspacePassthroughEnabled !== false;
   const empty: CodingAgentProviderRouting = {
-    workspaceEnabled,
     configured: false,
     compatible: false,
     active: false,
@@ -173,10 +169,6 @@ export function resolveCodingAgentProviderRouting(options: {
     apiShape: null,
     error: null,
   };
-
-  if (!workspaceEnabled) {
-    return empty;
-  }
 
   const resolved = resolveProfileProviderSelection({
     providers: options.userConfig?.providers ?? [],
@@ -255,7 +247,6 @@ export function resolveCodingAgentProviderRouting(options: {
   const apiShape = resolveApiShapeForHarness(instance.type, options.harnessKind);
 
   return {
-    workspaceEnabled,
     configured: true,
     compatible: true,
     active: true,

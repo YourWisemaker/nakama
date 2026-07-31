@@ -45,7 +45,6 @@ describe("coding-agent harness resolution", () => {
         },
       ],
       selectedCodingAgentHarness: "coding-harness-codex",
-      codingAgentProviderPassthrough: true,
       updatedAt: new Date().toISOString(),
     });
 

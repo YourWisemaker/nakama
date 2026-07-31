@@ -161,7 +161,6 @@ export interface StoredWorkspaceSettingsRecord {
   transcriptionModel: string | null;
   codingAgentHarnesses: StoredCodingAgentHarnessRecord[];
   selectedCodingAgentHarness: string | null;
-  codingAgentProviderPassthrough: boolean;
   updatedAt: string;
   orgId?: string | null;
 }

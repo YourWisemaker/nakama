@@ -12,7 +12,6 @@ import {
   getCodingHarnessInstallHint,
   resolveCodingAgentHarness,
   saveCodingAgentWorkspaceSettings,
-  loadCodingAgentWorkspaceSettings,
 } from "./coding-agent-harness-service";
 import { resolveProfileModelId } from "./coding-agent-bash-env";
 import { resolveCodingAgentSpawnBundle } from "./coding-agent-spawn-context";
@@ -190,7 +189,6 @@ export async function prepareCodingAgentLaunch(
 
   assertCanLaunchCodingAgentProfile(profile, access);
 
-  const workspace = await loadCodingAgentWorkspaceSettings(db);
   const preferredKind = resolveCodingAgentKindAlias(input.backend);
   const profileModel = normalizeCodingAgentModel(
     input.model?.trim() || (await resolveProfileModelId(db, resolvedProfileId)),
@@ -198,13 +196,11 @@ export async function prepareCodingAgentLaunch(
   const harness = await resolveCodingAgentHarness(db, preferredKind, {
     userConfig: input.userConfig,
     profileModel,
-    workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
   });
   const { routing, spawn } = await resolveCodingAgentSpawnBundle({
     userConfig: input.userConfig,
     profileModel,
     harnessKind: harness.kind,
-    workspacePassthroughEnabled: workspace.providerPassthroughEnabled,
   });
   const spawnEnv = redactSpawnEnvForApi(spawn.env, {
     includeSecrets: access.localCli === true,

@@ -6,7 +6,6 @@ import {
 } from "./coding-agent-command";
 
 const inactiveRouting: CodingAgentProviderRouting = {
-  workspaceEnabled: true,
   configured: false,
   compatible: false,
   active: false,
@@ -20,7 +19,6 @@ const inactiveRouting: CodingAgentProviderRouting = {
 };
 
 const activeRouting: CodingAgentProviderRouting = {
-  workspaceEnabled: true,
   configured: true,
   compatible: true,
   active: true,
