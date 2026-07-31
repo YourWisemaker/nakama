@@ -336,6 +336,22 @@ export interface StoredOrgInviteRecord {
   createdAt: string;
 }
 
+export type OrgMemoryProposalStatus = "pending" | "approved" | "rejected";
+
+export interface StoredOrgMemoryProposal {
+  id: string;
+  orgId: string;
+  profileId: string | null;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  bullet: string;
+  status: OrgMemoryProposalStatus;
+  pinned: boolean;
+  reviewerUserId: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export interface StoredArtifactShareRecord {
   id: string;
   orgId: string;
@@ -409,6 +425,28 @@ export interface DatabaseAdapter {
   getOrgInviteByTokenHash(tokenHash: string): Promise<StoredOrgInviteRecord | null>;
   getPendingOrgInvite(orgId: string, email: string): Promise<StoredOrgInviteRecord | null>;
   markOrgInviteAccepted(id: string, acceptedAt: string): Promise<void>;
+
+  createOrgMemoryProposal(record: StoredOrgMemoryProposal): Promise<void>;
+  listOrgMemoryProposals(
+    orgId: string,
+    status?: OrgMemoryProposalStatus,
+  ): Promise<StoredOrgMemoryProposal[]>;
+  getOrgMemoryProposal(orgId: string, id: string): Promise<StoredOrgMemoryProposal | null>;
+  getPendingOrgMemoryProposalByBullet(
+    orgId: string,
+    bullet: string,
+  ): Promise<StoredOrgMemoryProposal | null>;
+  updateOrgMemoryProposalStatus(
+    orgId: string,
+    id: string,
+    update: {
+      status: OrgMemoryProposalStatus;
+      reviewerUserId: string;
+      reviewedAt: string;
+      pinned?: boolean;
+    },
+  ): Promise<boolean>;
+  countOrgMemoryProposals(orgId: string, status: OrgMemoryProposalStatus): Promise<number>;
 
   createArtifactShare(record: StoredArtifactShareRecord): Promise<void>;
   updateArtifactShareSnapshot(

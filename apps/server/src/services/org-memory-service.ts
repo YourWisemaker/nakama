@@ -3,9 +3,11 @@ import {
   NakamaApiError,
   ORG_MEMORY_PREAMBLE,
   composeOrgMemorySummary,
+  detectOrgMemoryInjectionWarnings,
   getOrgMemoryArchiveDir,
   getOrgMemoryDir,
   getOrgMemoryFilePath,
+  normalizeOrgMemoryDedupKey,
   parseOrgMemoryContent,
   rebuildOrgMemoryContent,
 } from "@nakama/core";
@@ -16,16 +18,22 @@ import {
   readTextIfExists,
   writePrivateTextFile,
 } from "@nakama/core/fs";
+import type { DatabaseAdapter, StoredOrgMemoryProposal } from "@nakama/db";
 
 const SUMMARY_BYTE_CAP = 2048;
+const MAX_PROPOSAL_BULLET_LENGTH = 500;
 
 export interface OrgMemoryContent {
   content: string;
 }
 
+export type OrgMemorySearchTier = "pinned" | "recent-log" | "archive";
+
 export interface OrgMemorySearchMatch {
   source: "live" | string;
   bullet: string;
+  tier: OrgMemorySearchTier;
+  date?: string;
 }
 
 export interface OrgMemorySearchResult {
@@ -33,7 +41,29 @@ export interface OrgMemorySearchResult {
   matches: OrgMemorySearchMatch[];
 }
 
+export type ProposeOrgMemoryOutcome =
+  | "created"
+  | "already_pending"
+  | "already_pinned"
+  | "already_in_recent_log";
+
+export interface ProposeOrgMemoryResult {
+  outcome: ProposeOrgMemoryOutcome;
+  proposalId?: string;
+  message: string;
+  warnings?: string[];
+}
+
+export interface ProposeOrgMemoryInput {
+  bullet: string;
+  profileId?: string | null;
+  sessionId?: string | null;
+  proposedByUserId?: string | null;
+}
+
 export class OrgMemoryService {
+  constructor(private readonly database: DatabaseAdapter | null = null) {}
+
   /**
    * Read the live org MEMORY.md. Returns the canonical preamble when the file
    * does not yet exist (so callers always get a usable string).
@@ -79,15 +109,46 @@ export class OrgMemoryService {
     await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
   }
 
-  /** Pin an existing bullet (move to pinned if dated, or add). 404 if not found and not adding. */
+  async addRecentLogFact(orgId: string, bullet: string, dateUtc: string): Promise<void> {
+    const text = this.normalizeBullet(bullet);
+    const content = await this.getMemory(orgId);
+    const parsed = parseOrgMemoryContent(content);
+
+    if (this.bulletExistsInMemory(parsed, text)) {
+      return;
+    }
+
+    let section = parsed.sections.find((entry) => entry.date === dateUtc);
+    if (!section) {
+      section = { date: dateUtc, bullets: [] };
+      parsed.sections.push(section);
+      parsed.sections.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    if (!section.bullets.some((existing) => existing.trim() === text)) {
+      section.bullets.push(text);
+    }
+
+    await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
+  }
+
+  /** Pin an existing bullet (move to pinned if dated, or add). */
   async pinFact(orgId: string, bullet: string): Promise<void> {
     const text = this.normalizeBullet(bullet);
     const content = await this.getMemory(orgId);
     const parsed = parseOrgMemoryContent(content);
 
     if (parsed.pinned.some((existing) => existing.trim() === text)) {
-      return; // already pinned
+      return;
     }
+
+    for (const section of parsed.sections) {
+      const index = section.bullets.findIndex((existing) => existing.trim() === text);
+      if (index !== -1) {
+        section.bullets.splice(index, 1);
+      }
+    }
+
     parsed.pinned.push(text);
     await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
   }
@@ -106,12 +167,6 @@ export class OrgMemoryService {
     await this.writeMemory(orgId, rebuildOrgMemoryContent(parsed));
   }
 
-  /**
-   * Archive pinned bullets out of the live file into memory-archive/YYYY-MM.md.
-   * Uses the org (pinned-aware) parser rather than the profile dated-section
-   * parser, since org memory v1 is pinned-only. Throws if an entry is not
-   * pinned or no entries match.
-   */
   async archiveEntries(
     orgId: string,
     entries: string[],
@@ -153,9 +208,7 @@ export class OrgMemoryService {
     const yearMonth = `${archivedAt.getFullYear()}-${String(archivedAt.getMonth() + 1).padStart(2, "0")}`;
     const archiveDir = getOrgMemoryArchiveDir(orgId);
     const archivePath = join(archiveDir, `${yearMonth}.md`);
-    const appendLines = [
-      `<!-- archived: ${archivedAt.toISOString()} -->`,
-    ];
+    const appendLines = [`<!-- archived: ${archivedAt.toISOString()} -->`];
     if (options.reason?.trim()) {
       appendLines.push(`<!-- reason: ${options.reason.trim().replace(/-->/g, "")} -->`);
     }
@@ -170,7 +223,11 @@ export class OrgMemoryService {
       ? `${(await readText(archivePath)).replace(/\n+$/, "")}\n\n${append}`
       : `# Archived Org Memory\n\n---\n\n${append}`;
 
-    const activeContent = rebuildOrgMemoryContent({ preamble: parsed.preamble, pinned: kept });
+    const activeContent = rebuildOrgMemoryContent({
+      preamble: parsed.preamble,
+      pinned: kept,
+      sections: parsed.sections,
+    });
     await writePrivateTextFile(archivePath, archiveContent, { ensureDir: archiveDir });
     await writePrivateTextFile(getOrgMemoryFilePath(orgId), activeContent, {
       ensureDir: getOrgMemoryDir(orgId),
@@ -180,6 +237,158 @@ export class OrgMemoryService {
       archived: archived.length,
       activeBytes: Buffer.byteLength(activeContent, "utf8"),
       archivePath,
+    };
+  }
+
+  async listProposals(
+    orgId: string,
+    status?: StoredOrgMemoryProposal["status"],
+  ): Promise<StoredOrgMemoryProposal[]> {
+    return this.requireDatabase().listOrgMemoryProposals(orgId, status);
+  }
+
+  async countPendingProposals(orgId: string): Promise<number> {
+    return this.requireDatabase().countOrgMemoryProposals(orgId, "pending");
+  }
+
+  async getProposal(orgId: string, proposalId: string): Promise<StoredOrgMemoryProposal> {
+    const proposal = await this.requireDatabase().getOrgMemoryProposal(orgId, proposalId);
+    if (!proposal) {
+      throw new NakamaApiError("Org memory proposal not found.", 404);
+    }
+    return proposal;
+  }
+
+  async propose(orgId: string, input: ProposeOrgMemoryInput): Promise<ProposeOrgMemoryResult> {
+    const text = this.normalizeProposalBullet(input.bullet);
+    const warnings = detectOrgMemoryInjectionWarnings(text);
+    const content = await this.getMemory(orgId);
+    const parsed = parseOrgMemoryContent(content);
+    const dedupKey = normalizeOrgMemoryDedupKey(text);
+    const db = this.requireDatabase();
+
+    if (parsed.pinned.some((bullet) => normalizeOrgMemoryDedupKey(bullet) === dedupKey)) {
+      return {
+        outcome: "already_pinned",
+        message: "This is already in org memory (pinned).",
+      };
+    }
+
+    if (
+      parsed.sections.some((section) =>
+        section.bullets.some((bullet) => normalizeOrgMemoryDedupKey(bullet) === dedupKey),
+      )
+    ) {
+      return {
+        outcome: "already_in_recent_log",
+        message: "This is already in org memory (recent log).",
+      };
+    }
+
+    const pending = await db.getPendingOrgMemoryProposalByBullet(orgId, text);
+    if (pending) {
+      return {
+        outcome: "already_pending",
+        proposalId: pending.id,
+        message: "This fact is already awaiting admin approval.",
+        warnings: warnings.length > 0 ? warnings : undefined,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const proposal: StoredOrgMemoryProposal = {
+      id: `prop_${crypto.randomUUID().replace(/-/g, "")}`,
+      orgId,
+      profileId: input.profileId ?? null,
+      sessionId: input.sessionId ?? null,
+      proposedByUserId: input.proposedByUserId ?? null,
+      bullet: text,
+      status: "pending",
+      pinned: false,
+      reviewerUserId: null,
+      reviewedAt: null,
+      createdAt: now,
+    };
+    await db.createOrgMemoryProposal(proposal);
+
+    return {
+      outcome: "created",
+      proposalId: proposal.id,
+      message: `Recorded for admin review (proposal ${proposal.id}).`,
+      warnings: warnings.length > 0 ? warnings : undefined,
+    };
+  }
+
+  async approveProposal(
+    orgId: string,
+    proposalId: string,
+    reviewerUserId: string,
+    options: { pin?: boolean } = {},
+  ): Promise<StoredOrgMemoryProposal> {
+    const db = this.requireDatabase();
+    const proposal = await this.getProposal(orgId, proposalId);
+
+    if (proposal.status === "approved") {
+      return proposal;
+    }
+
+    if (proposal.status !== "pending") {
+      throw new NakamaApiError("Only pending proposals can be approved.", 400);
+    }
+
+    const pin = options.pin ?? false;
+    if (pin) {
+      await this.addFact(orgId, proposal.bullet, { pin: true });
+    } else {
+      await this.addRecentLogFact(orgId, proposal.bullet, utcDateString());
+    }
+
+    const reviewedAt = new Date().toISOString();
+    await db.updateOrgMemoryProposalStatus(orgId, proposalId, {
+      status: "approved",
+      reviewerUserId,
+      reviewedAt,
+      pinned: pin,
+    });
+
+    return {
+      ...proposal,
+      status: "approved",
+      reviewerUserId,
+      reviewedAt,
+      pinned: pin,
+    };
+  }
+
+  async rejectProposal(
+    orgId: string,
+    proposalId: string,
+    reviewerUserId: string,
+  ): Promise<StoredOrgMemoryProposal> {
+    const db = this.requireDatabase();
+    const proposal = await this.getProposal(orgId, proposalId);
+
+    if (proposal.status === "rejected") {
+      return proposal;
+    }
+
+    if (proposal.status !== "pending") {
+      throw new NakamaApiError("Only pending proposals can be rejected.", 400);
+    }
+
+    const reviewedAt = new Date().toISOString();
+    await db.updateOrgMemoryProposalStatus(orgId, proposalId, {
+      status: "rejected",
+      reviewerUserId,
+      reviewedAt,
+      pinned: false,
+    });
+
+    return {
+      ...proposal,
+      status: "rejected",
+      reviewerUserId,
+      reviewedAt,
     };
   }
 
@@ -194,9 +403,22 @@ export class OrgMemoryService {
 
     const live = await readTextIfExists(getOrgMemoryFilePath(orgId));
     if (live) {
-      for (const bullet of this.collectBullets(live)) {
+      const parsed = parseOrgMemoryContent(live);
+      for (const bullet of parsed.pinned) {
         if (bullet.toLowerCase().includes(normalizedQuery)) {
-          matches.push({ source: "live", bullet });
+          matches.push({ source: "live", bullet, tier: "pinned" });
+        }
+      }
+      for (const section of parsed.sections) {
+        for (const bullet of section.bullets) {
+          if (bullet.toLowerCase().includes(normalizedQuery)) {
+            matches.push({
+              source: "live",
+              bullet,
+              tier: "recent-log",
+              date: section.date,
+            });
+          }
         }
       }
     }
@@ -210,9 +432,9 @@ export class OrgMemoryService {
         .sort();
       for (const filename of files) {
         const archiveContent = await readText(join(archiveDir, filename));
-        for (const bullet of this.collectBullets(archiveContent)) {
+        for (const bullet of this.collectArchiveBullets(archiveContent)) {
           if (bullet.toLowerCase().includes(normalizedQuery)) {
-            matches.push({ source: filename, bullet });
+            matches.push({ source: filename, bullet, tier: "archive" });
           }
         }
       }
@@ -221,7 +443,20 @@ export class OrgMemoryService {
     return { query, matches };
   }
 
-  private collectBullets(content: string): string[] {
+  private bulletExistsInMemory(
+    parsed: ReturnType<typeof parseOrgMemoryContent>,
+    text: string,
+  ): boolean {
+    const dedupKey = normalizeOrgMemoryDedupKey(text);
+    if (parsed.pinned.some((bullet) => normalizeOrgMemoryDedupKey(bullet) === dedupKey)) {
+      return true;
+    }
+    return parsed.sections.some((section) =>
+      section.bullets.some((bullet) => normalizeOrgMemoryDedupKey(bullet) === dedupKey),
+    );
+  }
+
+  private collectArchiveBullets(content: string): string[] {
     const bullets: string[] = [];
     for (const line of content.split("\n")) {
       if (line.startsWith("- ")) {
@@ -239,9 +474,37 @@ export class OrgMemoryService {
     return text;
   }
 
+  private normalizeProposalBullet(bullet: string): string {
+    const text = this.normalizeBullet(bullet);
+    if (text.length > MAX_PROPOSAL_BULLET_LENGTH) {
+      throw new NakamaApiError(
+        `Memory bullet exceeds the ${MAX_PROPOSAL_BULLET_LENGTH} character limit.`,
+        400,
+      );
+    }
+    if (text.includes("\n\n")) {
+      throw new NakamaApiError("Memory bullet must not contain multiple blank lines.", 400);
+    }
+    if (/^##\s/m.test(text)) {
+      throw new NakamaApiError("Memory bullet must not contain markdown headings.", 400);
+    }
+    return text;
+  }
+
+  private requireDatabase(): DatabaseAdapter {
+    if (!this.database) {
+      throw new NakamaApiError("Org memory proposals are not configured.", 500);
+    }
+    return this.database;
+  }
+
   private async writeMemory(orgId: string, content: string): Promise<void> {
     await writePrivateTextFile(getOrgMemoryFilePath(orgId), content, {
       ensureDir: getOrgMemoryDir(orgId),
     });
   }
+}
+
+function utcDateString(date = new Date()): string {
+  return date.toISOString().slice(0, 10);
 }

@@ -5,7 +5,7 @@ description: "Shared, admin-curated facts for an organization — injected into 
 
 **Org memory** is shared context for the whole organization.
 
-Every non-viewer agent in the org sees a pinned summary in its system prompt. Org admins curate the facts from **Settings → Org Memory**. Members can read and search; viewers are blocked entirely.
+Every non-viewer agent in the org sees a summary of pinned facts plus recent log entries in its system prompt. Org admins curate facts from **Settings → Org Memory** and review agent proposals on the **Proposals** tab. Members can read and search; viewers are blocked entirely.
 
 Org memory is separate from [profile memory](/profiles#knowledge-base-and-memory). Profile `MEMORY.md` is per-bot continuity that agents update themselves. Org memory is team-wide facts that admins maintain.
 
@@ -22,9 +22,9 @@ Archived bullets move into monthly `.md` files under `memory-archive/` without d
 
 Platform-admin [data exports](/backup-restore) include org memory as part of the org workspace in the ZIP.
 
-## Format (v1)
+## Format
 
-v1 is **pinned-only**. Use this structure:
+Use this structure:
 
 ```md
 ## Org Memory
@@ -32,14 +32,17 @@ v1 is **pinned-only**. Use this structure:
 ## Pinned
 
 - Acme Corp is our primary customer in APAC.
+
+## 2026-07-31
+
 - Support hours are 9am–6pm SGT, Mon–Fri.
 ```
 
 | Rule | Detail |
 |------|--------|
-| Pinned bullets | Lines under `## Pinned` starting with `- ` |
-| Dated sections | `## YYYY-MM-DD` sections are parsed but **not** injected into prompts (reserved for a future recent-log tier) |
-| Empty state | When no pinned bullets exist, nothing is injected |
+| Pinned bullets | Always-in-prompt facts under `## Pinned` |
+| Recent log | `## YYYY-MM-DD` dated sections below pinned; up to **20** most recent bullets are injected after pinned facts |
+| Empty state | When no pinned or recent bullets exist, nothing is injected |
 
 ## Prompt injection
 
@@ -60,18 +63,23 @@ Two org memory tools are **automatically available on every profile**. They are 
 
 | Tool | Purpose |
 |------|---------|
-| `org_memory_search` | Search live pinned bullets and the full archive by query |
+| `org_memory_search` | Search pinned, recent-log, and archived bullets |
 | `org_memory_list` | Return the current live org memory content |
+| `propose_org_memory` | Propose an org-wide fact for admin approval (member+) |
 
 Viewers cannot call these tools. Automations and sub-agents run with member-level org context.
 
-In v1, agents **cannot propose** org facts. Admins add and edit facts through the UI or API. For per-bot continuity the agent manages itself, use the profile `update-profile-memory` skill — see [Profiles](/profiles#knowledge-base-and-memory).
+Agents propose durable org facts via `propose_org_memory`; proposals land in a staging queue until an admin approves or rejects them in **Settings → Org Memory → Proposals**. Admins can still add facts directly via the UI or `POST /memory/facts` (bypasses the queue). Do not propose secrets, credentials, or PII.
+
+Proposal rows live in the SQLite database and are **not** included in workspace ZIP exports yet.
 
 ## Admin UI
 
 Org admins manage org memory from **Settings → Org Memory** (`/settings`).
 
-The card shows a preview of the live markdown and an **Edit** dialog for raw content. Keep the `## Org Memory` / `## Pinned` structure when editing.
+The card has **Live memory** and **Proposals** tabs. Live memory shows a preview and **Edit** dialog for raw markdown. Proposals lists pending agent suggestions with approve/reject actions and an optional **Pin on approve** toggle. A badge shows the pending count.
+
+For per-bot continuity the agent manages itself, use the profile `update-profile-memory` skill — see [Profiles](/profiles#knowledge-base-and-memory).
 
 ## Roles and access
 
@@ -96,6 +104,9 @@ All routes require authentication and an active org context (`X-Org-Id` or `acti
 | `POST` | `/v1/orgs/{orgId}/memory/pin` | admin | Pin a bullet |
 | `POST` | `/v1/orgs/{orgId}/memory/unpin` | admin | Unpin a bullet |
 | `POST` | `/v1/orgs/{orgId}/memory/archive` | admin | Move bullets to monthly archive |
+| `GET` | `/v1/orgs/{orgId}/memory/proposals` | admin | List proposals (`?status=pending`) |
+| `POST` | `/v1/orgs/{orgId}/memory/proposals/{id}/approve` | admin | Approve (optional `{ pin: true }`) |
+| `POST` | `/v1/orgs/{orgId}/memory/proposals/{id}/reject` | admin | Reject |
 
 Use **Archive** when the pinned list grows large — it keeps the live file within limits while preserving history under `memory-archive/`.
 
@@ -105,8 +116,8 @@ Use **Archive** when the pinned list grows large — it keeps the live file with
 |---|---|---|
 | **Scope** | Entire organization | Single profile |
 | **Path** | `~/.nakama/orgs/{orgId}/MEMORY.md` | `~/.nakama/orgs/{orgId}/profiles/{profileId}/MEMORY.md` |
-| **Structure (v1)** | `## Pinned` bullets | Dated `## YYYY-MM-DD` sections |
-| **Who writes** | Org admins (UI/API) | Agent via `update-profile-memory` skill |
+| **Structure** | `## Pinned` + dated `## YYYY-MM-DD` sections | Dated `## YYYY-MM-DD` sections |
+| **Who writes** | Org admins (UI/API); agents propose via `propose_org_memory` | Agent via `update-profile-memory` skill |
 | **Prompt injection** | Appended as `## Org Memory` | In soul stack as continuity |
 | **Active file limit** | 8192 bytes (live); 2048 bytes injected | 4096 bytes soft limit |
 | **Viewer access** | Blocked | Follows normal chat access |

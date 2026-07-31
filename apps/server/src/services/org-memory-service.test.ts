@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "bun:test";
 import { ORG_MEMORY_PREAMBLE, parseOrgMemoryContent } from "@nakama/core";
+import { createInMemoryDatabaseAdapter } from "@nakama/db";
 import { OrgMemoryService } from "./org-memory-service";
 
 const originalConfigDir = process.env.NAKAMA_CONFIG_DIR;
@@ -22,10 +23,10 @@ describe("OrgMemoryService", () => {
     }
   });
 
-  async function setup(): Promise<OrgMemoryService> {
+  async function setup(withDb = false): Promise<OrgMemoryService> {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-org-memory-"));
     process.env.NAKAMA_CONFIG_DIR = tempDir;
-    return new OrgMemoryService();
+    return new OrgMemoryService(withDb ? createInMemoryDatabaseAdapter() : null);
   }
 
   test("getMemory returns the canonical preamble when the file is missing", async () => {
@@ -105,5 +106,57 @@ describe("OrgMemoryService", () => {
     expect(orgB).toBe(`${ORG_MEMORY_PREAMBLE}\n`);
     const orgA = parseOrgMemoryContent(await service.getMemory("org_a"));
     expect(orgA.pinned).toEqual(["org a fact"]);
+  });
+
+  test("propose creates pending row without writing MEMORY.md", async () => {
+    const service = await setup(true);
+    const result = await service.propose("org_a", { bullet: "team standup is 10am UTC" });
+    expect(result.outcome).toBe("created");
+    expect(result.proposalId).toBeTruthy();
+    const memory = parseOrgMemoryContent(await service.getMemory("org_a"));
+    expect(memory.pinned).toEqual([]);
+    expect(memory.sections).toEqual([]);
+    const pending = await service.listProposals("org_a", "pending");
+    expect(pending).toHaveLength(1);
+  });
+
+  test("propose returns already_pending for duplicate bullet", async () => {
+    const service = await setup(true);
+    const first = await service.propose("org_a", { bullet: "shared deploy window" });
+    const second = await service.propose("org_a", { bullet: "shared deploy window" });
+    expect(first.outcome).toBe("created");
+    expect(second.outcome).toBe("already_pending");
+    expect(await service.countPendingProposals("org_a")).toBe(1);
+  });
+
+  test("approve writes to recent-log section by default", async () => {
+    const service = await setup(true);
+    const proposed = await service.propose("org_a", { bullet: "review PRs before lunch" });
+    await service.approveProposal("org_a", proposed.proposalId!, "admin_user");
+    const parsed = parseOrgMemoryContent(await service.getMemory("org_a"));
+    expect(parsed.pinned).toEqual([]);
+    expect(parsed.sections.some((section) => section.bullets.includes("review PRs before lunch"))).toBe(
+      true,
+    );
+  });
+
+  test("approve with pin writes to pinned section and is idempotent", async () => {
+    const service = await setup(true);
+    const proposed = await service.propose("org_a", { bullet: "always pin this" });
+    await service.approveProposal("org_a", proposed.proposalId!, "admin_user", { pin: true });
+    await service.approveProposal("org_a", proposed.proposalId!, "admin_user", { pin: true });
+    const parsed = parseOrgMemoryContent(await service.getMemory("org_a"));
+    expect(parsed.pinned.filter((bullet) => bullet === "always pin this")).toEqual(["always pin this"]);
+  });
+
+  test("search tags pinned and recent-log tiers", async () => {
+    const service = await setup();
+    await service.addFact("org_a", "pinned fact", { pin: true });
+    await service.addRecentLogFact("org_a", "dated fact", "2026-07-31");
+    const result = await service.search("org_a", "fact");
+    expect(result.matches.some((match) => match.tier === "pinned")).toBe(true);
+    expect(result.matches.some((match) => match.tier === "recent-log" && match.date === "2026-07-31")).toBe(
+      true,
+    );
   });
 });

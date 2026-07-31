@@ -90,4 +90,6 @@ export const queryKeys = {
   workerLogs: ["workerLogs"] as const,
   orgMembers: (orgId: string) => ["orgMembers", orgId] as const,
   orgMemory: (orgId: string) => ["orgMemory", orgId] as const,
+  orgMemoryProposals: (orgId: string, status?: string) =>
+    ["orgMemoryProposals", orgId, status ?? "all"] as const,
 } as const;

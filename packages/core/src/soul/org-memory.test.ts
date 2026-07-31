@@ -13,6 +13,7 @@ describe("org memory parse/rebuild", () => {
     const parsed = parseOrgMemoryContent(content);
     expect(parsed.preamble).toBe("## Org Memory");
     expect(parsed.pinned).toEqual(["deploys ship on Tuesdays", "prefer Bun over Node"]);
+    expect(parsed.sections).toEqual([]);
   });
 
   test("round-trips parse -> rebuild -> equal", () => {
@@ -21,8 +22,14 @@ describe("org memory parse/rebuild", () => {
     expect(rebuilt).toBe(content);
   });
 
+  test("round-trips pinned and dated sections", () => {
+    const content = `${ORG_MEMORY_PREAMBLE}\n\n- pinned fact\n\n## 2026-07-25\n\n- dated fact\n`;
+    const rebuilt = rebuildOrgMemoryContent(parseOrgMemoryContent(content));
+    expect(rebuilt).toBe(content);
+  });
+
   test("rebuild adds the preamble when missing", () => {
-    const rebuilt = rebuildOrgMemoryContent({ preamble: "", pinned: ["a fact"] });
+    const rebuilt = rebuildOrgMemoryContent({ preamble: "", pinned: ["a fact"], sections: [] });
     expect(rebuilt).toBe(`${ORG_MEMORY_PREAMBLE}\n\n## Pinned\n\n- a fact\n`);
   });
 
@@ -31,12 +38,14 @@ describe("org memory parse/rebuild", () => {
     expect(composeOrgMemorySummary(ORG_MEMORY_PREAMBLE)).toBe("");
   });
 
-  test("ignores v2 dated sections for v1 summary", () => {
+  test("includes dated sections in summary", () => {
     const content = `${ORG_MEMORY_PREAMBLE}\n\n- pinned fact\n\n## 2026-07-25\n\n- dated fact\n`;
     const parsed = parseOrgMemoryContent(content);
     expect(parsed.pinned).toEqual(["pinned fact"]);
-    expect(composeOrgMemorySummary(content)).toContain("- pinned fact");
-    expect(composeOrgMemorySummary(content)).not.toContain("- dated fact");
+    expect(parsed.sections).toEqual([{ date: "2026-07-25", bullets: ["dated fact"] }]);
+    const summary = composeOrgMemorySummary(content);
+    expect(summary).toContain("- pinned fact");
+    expect(summary).toContain("- dated fact");
   });
 });
 
@@ -49,13 +58,21 @@ describe("composeOrgMemorySummary", () => {
     expect(summary).toContain("- fact two");
   });
 
+  test("includes recent log bullets up to recentLogLimit", () => {
+    const dated = Array.from({ length: 25 }, (_, i) => `## 2026-07-${String(i + 1).padStart(2, "0")}\n\n- fact ${i}`);
+    const content = `${ORG_MEMORY_PREAMBLE}\n\n- pinned\n\n${dated.join("\n\n")}\n`;
+    const summary = composeOrgMemorySummary(content, { recentLogLimit: 20, byteCap: 4096 });
+    expect(summary).toContain("- pinned");
+    const recentMatches = summary.match(/^- fact \d+$/gm) ?? [];
+    expect(recentMatches.length).toBeLessThanOrEqual(20);
+  });
+
   test("truncates at byte cap and appends overflow hint", () => {
     const bullets = Array.from({ length: 50 }, (_, i) => `fact number ${i} with some text`);
     const content = `${ORG_MEMORY_PREAMBLE}\n\n${bullets.map((b) => `- ${b}`).join("\n")}\n`;
     const summary = composeOrgMemorySummary(content, { byteCap: 256 });
     expect(Buffer.byteLength(summary, "utf8")).toBeLessThanOrEqual(512);
     expect(summary).toContain("org_memory_search");
-    // Not all bullets fit
     expect(summary).not.toContain("fact number 49");
   });
 

@@ -115,7 +115,7 @@ agent.setTaskRunner(taskRunner);
 const workerManager = new WorkerManagerService(projectRoot);
 
 const orgService = new OrgService(database.adapter, authService);
-const orgMemoryService = new OrgMemoryService();
+const orgMemoryService = new OrgMemoryService(database.adapter);
 
 const systemStatus = new SystemStatusService(
   agent,

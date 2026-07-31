@@ -163,6 +163,9 @@ import type {
   ArchiveOrgMemoryResponse,
   PinOrgMemoryRequest,
   UnpinOrgMemoryRequest,
+  ListOrgMemoryProposalsResponse,
+  ApproveOrgMemoryProposalRequest,
+  OrgMemoryProposalResponse,
   StoredTask,
   TaskRunRecord,
   WorkerLogsResponse,
@@ -1694,6 +1697,45 @@ export class NakamaClient {
       {
         method: "POST",
         body: JSON.stringify(request),
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async listOrgMemoryProposals(
+    orgId: string,
+    status?: "pending" | "approved" | "rejected",
+  ): Promise<ListOrgMemoryProposalsResponse> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    return this.request<ListOrgMemoryProposalsResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/proposals${query}`,
+      { headers: { "X-Org-Id": orgId } },
+    );
+  }
+
+  async approveOrgMemoryProposal(
+    orgId: string,
+    proposalId: string,
+    request: ApproveOrgMemoryProposalRequest = {},
+  ): Promise<OrgMemoryProposalResponse> {
+    return this.request<OrgMemoryProposalResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/proposals/${encodeURIComponent(proposalId)}/approve`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async rejectOrgMemoryProposal(
+    orgId: string,
+    proposalId: string,
+  ): Promise<OrgMemoryProposalResponse> {
+    return this.request<OrgMemoryProposalResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/memory/proposals/${encodeURIComponent(proposalId)}/reject`,
+      {
+        method: "POST",
         headers: { "X-Org-Id": orgId },
       },
     );

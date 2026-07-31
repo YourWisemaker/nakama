@@ -346,7 +346,7 @@ export class AgentService {
 
   private getOrgMemoryService(): OrgMemoryService {
     if (!this.orgMemoryService) {
-      this.orgMemoryService = new OrgMemoryService();
+      this.orgMemoryService = new OrgMemoryService(this.db);
     }
     return this.orgMemoryService;
   }

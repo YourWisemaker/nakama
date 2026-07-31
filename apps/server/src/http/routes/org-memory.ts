@@ -306,4 +306,130 @@ export function registerOrgMemoryRoutes(app: HonoApp, options: ServerOptions): v
     const result = await service.archiveEntries(orgId, body.entries, { reason: body.reason });
     return json<ArchiveOrgMemoryResponse>(result);
   });
+
+  const listOrgMemoryProposalsResponseSchema = z
+    .object({})
+    .passthrough()
+    .openapi("ListOrgMemoryProposalsResponse");
+  const approveOrgMemoryProposalSchema = z
+    .object({ pin: z.boolean().optional() })
+    .openapi("ApproveOrgMemoryProposalRequest");
+  const orgMemoryProposalResponseSchema = z
+    .object({})
+    .passthrough()
+    .openapi("OrgMemoryProposalResponse");
+
+  // GET /v1/orgs/{orgId}/memory/proposals — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "get",
+      path: "/v1/orgs/{orgId}/memory/proposals",
+      tags: ["Organizations"],
+      summary: "List org memory proposals",
+      operationId: "listOrgMemoryProposals",
+      request: {
+        params: orgIdParam,
+        query: z.object({
+          status: z.enum(["pending", "approved", "rejected"]).optional(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Proposals",
+          content: { "application/json": { schema: listOrgMemoryProposalsResponseSchema } },
+        },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.get("/v1/orgs/:orgId/memory/proposals", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const service = requireService();
+    const status = c.req.query("status") as "pending" | "approved" | "rejected" | undefined;
+    const proposals = await service.listProposals(orgId, status);
+    const pendingCount = await service.countPendingProposals(orgId);
+    return json({ proposals, pendingCount });
+  });
+
+  // POST /v1/orgs/{orgId}/memory/proposals/{proposalId}/approve — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "post",
+      path: "/v1/orgs/{orgId}/memory/proposals/{proposalId}/approve",
+      tags: ["Organizations"],
+      summary: "Approve an org memory proposal",
+      operationId: "approveOrgMemoryProposal",
+      request: {
+        params: orgIdParam.extend({
+          proposalId: z.string().openapi({ param: { name: "proposalId", in: "path" } }),
+        }),
+        body: {
+          required: false,
+          content: { "application/json": { schema: approveOrgMemoryProposalSchema } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Approved",
+          content: { "application/json": { schema: orgMemoryProposalResponseSchema } },
+        },
+        400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.post("/v1/orgs/:orgId/memory/proposals/:proposalId/approve", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const proposalId = decodeURIComponent(c.req.param("proposalId"));
+    const service = requireService();
+    const body = await readJson<{ pin?: boolean }>(c.req.raw).catch(() => ({}));
+    const proposal = await service.approveProposal(orgId, proposalId, auth.user.id, {
+      pin: body.pin,
+    });
+    const content = await service.getMemory(orgId);
+    return json({ proposal, content });
+  });
+
+  // POST /v1/orgs/{orgId}/memory/proposals/{proposalId}/reject — admin only
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "post",
+      path: "/v1/orgs/{orgId}/memory/proposals/{proposalId}/reject",
+      tags: ["Organizations"],
+      summary: "Reject an org memory proposal",
+      operationId: "rejectOrgMemoryProposal",
+      request: {
+        params: orgIdParam.extend({
+          proposalId: z.string().openapi({ param: { name: "proposalId", in: "path" } }),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Rejected",
+          content: { "application/json": { schema: orgMemoryProposalResponseSchema } },
+        },
+        400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        404: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      },
+    }),
+  );
+
+  app.post("/v1/orgs/:orgId/memory/proposals/:proposalId/reject", async (c) => {
+    const auth = requireOrgAdminFromContext(c);
+    const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
+    const proposalId = decodeURIComponent(c.req.param("proposalId"));
+    const service = requireService();
+    const proposal = await service.rejectProposal(orgId, proposalId, auth.user.id);
+    return json({ proposal });
+  });
 }

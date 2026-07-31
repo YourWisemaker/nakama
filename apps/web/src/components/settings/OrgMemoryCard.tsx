@@ -1,6 +1,7 @@
 import { PencilIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MessageResponse } from "@/components/ai-elements/message";
+import { OrgMemoryProposalsPanel } from "@/components/settings/OrgMemoryProposalsPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,10 +16,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/use-auth";
 import { useOrgMemory, useUpdateOrgMemory } from "@/hooks/use-org-memory";
+import { useOrgMemoryProposals } from "@/hooks/use-org-memory-proposals";
 import { formatError } from "@/lib/client";
 import { toast } from "@/lib/toast";
 
 const MAX_BODY_BYTES = 256_000;
+
+type OrgMemoryTab = "live" | "proposals";
 
 const orgMemoryPreviewMarkdownClassName =
   "max-w-none text-sm [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h2]:text-xs [&_h2]:font-medium [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:text-muted-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h4]:mt-2 [&_h4]:mb-1 [&_h4]:text-xs [&_h4]:font-medium";
@@ -29,7 +33,10 @@ export function OrgMemoryCard() {
   const isAdmin = activeOrg?.role === "admin";
 
   const { data, isLoading, error: loadError } = useOrgMemory(isAdmin ? orgId : null);
+  const { data: proposalsData } = useOrgMemoryProposals(isAdmin ? orgId : null, "pending");
   const updateMutation = useUpdateOrgMemory(orgId ?? "");
+
+  const [activeTab, setActiveTab] = useState<OrgMemoryTab>("live");
 
   const [draft, setDraft] = useState("");
   const [editOpen, setEditOpen] = useState(false);
@@ -39,6 +46,7 @@ export function OrgMemoryCard() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   const liveContent = data?.content ?? "";
+  const pendingCount = proposalsData?.pendingCount ?? 0;
   const draftBytes = new TextEncoder().encode(draft).byteLength;
 
   useEffect(() => {
@@ -98,19 +106,50 @@ export function OrgMemoryCard() {
         <CardContent className="divide-y divide-border p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-foreground">Org Memory</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">Org Memory</p>
+                {pendingCount > 0 ? (
+                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[0.65rem] font-semibold text-primary-foreground">
+                    {pendingCount > 99 ? "99+" : pendingCount}
+                  </span>
+                ) : null}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Shared, admin-curated facts injected into every profile in this organization.
+                Shared org facts injected into every profile. Review agent proposals before they go live.
               </p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={openEdit}>
-              <PencilIcon className="size-3.5" aria-hidden />
-              Edit
+            {activeTab === "live" ? (
+              <Button type="button" size="sm" variant="outline" onClick={openEdit}>
+                <PencilIcon className="size-3.5" aria-hidden />
+                Edit
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="flex gap-2 px-4 pb-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "live" ? "default" : "ghost"}
+              onClick={() => setActiveTab("live")}
+            >
+              Live memory
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "proposals" ? "default" : "ghost"}
+              onClick={() => setActiveTab("proposals")}
+            >
+              Proposals
+              {pendingCount > 0 ? ` (${pendingCount})` : ""}
             </Button>
           </div>
 
           <div className="px-4 py-3">
-            {isLoading ? (
+            {activeTab === "proposals" ? (
+              orgId ? <OrgMemoryProposalsPanel orgId={orgId} /> : null
+            ) : isLoading ? (
               <p className="text-xs text-muted-foreground">Loading…</p>
             ) : liveContent.trim() ? (
               <div className="space-y-2">
