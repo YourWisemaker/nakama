@@ -54,10 +54,11 @@ export function verifyAttachmentReference(
   context: ToolContext,
   reference: string,
 ): Omit<AttachmentReferenceClaims, "orgId" | "profileId" | "sessionId"> {
-  const [payload, signature] = reference.split(".");
-  if (!payload || !signature) {
+  const parts = reference.split(".");
+  if (parts.length !== 2) {
     throw new Error("Invalid email attachment reference.");
   }
+  const [payload, signature] = parts;
 
   const expected = sign(payload);
   const actualBuffer = Buffer.from(signature);

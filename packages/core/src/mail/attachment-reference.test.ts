@@ -35,6 +35,9 @@ describe("email attachment references", () => {
     expect(() => verifyAttachmentReference(context, `${reference}x`)).toThrow(
       "Invalid email attachment reference.",
     );
+    expect(() => verifyAttachmentReference(context, `${reference}.extra`)).toThrow(
+      "Invalid email attachment reference.",
+    );
     expect(() =>
       verifyAttachmentReference({ ...context, sessionId: "other" }, reference),
     ).toThrow("out of scope");

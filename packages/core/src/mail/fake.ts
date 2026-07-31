@@ -6,8 +6,12 @@ import type {
   MailSender,
 } from "./types";
 
-export function createFakeMailReader(messages: MailMessage[] = []): MailReader & {
-  messages: MailMessage[];
+type FakeMailMessage = MailMessage & {
+  attachmentData?: Record<string, Buffer>;
+};
+
+export function createFakeMailReader(messages: FakeMailMessage[] = []): MailReader & {
+  messages: FakeMailMessage[];
 } {
   const store = [...messages];
 
@@ -34,7 +38,7 @@ export function createFakeMailReader(messages: MailMessage[] = []): MailReader &
 
       return {
         metadata: attachment,
-        data: Buffer.alloc(attachment.size),
+        data: message?.attachmentData?.[attachmentId] ?? Buffer.alloc(attachment.size),
       };
     },
     async searchMessages(folder, query, limit) {

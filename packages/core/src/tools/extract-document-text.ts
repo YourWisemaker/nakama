@@ -10,7 +10,7 @@ import { verifyAttachmentReference } from "../mail/attachment-reference";
 import { createImapReader } from "../mail/imap-reader";
 import { sanitizeMailError } from "../mail/sanitize";
 import type { MailReader } from "../mail/types";
-import { MAX_EMAIL_BODY_BYTES } from "../mail/types";
+import { MAX_EMAIL_BODY_BYTES, truncateMailBody } from "../mail/types";
 import { MAX_DOCUMENT_BYTES } from "../message-content";
 import { jsonSchemaFromZod, parseToolInput } from "./schema";
 
@@ -25,7 +25,6 @@ export type ExtractDocumentTextInput = z.infer<typeof extractDocumentTextInputSc
 export interface ExtractDocumentTextOutput {
   filename: string;
   mediaType: string;
-  pageCount?: number;
   text: string;
   truncated: boolean;
   untrustedContent: true;
@@ -47,18 +46,6 @@ export interface ExtractDocumentTextDependencies {
 
 function isPdf(bytes: Buffer): boolean {
   return bytes.subarray(0, 5).toString("ascii") === "%PDF-";
-}
-
-function truncateUtf8(value: string): { text: string; truncated: boolean } {
-  if (Buffer.byteLength(value, "utf8") <= MAX_EMAIL_BODY_BYTES) {
-    return { text: value, truncated: false };
-  }
-
-  let end = value.length;
-  while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > MAX_EMAIL_BODY_BYTES) {
-    end -= 1;
-  }
-  return { text: `${value.slice(0, end)}…`, truncated: true };
 }
 
 export function extractDocumentTextParameters() {
@@ -110,7 +97,7 @@ export async function runExtractDocumentText(
     }
 
     const text = await extractPdfText(attachment.data);
-    const bounded = truncateUtf8(text);
+    const bounded = truncateMailBody(text);
     const warnings = bounded.truncated
       ? [`Extracted text was truncated at ${MAX_EMAIL_BODY_BYTES} UTF-8 bytes.`]
       : text

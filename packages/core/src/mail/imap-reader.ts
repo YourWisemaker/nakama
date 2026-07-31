@@ -117,7 +117,7 @@ export function createImapReader(config: MailboxConfig): MailReader {
 
       try {
         const uids = asUidList(await client.search({ all: true }, { uid: true }));
-        return summariesFromUids(folder, uids, limit);
+        return await summariesFromUids(folder, uids, limit);
       } finally {
         lock.release();
       }
@@ -236,7 +236,7 @@ export function createImapReader(config: MailboxConfig): MailReader {
             { uid: true },
           ),
         );
-        return summariesFromUids(folder, uids, limit);
+        return await summariesFromUids(folder, uids, limit);
       } finally {
         lock.release();
       }
