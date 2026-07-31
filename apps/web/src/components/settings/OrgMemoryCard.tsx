@@ -1,5 +1,6 @@
 import { PencilIcon, PinIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { parseOrgMemoryContent } from "@nakama/core/soul/org-memory";
 import { OrgMemoryProposalsPanel } from "@/components/settings/OrgMemoryProposalsPanel";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ function OrgMemoryPinnedContent({ pinned }: { pinned: string[] }) {
 
 export function OrgMemoryCard() {
   const { activeOrg } = useAuth();
+  const [searchParams] = useSearchParams();
   const orgId = activeOrg?.id ?? null;
   const isAdmin = activeOrg?.role === "admin";
 
@@ -136,6 +138,12 @@ export function OrgMemoryCard() {
   const updateMutation = useUpdateOrgMemory(orgId ?? "");
 
   const [activeTab, setActiveTab] = useState<OrgMemoryTab>("live");
+
+  useEffect(() => {
+    if (searchParams.get("orgMemory") === "proposals") {
+      setActiveTab("proposals");
+    }
+  }, [searchParams]);
 
   const [draft, setDraft] = useState("");
   const [editOpen, setEditOpen] = useState(false);

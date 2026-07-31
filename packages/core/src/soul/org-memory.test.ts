@@ -4,6 +4,7 @@ import {
   composeOrgMemorySummary,
   ORG_MEMORY_PREAMBLE,
   parseOrgMemoryContent,
+  previewOrgMemoryAfterApprove,
   rebuildOrgMemoryContent,
 } from "./org-memory";
 
@@ -36,6 +37,8 @@ describe("org memory parse/rebuild", () => {
   test("empty/missing MEMORY.md yields empty summary (no throw)", () => {
     expect(composeOrgMemorySummary("")).toBe("");
     expect(composeOrgMemorySummary(ORG_MEMORY_PREAMBLE)).toBe("");
+    expect(composeOrgMemorySummary(null)).toBe("");
+    expect(parseOrgMemoryContent(undefined).pinned).toEqual([]);
   });
 
   test("includes dated sections in summary", () => {
@@ -118,5 +121,28 @@ describe("appendOrgMemorySection", () => {
   test("does not append an empty summary (no empty header)", () => {
     expect(appendOrgMemorySection(base, "", "member")).toBe(base);
     expect(appendOrgMemorySection(base, "   \n  ", "member")).toBe(base);
+  });
+});
+
+describe("previewOrgMemoryAfterApprove", () => {
+  const live = `${ORG_MEMORY_PREAMBLE}\n\n- existing pinned fact\n`;
+
+  test("recent-log approve preview includes bullet in prompt injection", () => {
+    const preview = previewOrgMemoryAfterApprove(live, "team standups are at 10am UTC", {
+      pin: false,
+      dateUtc: "2026-07-31",
+    });
+    expect(preview.destination).toBe("recent-log");
+    expect(preview.destinationLabel).toBe("## 2026-07-31");
+    expect(preview.memoryLine).toBe("- team standups are at 10am UTC");
+    expect(preview.promptInjection).toContain("- existing pinned fact");
+    expect(preview.promptInjection).toContain("- team standups are at 10am UTC");
+  });
+
+  test("pinned approve preview places bullet after existing pinned facts", () => {
+    const preview = previewOrgMemoryAfterApprove(live, "new pinned fact", { pin: true });
+    expect(preview.destination).toBe("pinned");
+    expect(preview.destinationLabel).toBe("## Pinned");
+    expect(preview.promptInjection).toContain("- new pinned fact");
   });
 });

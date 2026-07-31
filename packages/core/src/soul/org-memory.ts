@@ -39,8 +39,12 @@ export function detectOrgMemoryInjectionWarnings(bullet: string): string[] {
   return warnings;
 }
 
-export function parseOrgMemoryContent(content: string): ParsedOrgMemory {
-  const lines = content.split("\n");
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+export function parseOrgMemoryContent(content?: string | null): ParsedOrgMemory {
+  const lines = (content ?? "").split("\n");
   const preambleLines: string[] = [];
   const pinned: string[] = [];
   const sections: MemorySection[] = [];
@@ -192,8 +196,61 @@ export function appendOrgMemorySection(
  * end and an overflow hint is appended pointing the agent at
  * `org_memory_search`.
  */
+export interface OrgMemoryApprovePreview {
+  destination: "pinned" | "recent-log";
+  destinationLabel: string;
+  memoryLine: string;
+  promptInjection: string;
+}
+
+/** Simulate approveProposal writes for admin UI previews. */
+export function previewOrgMemoryAfterApprove(
+  liveContent: string | null | undefined,
+  bullet: string,
+  options: { pin?: boolean; byteCap?: number; recentLogLimit?: number; dateUtc?: string } = {},
+): OrgMemoryApprovePreview {
+  const pin = options.pin ?? false;
+  const dateUtc = options.dateUtc ?? new Date().toISOString().slice(0, 10);
+  const text = bullet.trim().replace(/^-\s+/, "").trim();
+  const parsed = parseOrgMemoryContent(liveContent ?? "");
+  const dedupKey = normalizeOrgMemoryDedupKey(text);
+
+  const alreadyPresent =
+    parsed.pinned.some((entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey) ||
+    parsed.sections.some((section) =>
+      section.bullets.some((entry) => normalizeOrgMemoryDedupKey(entry) === dedupKey),
+    );
+
+  if (!alreadyPresent) {
+    if (pin) {
+      parsed.pinned.push(text);
+    } else {
+      let section = parsed.sections.find((entry) => entry.date === dateUtc);
+      if (!section) {
+        section = { date: dateUtc, bullets: [] };
+        parsed.sections.push(section);
+        parsed.sections.sort((a, b) => a.date.localeCompare(b.date));
+      }
+      section.bullets.push(text);
+    }
+  }
+
+  const rebuilt = rebuildOrgMemoryContent(parsed);
+  const promptInjection = composeOrgMemorySummary(rebuilt, {
+    byteCap: options.byteCap ?? 2048,
+    recentLogLimit: options.recentLogLimit ?? 20,
+  });
+
+  return {
+    destination: pin ? "pinned" : "recent-log",
+    destinationLabel: pin ? "## Pinned" : `## ${dateUtc}`,
+    memoryLine: `- ${text}`,
+    promptInjection,
+  };
+}
+
 export function composeOrgMemorySummary(
-  content: string,
+  content?: string | null,
   options: OrgMemorySummaryOptions = {},
 ): string {
   const {
@@ -212,12 +269,12 @@ export function composeOrgMemorySummary(
   const header = "## Org Memory";
   const lines: string[] = [header, ""];
 
-  let bytes = Buffer.byteLength(lines.join("\n") + "\n", "utf8");
+  let bytes = utf8ByteLength(`${lines.join("\n")}\n`);
   let included = 0;
 
   for (const bullet of bullets) {
     const candidate = `- ${bullet}`;
-    const candidateBytes = Buffer.byteLength(candidate + "\n", "utf8");
+    const candidateBytes = utf8ByteLength(`${candidate}\n`);
     if (bytes + candidateBytes > byteCap) {
       break;
     }

@@ -3,11 +3,16 @@ import type { ApproveOrgMemoryProposalRequest } from "@nakama/core/contract";
 import { client } from "@/lib/client";
 import { queryKeys } from "@/lib/query-keys";
 
-export function useOrgMemoryProposals(orgId: string | null, status: "pending" | "approved" | "rejected" = "pending") {
+export function useOrgMemoryProposals(
+  orgId: string | null,
+  status: "pending" | "approved" | "rejected" = "pending",
+  options?: { refetchInterval?: number },
+) {
   return useQuery({
     queryKey: queryKeys.orgMemoryProposals(orgId ?? "", status),
     queryFn: () => client.listOrgMemoryProposals(orgId ?? "", status),
     enabled: Boolean(orgId),
+    refetchInterval: options?.refetchInterval,
   });
 }
 

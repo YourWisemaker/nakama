@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { SidebarNotifications } from "@/components/SidebarNotifications";
 import { SidebarUserMenu } from "@/components/SidebarUserMenu";
 import { ProfileAdminPlusButton } from "@/components/ProfileAdminPlusButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -125,7 +126,8 @@ export function ProfileRail() {
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-col items-center">
+      <div className="flex shrink-0 flex-col items-center gap-1">
+        <SidebarNotifications />
         <SidebarUserMenu />
       </div>
     </div>
