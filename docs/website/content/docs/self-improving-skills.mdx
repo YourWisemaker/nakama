@@ -101,7 +101,7 @@ Use org memory for facts everyone should know. Use skills for how a specific bot
 
 After your team has been chatting for a while, you may wonder which skills actually help and which just sit on the shelf. Nakama tracks that automatically for each **assigned** skill on a profile.
 
-Open **Agent → Profiles**, select a bot, and scroll to **Skills**. Each skill shows a short hint such as **Last matched 2 days ago · 5 uses**, or **Never matched** when it has not been selected for a turn yet. Skills with no match in the last 30 days get an **Unused** badge — that is advisory only; nothing is deleted or archived automatically.
+Open **Agent → Profiles**, select a bot, and scroll to **Skills**. Each skill shows a short hint such as **Last matched 2 days ago · 5 uses**, or **Never matched** when it has not been selected for a turn yet. Skills with no match in the last 30 days get an **Unused** badge — that is advisory only; nothing is deleted or archived automatically. **Bundled system skills** (shipped with Nakama, such as `manage-skills` and `save-artifact`) never get the Unused badge; they stay assigned by design.
 
 Click a skill to open its detail dialog for the full breakdown:
 
@@ -112,7 +112,7 @@ Click a skill to open its detail dialog for the full breakdown:
 
 These numbers update during **web** and **CLI** chat. They do not change from Telegram, WhatsApp, Discord, or automations — those channels do not run the skill-authoring flow today.
 
-Automated cleanup (archiving unused skills, curator reports) is planned for a later release. For now, use the usage hints to decide what to unassign, edit, or keep.
+Automated cleanup (archiving unused skills, curator reports) is planned for a later release and will apply only to **agent- or human-authored** skills — not bundled system skills. For now, use the usage hints to decide what to unassign, edit, or keep.
 
 ## What's next
 
