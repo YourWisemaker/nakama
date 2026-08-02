@@ -156,7 +156,7 @@ function ArtifactAttachmentVideoBody({
             controls
             playsInline
             preload="metadata"
-            className="max-h-[min(70vh,48rem)] max-w-full rounded-lg border border-border bg-black"
+            className="max-h-[min(70vh,48rem)] w-full max-w-[min(100%,24rem)] rounded-lg border border-border bg-black object-contain"
             aria-label={artifact.filename}
           />
         </div>

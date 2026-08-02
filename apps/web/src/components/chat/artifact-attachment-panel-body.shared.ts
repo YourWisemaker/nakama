@@ -11,6 +11,8 @@ import { formatBytes } from "@/lib/knowledge-base-files";
 
 const WIDE_ARTIFACT_PANEL_WIDTH = 768;
 const NARROW_ARTIFACT_PANEL_WIDTH = 448;
+/** Videos (often portrait reels) leave chat usable on tablet; avoid the 768 wide default. */
+const VIDEO_ARTIFACT_PANEL_WIDTH = 420;
 
 export function artifactPanelDefaultWidth(
   filename: string,
@@ -24,7 +26,11 @@ export function artifactPanelDefaultWidth(
   const isMarkdown = isMarkdownArtifactMimeType(mimeType) || isWordDocument;
   const language = artifactCodeLanguage(filename);
 
-  return isHtml || isImage || isVideo || isMarkdown || language
+  if (isVideo) {
+    return VIDEO_ARTIFACT_PANEL_WIDTH;
+  }
+
+  return isHtml || isImage || isMarkdown || language
     ? WIDE_ARTIFACT_PANEL_WIDTH
     : NARROW_ARTIFACT_PANEL_WIDTH;
 }
