@@ -1,5 +1,4 @@
 import {
-  type OrgRole,
   type ToolContext,
   type ToolDefinition,
 } from "@nakama/core";
@@ -28,7 +27,6 @@ function requireProfileId(context: ToolContext): string {
 function requireSkillManageAccess(context: ToolContext): {
   orgId: string;
   profileId: string;
-  role: OrgRole;
 } {
   if (context.automationId?.trim()) {
     throw new Error("skill_manage is not available during automation runs.");
@@ -43,7 +41,15 @@ function requireSkillManageAccess(context: ToolContext): {
   if (role === "viewer") {
     throw new Error("Viewers cannot manage skills.");
   }
-  return { orgId, profileId, role };
+  return { orgId, profileId };
+}
+
+function readRawString(input: unknown, key: string): string | null {
+  if (typeof input !== "object" || input === null || !(key in input)) {
+    return null;
+  }
+  const value = (input as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
 }
 
 function readString(input: unknown, key: string): string | null {
@@ -123,13 +129,7 @@ export function createSkillManageTools(service: SkillsService): ToolDefinition[]
         const action = readAction(input);
 
         if (action === "create") {
-          const content =
-            typeof input === "object" &&
-            input !== null &&
-            "content" in input &&
-            typeof (input as Record<string, unknown>).content === "string"
-              ? ((input as Record<string, unknown>).content as string)
-              : null;
+          const content = readRawString(input, "content");
           if (!content?.trim()) {
             throw new Error("content is required for create (full SKILL.md markdown).");
           }
@@ -151,20 +151,8 @@ export function createSkillManageTools(service: SkillsService): ToolDefinition[]
 
         if (action === "patch") {
           const name = readString(input, "name");
-          const oldString =
-            typeof input === "object" &&
-            input !== null &&
-            "old_string" in input &&
-            typeof (input as Record<string, unknown>).old_string === "string"
-              ? ((input as Record<string, unknown>).old_string as string)
-              : null;
-          const newString =
-            typeof input === "object" &&
-            input !== null &&
-            "new_string" in input &&
-            typeof (input as Record<string, unknown>).new_string === "string"
-              ? ((input as Record<string, unknown>).new_string as string)
-              : null;
+          const oldString = readRawString(input, "old_string");
+          const newString = readRawString(input, "new_string");
 
           if (!name) {
             throw new Error("name is required for patch.");

@@ -63,6 +63,40 @@ export function assertNotBundledSkillName(name: string): void {
   }
 }
 
+export function parseRawProfileSkillContent(
+  content: string,
+  orgId: string,
+  profileId: string,
+): { name: string; description: string } {
+  const probePath = path.join(
+    getProfileSkillsDir(orgId, profileId),
+    "_probe",
+    SKILL_FILE_NAME,
+  );
+  const parsed = parseSkillMarkdown(content, probePath);
+  const name = assertValidSkillName(parsed.frontmatter.name);
+  assertNotBundledSkillName(name);
+
+  if (name !== parsed.frontmatter.name) {
+    throw new Error("Skill frontmatter name must be lowercase kebab-case.");
+  }
+
+  return {
+    name,
+    description: parsed.frontmatter.description,
+  };
+}
+
+export function isPathWithinProfileSkillsDir(
+  orgId: string,
+  profileId: string,
+  targetPath: string,
+): boolean {
+  const skillsRoot = path.resolve(getProfileSkillsDir(orgId, profileId));
+  const resolved = path.resolve(targetPath);
+  return resolved === skillsRoot || resolved.startsWith(`${skillsRoot}${path.sep}`);
+}
+
 export function resolveProfileSkillDirectory(
   orgId: string,
   profileId: string,
@@ -86,10 +120,9 @@ export function assertPathWithinProfileSkillsDir(
   profileId: string,
   targetPath: string,
 ): string {
-  const skillsRoot = path.resolve(getProfileSkillsDir(orgId, profileId));
   const resolved = path.resolve(targetPath);
 
-  if (resolved !== skillsRoot && !resolved.startsWith(`${skillsRoot}${path.sep}`)) {
+  if (!isPathWithinProfileSkillsDir(orgId, profileId, resolved)) {
     throw new Error("Path is outside the profile skills directory.");
   }
 
@@ -156,18 +189,11 @@ export async function writeRawProfileSkillMarkdown(options: {
   description: string;
   created: boolean;
 }> {
-  const skillFileProbe = path.join(
-    getProfileSkillsDir(options.orgId, options.profileId),
-    "_probe",
-    SKILL_FILE_NAME,
+  const { name, description } = parseRawProfileSkillContent(
+    options.content,
+    options.orgId,
+    options.profileId,
   );
-  const parsed = parseSkillMarkdown(options.content, skillFileProbe);
-  const name = assertValidSkillName(parsed.frontmatter.name);
-  assertNotBundledSkillName(name);
-
-  if (name !== parsed.frontmatter.name) {
-    throw new Error("Skill frontmatter name must be lowercase kebab-case.");
-  }
 
   const directory = resolveProfileSkillDirectory(options.orgId, options.profileId, name);
   const skillFilePath = path.join(directory, SKILL_FILE_NAME);
@@ -189,7 +215,7 @@ export async function writeRawProfileSkillMarkdown(options: {
     return {
       directory,
       name,
-      description: parsed.frontmatter.description,
+      description,
       created: true,
     };
   }
