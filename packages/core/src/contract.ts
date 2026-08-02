@@ -285,6 +285,7 @@ export interface OrganizationSummary {
   id: string;
   name: string;
   slug: string;
+  skillsWriteApproval?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -300,7 +301,8 @@ export interface CreateOrganizationRequest {
 }
 
 export interface UpdateOrganizationRequest {
-  name: string;
+  name?: string;
+  skillsWriteApproval?: boolean;
 }
 
 export interface ListOrganizationsResponse {
@@ -476,6 +478,36 @@ export interface ApproveOrgMemoryProposalRequest {
 export interface OrgMemoryProposalResponse {
   proposal: OrgMemoryProposal;
   content?: string;
+}
+
+export type SkillProposalStatus = "pending" | "approved" | "rejected";
+export type SkillProposalAction = "create" | "patch" | "delete";
+
+export interface SkillProposal {
+  id: string;
+  orgId: string;
+  profileId: string;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  action: SkillProposalAction;
+  skillName: string;
+  content: string | null;
+  patchOldString: string | null;
+  patchNewString: string | null;
+  status: SkillProposalStatus;
+  reviewerUserId: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  warnings?: string[];
+}
+
+export interface ListSkillProposalsResponse {
+  proposals: SkillProposal[];
+  pendingCount: number;
+}
+
+export interface SkillProposalResponse {
+  proposal: SkillProposal;
 }
 
 export interface InviteOrgMemberRequest {
@@ -1325,6 +1357,8 @@ export interface ProfileSummary {
   model: string | null;
   isSuper: boolean;
   isDefault?: boolean;
+  /** null = inherit org default; true/false = force gate on/off for this profile */
+  skillsWriteApproval?: boolean | null;
   toolCount: number;
   mcpServerCount: number;
   soulActive: boolean;
@@ -1509,6 +1543,7 @@ export interface UpdateProfileRequest {
   name?: string;
   systemPrompt?: string;
   model?: string | null;
+  skillsWriteApproval?: boolean | null;
 }
 
 export interface CreateToolRequest {

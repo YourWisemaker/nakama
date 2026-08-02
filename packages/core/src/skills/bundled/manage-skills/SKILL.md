@@ -18,6 +18,8 @@ When the `skill_manage` tool is available, use it for all `SKILL.md` create/upda
 
 `skill_manage` writes under the profile skills directory, validates frontmatter, and **auto-assigns** the skill so it can match on later turns. Bundled and global skills are read-only.
 
+When **write approval** is enabled for the org or profile, `skill_manage` **stages** changes instead of writing immediately. The tool returns `{ staged: true, proposalId, … }` and an org admin must approve the proposal before the skill goes live. Do not re-submit identical pending proposals; wait for review or ask an admin.
+
 Example create content:
 
 ```markdown

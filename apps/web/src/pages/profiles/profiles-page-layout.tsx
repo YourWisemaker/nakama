@@ -14,9 +14,11 @@ import { ProfileAdminPlusButton } from "@/components/ProfileAdminPlusButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useAuth } from "@/context/use-auth";
 import { useAppNavigation } from "@/hooks/use-app-navigation";
+import { useSkillProposals } from "@/hooks/use-skill-proposals";
 import { resolveSuperBotChatProfileId } from "@/lib/profiles";
 import { cn } from "@/lib/utils";
 import { ProfileConfigTab } from "@/pages/profiles/profile-config-tab";
+import { SkillProposalsPanel } from "@/components/profiles/SkillProposalsPanel";
 import { sectionClass, profilePanelHeaderClass, profilePanelHeaderLabelClass } from "@/pages/profiles/profiles-page.shared";
 import type { ProfilesPageState } from "@/pages/profiles/use-profiles-page";
 import {
@@ -43,10 +45,16 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
     setCreateOpen,
     openDeleteDialog,
   } = state;
-  const { user } = useAuth();
+  const { user, activeOrg } = useAuth();
+  const isOrgAdmin = activeOrg?.role === "admin";
   const canCreateProfile = user?.isPlatformAdmin === true;
   const { navigateToNewChat } = useAppNavigation();
   const superBotProfileId = resolveSuperBotChatProfileId(profiles);
+  const { data: skillProposalsData } = useSkillProposals(
+    isOrgAdmin && selectedId ? (activeOrg?.id ?? null) : null,
+    { status: "pending", profileId: selectedId ?? undefined },
+  );
+  const pendingSkillProposals = skillProposalsData?.pendingCount ?? 0;
   const onAskSuperBot = superBotProfileId
     ? () => navigateToNewChat(superBotProfileId)
     : undefined;
@@ -211,6 +219,21 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                       >
                         Artifacts
                       </ProfileDetailTabButton>
+                      {isOrgAdmin ? (
+                        <ProfileDetailTabButton
+                          id="profile-detail-tab-proposals"
+                          active={detailTab === "proposals"}
+                          controls="profile-detail-panel-proposals"
+                          onSelect={() => setDetailTab("proposals")}
+                        >
+                          Proposals
+                          {pendingSkillProposals > 0 ? (
+                            <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+                              ({pendingSkillProposals > 99 ? "99+" : pendingSkillProposals})
+                            </span>
+                          ) : null}
+                        </ProfileDetailTabButton>
+                      ) : null}
                     </div>
                     {!detail.isSuper ? (
                       <Button
@@ -229,6 +252,14 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                   <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
                     {detailTab === "profile" ? (
                       <ProfileConfigTab state={state} />
+                    ) : detailTab === "proposals" && isOrgAdmin && activeOrg && selectedId ? (
+                      <div
+                        id="profile-detail-panel-proposals"
+                        role="tabpanel"
+                        aria-labelledby="profile-detail-tab-proposals"
+                      >
+                        <SkillProposalsPanel orgId={activeOrg.id} profileId={selectedId} />
+                      </div>
                     ) : detailTab === "prompt" ? (
                       <div
                         id="profile-detail-panel-prompt"

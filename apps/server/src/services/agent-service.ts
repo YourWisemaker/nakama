@@ -243,6 +243,7 @@ import type { McpService } from "./mcp-service";
 import { OrgMemoryService } from "./org-memory-service";
 import { ProfileService } from "./profile-service";
 import type { SkillsService } from "./skills-service";
+import type { SkillProposalService } from "./skill-proposal-service";
 import { SessionTitleService } from "./session-title-service";
 import { SuperBotSessionState } from "./super-bot-session-state";
 import { resolveProfileStoredTools } from "./tool-resolver";
@@ -304,6 +305,7 @@ export class AgentService {
   private mcpService: McpService | null = null;
   private composioService: ComposioService | null = null;
   private skillsService: SkillsService | null = null;
+  private skillProposalService: SkillProposalService | null = null;
   private orgMemoryService: OrgMemoryService | null = null;
   private readonly sessions = new Map<string, StoredSession>();
   private readonly sessionTitleService: SessionTitleService;
@@ -392,6 +394,10 @@ export class AgentService {
   setSkillsService(service: SkillsService): void {
     this.skillsService = service;
     this.sessions.clear();
+  }
+
+  setSkillProposalService(service: SkillProposalService): void {
+    this.skillProposalService = service;
   }
 
   getMcpService(): McpService {
@@ -2547,7 +2553,13 @@ export class AgentService {
       if (includeSkillManageTools) {
         const assignedSkills = await this.skillsService.listSkillsForProfile(profile.id);
         if (assignedSkills.some((skill) => skill.name === "manage-skills")) {
-          resolved = [...resolved, ...createSkillManageTools(this.skillsService)];
+          resolved = [
+            ...resolved,
+            ...createSkillManageTools({
+              skillsService: this.skillsService,
+              skillProposalService: this.skillProposalService,
+            }),
+          ];
         }
       }
     }

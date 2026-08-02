@@ -180,6 +180,10 @@ export function toolPlaygroundBackTarget(searchParams: URLSearchParams): {
   return { href: toolsTabPath(), label: "Tools" };
 }
 
+export function profileProposalsPath(profileId: string): string {
+  return `${PAGE_PATHS.profiles}?profile=${encodeURIComponent(profileId)}&tab=proposals`;
+}
+
 export const PAGE_PATHS: Record<PageId, string> = {
   chat: "/chat",
   history: "/history",

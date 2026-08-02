@@ -95,4 +95,6 @@ export const queryKeys = {
     ["orgMemoryHistoryRevision", orgId, revisionId] as const,
   orgMemoryProposals: (orgId: string, status?: string) =>
     ["orgMemoryProposals", orgId, status ?? "all"] as const,
+  skillProposals: (orgId: string, status?: string, profileId?: string) =>
+    ["skillProposals", orgId, status ?? "all", profileId ?? "all"] as const,
 } as const;

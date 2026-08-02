@@ -166,6 +166,8 @@ import type {
   ListOrgMemoryProposalsResponse,
   ApproveOrgMemoryProposalRequest,
   OrgMemoryProposalResponse,
+  ListSkillProposalsResponse,
+  SkillProposalResponse,
   ListOrgMemoryHistoryResponse,
   RestoreOrgMemoryHistoryResponse,
   OrgMemoryHistoryRevisionResponse,
@@ -1777,6 +1779,50 @@ export class NakamaClient {
   ): Promise<OrgMemoryProposalResponse> {
     return this.request<OrgMemoryProposalResponse>(
       `/v1/orgs/${encodeURIComponent(orgId)}/memory/proposals/${encodeURIComponent(proposalId)}/reject`,
+      {
+        method: "POST",
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async listSkillProposals(
+    orgId: string,
+    options: { status?: "pending" | "approved" | "rejected"; profileId?: string } = {},
+  ): Promise<ListSkillProposalsResponse> {
+    const params = new URLSearchParams();
+    if (options.status) {
+      params.set("status", options.status);
+    }
+    if (options.profileId) {
+      params.set("profileId", options.profileId);
+    }
+    const query = params.toString();
+    return this.request<ListSkillProposalsResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/skill-proposals${query ? `?${query}` : ""}`,
+      { headers: { "X-Org-Id": orgId } },
+    );
+  }
+
+  async approveSkillProposal(
+    orgId: string,
+    proposalId: string,
+  ): Promise<SkillProposalResponse> {
+    return this.request<SkillProposalResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/skill-proposals/${encodeURIComponent(proposalId)}/approve`,
+      {
+        method: "POST",
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async rejectSkillProposal(
+    orgId: string,
+    proposalId: string,
+  ): Promise<SkillProposalResponse> {
+    return this.request<SkillProposalResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/skill-proposals/${encodeURIComponent(proposalId)}/reject`,
       {
         method: "POST",
         headers: { "X-Org-Id": orgId },

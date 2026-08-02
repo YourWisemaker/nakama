@@ -16,6 +16,8 @@ export function migrateDatabase(db: Database): void {
   migrateUsersTable(db);
   migrateOrgTables(db);
   migrateOrgMemoryProposalsTable(db);
+  migrateSkillProposalsTable(db);
+  migrateSkillsWriteApprovalColumns(db);
   migrateTenantOrgScope(db);
   migrateProfileOrgColumns(db);
   migrateBrowserSessionsTable(db);
@@ -335,6 +337,48 @@ function migrateOrgMemoryProposalsTable(db: Database): void {
     );
     CREATE INDEX IF NOT EXISTS org_memory_proposals_org_status ON org_memory_proposals (org_id, status);
   `);
+}
+
+function migrateSkillProposalsTable(db: Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS skill_proposals (
+      id TEXT PRIMARY KEY NOT NULL,
+      org_id TEXT NOT NULL,
+      profile_id TEXT NOT NULL,
+      session_id TEXT,
+      proposed_by_user_id TEXT,
+      action TEXT NOT NULL,
+      skill_name TEXT NOT NULL,
+      content TEXT,
+      patch_old_string TEXT,
+      patch_new_string TEXT,
+      status TEXT NOT NULL,
+      reviewer_user_id TEXT,
+      reviewed_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS skill_proposals_org_status ON skill_proposals (org_id, status);
+    CREATE INDEX IF NOT EXISTS skill_proposals_org_profile_status ON skill_proposals (org_id, profile_id, status);
+  `);
+}
+
+function migrateSkillsWriteApprovalColumns(db: Database): void {
+  const orgColumns = db
+    .prepare("PRAGMA table_info(organizations)")
+    .all() as Array<{ name: string }>;
+  if (!new Set(orgColumns.map((column) => column.name)).has("skills_write_approval")) {
+    db.exec(
+      `ALTER TABLE organizations ADD COLUMN skills_write_approval INTEGER NOT NULL DEFAULT 0;`,
+    );
+  }
+
+  const profileColumns = db
+    .prepare("PRAGMA table_info(profiles)")
+    .all() as Array<{ name: string }>;
+  if (!new Set(profileColumns.map((column) => column.name)).has("skills_write_approval")) {
+    db.exec(`ALTER TABLE profiles ADD COLUMN skills_write_approval INTEGER;`);
+  }
 }
 
 const TENANT_ORG_ID_TABLES = [

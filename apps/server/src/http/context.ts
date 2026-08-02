@@ -7,6 +7,7 @@ import type { WorkerManagerService } from "../services/worker-manager-service";
 import type { AuthService } from "../services/auth-service";
 import type { OrgService } from "../services/org-service";
 import type { OrgMemoryService } from "../services/org-memory-service";
+import type { SkillProposalService } from "../services/skill-proposal-service";
 import type { ComposioService } from "../services/composio-service";
 import type { DatabaseAdapter } from "@nakama/db";
 
@@ -21,6 +22,7 @@ export interface ServerOptions {
   authService?: AuthService | null;
   orgService?: OrgService | null;
   orgMemoryService?: OrgMemoryService | null;
+  skillProposalService?: SkillProposalService | null;
   databaseAdapter?: DatabaseAdapter | null;
   webDistDir?: string | null;
 }

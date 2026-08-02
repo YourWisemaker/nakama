@@ -44,6 +44,8 @@ export interface StoredProfileRecord {
   isSuper: boolean;
   orgId?: string | null;
   isDefault?: boolean;
+  /** null = inherit org default; true/false = force gate on/off for this profile */
+  skillsWriteApproval?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -305,6 +307,7 @@ export interface StoredOrganizationRecord {
   id: string;
   name: string;
   slug: string;
+  skillsWriteApproval?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -347,6 +350,26 @@ export interface StoredOrgMemoryProposal {
   bullet: string;
   status: OrgMemoryProposalStatus;
   pinned: boolean;
+  reviewerUserId: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export type SkillProposalStatus = "pending" | "approved" | "rejected";
+export type SkillProposalAction = "create" | "patch" | "delete";
+
+export interface StoredSkillProposal {
+  id: string;
+  orgId: string;
+  profileId: string;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  action: SkillProposalAction;
+  skillName: string;
+  content: string | null;
+  patchOldString: string | null;
+  patchNewString: string | null;
+  status: SkillProposalStatus;
   reviewerUserId: string | null;
   reviewedAt: string | null;
   createdAt: string;
@@ -447,6 +470,35 @@ export interface DatabaseAdapter {
     },
   ): Promise<boolean>;
   countOrgMemoryProposals(orgId: string, status: OrgMemoryProposalStatus): Promise<number>;
+
+  createSkillProposal(record: StoredSkillProposal): Promise<void>;
+  listSkillProposals(
+    orgId: string,
+    options?: { status?: SkillProposalStatus; profileId?: string },
+  ): Promise<StoredSkillProposal[]>;
+  getSkillProposal(orgId: string, id: string): Promise<StoredSkillProposal | null>;
+  getPendingSkillProposalForCreate(
+    orgId: string,
+    profileId: string,
+    skillName: string,
+  ): Promise<StoredSkillProposal | null>;
+  getPendingSkillProposalForPatch(
+    orgId: string,
+    profileId: string,
+    skillName: string,
+    patchOldString: string,
+    patchNewString: string,
+  ): Promise<StoredSkillProposal | null>;
+  updateSkillProposalStatus(
+    orgId: string,
+    id: string,
+    update: {
+      status: SkillProposalStatus;
+      reviewerUserId: string;
+      reviewedAt: string;
+    },
+  ): Promise<boolean>;
+  countPendingSkillProposals(orgId: string, profileId?: string): Promise<number>;
 
   createArtifactShare(record: StoredArtifactShareRecord): Promise<void>;
   updateArtifactShareSnapshot(
