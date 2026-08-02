@@ -54,9 +54,11 @@ import {
   decodeModelSelection,
   effectiveProfileModelSelection,
   groupModelsByProvider,
+  resolveModelContextWindow,
   resolveModelThinkingSupport,
   resolveModelVisionSupport,
 } from "@/lib/models";
+import { buildChatContextUsage } from "@/lib/chat-context-usage";
 import { SETUP_PATH } from "@/lib/navigation";
 import { findRetryCheckpoint, findRetryPrompt } from "@/pages/chat/chat-page.shared";
 
@@ -731,6 +733,17 @@ export function useChatPage() {
   const isEmptyState = messages.length === 0 && !busy;
   const composerDisabled = !profileId || readOnlySession;
 
+  const contextUsage = useMemo(() => {
+    if (isEmptyState) {
+      return null;
+    }
+
+    return buildChatContextUsage(
+      messages,
+      resolveModelContextWindow(currentModelSelection, providerModelGroups),
+    );
+  }, [currentModelSelection, isEmptyState, messages, providerModelGroups]);
+
   return {
     session,
     messages,
@@ -756,6 +769,7 @@ export function useChatPage() {
     isEmptyState,
     composerDisabled,
     sessionChannel,
+    contextUsage,
     handleProfileSwitch,
     handleModelChange,
     renderModelLabel,

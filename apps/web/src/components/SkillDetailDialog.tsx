@@ -1,4 +1,5 @@
 import { BookOpenIcon, Trash2Icon } from "lucide-react";
+import { MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -51,10 +52,11 @@ export function SkillDetailDialog({
 
   const errorMessage = error ? formatError(error) : null;
   const meta = skill ? formatSkillMeta(skill) : [];
+  const body = skill?.body.trim() ?? "";
 
   return (
     <Dialog open={Boolean(skillId)} onOpenChange={onOpenChange}>
-      <DialogContent className="no-scrollbar flex max-h-[min(90dvh,85vh)] w-[calc(100%-1.5rem)] flex-col gap-4 overflow-y-auto p-4 sm:max-w-lg sm:gap-6 sm:p-6">
+      <DialogContent className="no-scrollbar flex max-h-[min(90dvh,85vh)] w-[calc(100%-1.5rem)] flex-col gap-4 overflow-y-auto p-4 sm:max-w-2xl sm:gap-5 sm:p-6">
         {isLoading && !skill ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Spinner className="size-4" />
@@ -70,7 +72,9 @@ export function SkillDetailDialog({
                 {skill.name}
               </DialogTitle>
               {skill.description ? (
-                <DialogDescription className="leading-relaxed">{skill.description}</DialogDescription>
+                <DialogDescription className="leading-relaxed whitespace-pre-wrap">
+                  {skill.description}
+                </DialogDescription>
               ) : (
                 <DialogDescription className="sr-only">Skill details</DialogDescription>
               )}
@@ -94,7 +98,17 @@ export function SkillDetailDialog({
               </p>
             ) : null}
 
-            <DialogFooter className="flex-col-reverse gap-2 border-t-0 bg-transparent p-0 pt-2 pb-2 sm:flex-row sm:justify-between sm:gap-3">
+            {body ? (
+              <div className="max-h-[min(60dvh,32rem)] overflow-y-auto rounded-lg border border-border bg-muted/20 px-3 py-3 sm:px-4 sm:py-4">
+                <MessageResponse className="text-sm">{body}</MessageResponse>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                No skill body content.
+              </p>
+            )}
+
+            <DialogFooter className="flex-col-reverse gap-2 border-t-0 bg-transparent p-0 pt-1 pb-1 sm:flex-row sm:justify-between sm:gap-3">
               {onRemoveFromProfile ? (
                 <Button
                   type="button"

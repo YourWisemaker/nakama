@@ -5,6 +5,7 @@ import {
   hasOpenCodeZenProvider,
   isOpenCodeZenBaseUrl,
   isProviderTypeAlreadyConfigured,
+  resolveModelContextWindow,
   resolveModelThinkingSupport,
   resolveModelVisionSupport,
 } from "./models";
@@ -12,7 +13,7 @@ import {
 function group(
   providerId: string,
   provider: "openai_compatible" | "openai" | "opencode_go" | "openrouter" | "deepseek" | "cerebras" | "fireworks",
-  flags?: { supportsThinking?: boolean; supportsVision?: boolean },
+  flags?: { supportsThinking?: boolean; supportsVision?: boolean; contextWindow?: number },
 ) {
   return [
     {
@@ -28,6 +29,9 @@ function group(
             : {}),
           ...(flags?.supportsVision !== undefined
             ? { supportsVision: flags.supportsVision }
+            : {}),
+          ...(flags?.contextWindow !== undefined
+            ? { contextWindow: flags.contextWindow }
             : {}),
         },
       ],
@@ -203,6 +207,26 @@ describe("resolveModelVisionSupport", () => {
         group("fw-1", "fireworks", { supportsVision: true }),
       ),
     ).toBe(true);
+  });
+});
+
+describe("resolveModelContextWindow", () => {
+  test("returns the model context window when present", () => {
+    expect(
+      resolveModelContextWindow(
+        encodeModelSelection("openai-1", "model-1"),
+        group("openai-1", "openai", { contextWindow: 200_000 }),
+      ),
+    ).toBe(200_000);
+  });
+
+  test("returns undefined when context window is missing", () => {
+    expect(
+      resolveModelContextWindow(
+        encodeModelSelection("openai-1", "model-1"),
+        group("openai-1", "openai"),
+      ),
+    ).toBeUndefined();
   });
 });
 

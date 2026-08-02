@@ -5,7 +5,6 @@ import type {
   AgentQuestionnaire,
   AgentTodo,
   ProviderModelOption,
-  ProfileSummary,
   SkillSummary,
 } from "@nakama/core/contract";
 import type { ChatStatus } from "ai";
@@ -63,9 +62,10 @@ import {
 } from "@/components/chat/ChatMessageQueuePanel";
 import { TextAttachmentPreview } from "@/components/chat/text-attachment-preview";
 import { ImageAttachmentPreview } from "@/components/chat/image-attachment-preview";
-import { ChatProfileSwitcher } from "@/components/chat/chat-profile-switcher";
+import { ChatContextUsageRing } from "@/components/chat/chat-context-usage";
 import { ChatSkillPicker } from "@/components/chat/chat-skill-picker";
 import { ChatSkillTokenOverlay } from "@/components/chat/chat-skill-token-overlay";
+import type { ChatContextUsage } from "@/lib/chat-context-usage";
 import { cn } from "@/lib/utils";
 import {
   isPastedTextDocument,
@@ -105,11 +105,7 @@ interface ChatComposerMinimalProps extends ChatComposerBaseProps {
 
 interface ChatComposerFullProps extends ChatComposerBaseProps {
   variant?: "full";
-  profileId: string;
-  profiles: ProfileSummary[];
-  activeProfile?: ProfileSummary;
-  onProfileSwitch: (profileId: string) => void;
-  showProfileSwitch?: boolean;
+  contextUsage?: ChatContextUsage | null;
   showOfflineHint?: boolean;
   providerConfigured?: boolean;
   onNavigateSetup?: () => void;
@@ -467,16 +463,10 @@ function ChatComposerFullFooter({
         aria-label="Composer options"
         className={composerToolbarClass}
       >
-        {props.showProfileSwitch !== false ? (
+        {props.contextUsage ? (
           <>
             <PromptInputTools className="gap-1.5">
-              <ChatProfileSwitcher
-                profileId={props.profileId}
-                profiles={props.profiles}
-                activeProfile={props.activeProfile}
-                onProfileSwitch={props.onProfileSwitch}
-                disabled={busy || disabled}
-              />
+              <ChatContextUsageRing usage={props.contextUsage} />
             </PromptInputTools>
             <span className="hidden h-5 w-px bg-border sm:block" aria-hidden />
           </>
