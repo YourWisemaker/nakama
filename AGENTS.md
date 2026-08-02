@@ -105,7 +105,7 @@ Path: `~/.nakama/orgs/{orgId}/profiles/{profileId}/` (`getProfileSoulDir`). Load
 | `coding-agent` | Codex / Claude Code / OpenCode via `bash` |
 | `agent-browser` | Opt-in browser CLI; needs host install — `docs/website/agent-browser.md` |
 | `create-profile` | Super Bot only, confirm-first — `apps/server/src/tools/super-bot-tools.ts` |
-| `skill_manage` | Interactive web/cli with `manage-skills` — create/patch/delete profile skills + auto-assign (`apps/server/src/tools/skill-manage-tool.ts`). When present, file tools refuse `skills/*/SKILL.md` (`forbidProfileSkillMarkdownWrites`). Not injected for automations or Telegram/WhatsApp/Discord. |
+| `skill_manage` | Interactive web/cli with `manage-skills` — create/patch/delete profile skills + auto-assign (`apps/server/src/tools/skill-manage-tool.ts`). When org/profile **write approval** is enabled, mutations stage as proposals for org-admin review instead of writing immediately. When present, file tools refuse `skills/*/SKILL.md` (`forbidProfileSkillMarkdownWrites`). Not injected for automations or Telegram/WhatsApp/Discord. |
 | Composio | Org toolkits + per-user OAuth — `docs/website/composio.md` |
 
 **Channel artifacts (Telegram/Discord):** `packages/core/src/channel-artifacts.ts`, `channel-artifact-delivery.ts`; handlers in `apps/platform/{telegram,discord}/src/channel-artifact-flow.ts`.
@@ -133,6 +133,9 @@ Always build context with `buildToolExecutionContext()` (`packages/core/src/tool
 | Tool loop | `packages/agent/src/tool-loop.ts` → `executeToolCall()`; parallel batching in `packages/agent/src/chat.ts` when every call in the turn is `parallelSafe` |
 
 **Parallel tool calls:** Built-in read/search/fetch tools (`read_file`, `search_files`, `knowledge_base_search`, `web_search`, `web_fetch`) set `parallelSafe: true` on `ToolDefinition`. Mutating, shell, delegation, and session-state tools stay sequential. Custom JS tools default to sequential; export `parallelSafe: true` from the module to opt in. When a turn mixes parallel-safe and sequential tools, the whole turn runs sequentially.
+
+| Flow | Entry |
+|---|---|
 | Playground | `POST /v1/tools/:toolId/run` → `runToolPlayground()` (`resolvePlaygroundProfileId`) |
 | Param suggest | `POST /v1/tools/:toolId/params/suggest` |
 

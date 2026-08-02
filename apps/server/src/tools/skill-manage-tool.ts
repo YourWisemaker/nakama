@@ -1,8 +1,15 @@
 import {
   type ToolContext,
   type ToolDefinition,
+  parseRawProfileSkillContent,
 } from "@nakama/core";
+import type { SkillProposalService } from "../services/skill-proposal-service";
 import type { SkillsService } from "../services/skills-service";
+
+export interface SkillManageToolDeps {
+  skillsService: SkillsService;
+  skillProposalService?: SkillProposalService | null;
+}
 
 function requireOrgId(context: ToolContext): string {
   const orgId = context.orgId?.trim();
@@ -102,12 +109,33 @@ function skillManageResult(options: {
   };
 }
 
-export function createSkillManageTools(service: SkillsService): ToolDefinition[] {
+function stagedSkillManageResult(options: {
+  action: "create" | "patch" | "delete";
+  name: string;
+  proposalId?: string;
+  outcome: "created" | "already_pending";
+  message: string;
+}) {
+  return {
+    staged: true as const,
+    proposalId: options.proposalId,
+    action: options.action,
+    name: options.name,
+    outcome: options.outcome,
+    message: options.message,
+    matchHint:
+      "The skill change is pending admin approval and is not live yet. It will not match until an org admin approves the proposal.",
+  };
+}
+
+export function createSkillManageTools(deps: SkillManageToolDeps): ToolDefinition[] {
+  const { skillsService: service, skillProposalService = null } = deps;
+
   return [
     {
       name: "skill_manage",
       description:
-        "Create, patch, or delete reusable profile skills (SKILL.md under the profile skills directory) with auto-assign. Prefer patch with unique old_string/new_string over rewriting whole files. Crystallize a skill after complex multi-step success (about 5+ tool calls), error recovery, or when the user corrects your approach — do not dump procedures into MEMORY.md.",
+        "Create, patch, or delete reusable profile skills (SKILL.md under the profile skills directory) with auto-assign. When write approval is enabled for this org/profile, changes are staged for admin review instead of applying immediately. Prefer patch with unique old_string/new_string over rewriting whole files. Crystallize a skill after complex multi-step success (about 5+ tool calls), error recovery, or when the user corrects your approach — do not dump procedures into MEMORY.md.",
       parameters: {
         type: "object",
         properties: {
@@ -140,6 +168,95 @@ export function createSkillManageTools(service: SkillsService): ToolDefinition[]
       async run(input, context: ToolContext) {
         const { orgId, profileId } = requireSkillManageAccess(context);
         const action = readAction(input);
+
+        const gateOn =
+          skillProposalService !== null &&
+          (await skillProposalService.isWriteApprovalRequired(orgId, profileId));
+
+        if (gateOn) {
+          if (action === "create") {
+            const content = readRawString(input, "content");
+            if (!content?.trim()) {
+              throw new Error("content is required for create (full SKILL.md markdown).");
+            }
+
+            const staged = await skillProposalService!.stageProposal({
+              orgId,
+              profileId,
+              action: "create",
+              content,
+              sessionId: context.sessionId ?? null,
+              proposedByUserId: context.userId ?? null,
+            });
+
+            const { name } = parseRawProfileSkillContent(content, orgId, profileId);
+
+            return stagedSkillManageResult({
+              action: "create",
+              name,
+              proposalId: staged.proposalId,
+              outcome: staged.outcome,
+              message: staged.message,
+            });
+          }
+
+          if (action === "patch") {
+            const name = readString(input, "name");
+            const oldString = readRawString(input, "old_string");
+            const newString = readRawString(input, "new_string");
+
+            if (!name) {
+              throw new Error("name is required for patch.");
+            }
+            if (oldString === null || oldString === "") {
+              throw new Error("old_string is required for patch.");
+            }
+            if (newString === null) {
+              throw new Error("new_string is required for patch.");
+            }
+
+            const staged = await skillProposalService!.stageProposal({
+              orgId,
+              profileId,
+              action: "patch",
+              skillName: name,
+              oldString,
+              newString,
+              sessionId: context.sessionId ?? null,
+              proposedByUserId: context.userId ?? null,
+            });
+
+            return stagedSkillManageResult({
+              action: "patch",
+              name,
+              proposalId: staged.proposalId,
+              outcome: staged.outcome,
+              message: staged.message,
+            });
+          }
+
+          const name = readString(input, "name");
+          if (!name) {
+            throw new Error("name is required for delete.");
+          }
+
+          const staged = await skillProposalService!.stageProposal({
+            orgId,
+            profileId,
+            action: "delete",
+            skillName: name,
+            sessionId: context.sessionId ?? null,
+            proposedByUserId: context.userId ?? null,
+          });
+
+          return stagedSkillManageResult({
+            action: "delete",
+            name,
+            proposalId: staged.proposalId,
+            outcome: staged.outcome,
+            message: staged.message,
+          });
+        }
 
         if (action === "create") {
           const content = readRawString(input, "content");

@@ -7,6 +7,7 @@ export * from "./parse";
 export * from "./paths";
 export * from "./types";
 export * from "./write";
+export * from "./write-approval";
 export * from "./bundled/install";
 export * from "./bundled-names";
 export { readBundledSkillBody, readBundledSkillMarkdown } from "./bundled/index";

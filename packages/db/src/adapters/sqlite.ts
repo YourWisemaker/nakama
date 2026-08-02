@@ -18,6 +18,9 @@ import type {
   StoredOrgInviteRecord,
   StoredOrgMemoryProposal,
   OrgMemoryProposalStatus,
+  StoredSkillProposal,
+  SkillProposalStatus,
+  SkillProposalAction,
   StoredArtifactShareRecord,
   StoredOrganizationRecord,
   StoredUserOrganizationRecord,
@@ -76,6 +79,7 @@ interface ProfileRow {
   is_super: number;
   org_id: string | null;
   is_default: number;
+  skills_write_approval: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -286,6 +290,7 @@ interface OrganizationRow {
   id: string;
   name: string;
   slug: string;
+  skills_write_approval: number;
   created_at: string;
   updated_at: string;
 }
@@ -312,6 +317,23 @@ interface OrgMemoryProposalRow {
   bullet: string;
   status: string;
   pinned: number;
+  reviewer_user_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+interface SkillProposalRow {
+  id: string;
+  org_id: string;
+  profile_id: string;
+  session_id: string | null;
+  proposed_by_user_id: string | null;
+  action: string;
+  skill_name: string;
+  content: string | null;
+  patch_old_string: string | null;
+  patch_new_string: string | null;
+  status: string;
   reviewer_user_id: string | null;
   reviewed_at: string | null;
   created_at: string;
@@ -443,10 +465,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       is_super,
       org_id,
       is_default,
+      skills_write_approval,
       created_at,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       system_prompt = excluded.system_prompt,
@@ -456,6 +479,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       is_super = excluded.is_super,
       org_id = excluded.org_id,
       is_default = excluded.is_default,
+      skills_write_approval = excluded.skills_write_approval,
       updated_at = excluded.updated_at
   `);
   const deleteProfileStmt = db.prepare("DELETE FROM profiles WHERE id = ?");
@@ -1037,26 +1061,27 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     WHERE id = ?
   `);
   const upsertOrganizationStmt = db.prepare(`
-    INSERT INTO organizations (id, name, slug, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO organizations (id, name, slug, skills_write_approval, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = excluded.slug,
+      skills_write_approval = excluded.skills_write_approval,
       updated_at = excluded.updated_at
   `);
   const listOrganizationsStmt = db.prepare(`
-    SELECT id, name, slug, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, created_at, updated_at
     FROM organizations
     ORDER BY name ASC
   `);
   const getOrganizationBySlugStmt = db.prepare(`
-    SELECT id, name, slug, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, created_at, updated_at
     FROM organizations
     WHERE slug = ?
     LIMIT 1
   `);
   const getOrganizationByIdStmt = db.prepare(`
-    SELECT id, name, slug, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, created_at, updated_at
     FROM organizations
     WHERE id = ?
     LIMIT 1
@@ -1136,6 +1161,101 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     FROM org_memory_proposals
     WHERE org_id = ? AND status = ?
   `);
+  const createSkillProposalStmt = db.prepare(`
+    INSERT INTO skill_proposals (
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const listSkillProposalsByStatusStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND status = ?
+    ORDER BY created_at DESC
+  `);
+  const listSkillProposalsByStatusAndProfileStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND status = ? AND profile_id = ?
+    ORDER BY created_at DESC
+  `);
+  const listAllSkillProposalsStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ?
+    ORDER BY created_at DESC
+  `);
+  const listAllSkillProposalsForProfileStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND profile_id = ?
+    ORDER BY created_at DESC
+  `);
+  const getSkillProposalStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND id = ?
+    LIMIT 1
+  `);
+  const getPendingSkillProposalForCreateStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'create' AND status = 'pending'
+    LIMIT 1
+  `);
+  const getPendingSkillProposalForSkillStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND status = 'pending'
+    LIMIT 1
+  `);
+  const getPendingSkillProposalForPatchStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'patch'
+      AND patch_old_string = ? AND patch_new_string = ? AND status = 'pending'
+    LIMIT 1
+  `);
+  const updateSkillProposalStatusStmt = db.prepare(`
+    UPDATE skill_proposals
+    SET status = ?, reviewer_user_id = ?, reviewed_at = ?
+    WHERE org_id = ? AND id = ?
+  `);
+  const countPendingSkillProposalsStmt = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM skill_proposals
+    WHERE org_id = ? AND status = 'pending'
+  `);
+  const countPendingSkillProposalsForProfileStmt = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM skill_proposals
+    WHERE org_id = ? AND profile_id = ? AND status = 'pending'
+  `);
   const createArtifactShareStmt = db.prepare(`
     INSERT INTO artifact_shares (
       id, org_id, profile_id, source_path, filename, mime_type, size_bytes,
@@ -1199,6 +1319,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       o.id,
       o.name,
       o.slug,
+      o.skills_write_approval,
       o.created_at,
       o.updated_at,
       om.role,
@@ -1307,6 +1428,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.id,
         record.name,
         record.slug,
+        record.skillsWriteApproval ? 1 : 0,
         record.createdAt,
         record.updatedAt,
       );
@@ -1386,6 +1508,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
           id: string;
           name: string;
           slug: string;
+          skills_write_approval: number;
           created_at: string;
           updated_at: string;
           role: string;
@@ -1397,6 +1520,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
             id: record.id,
             name: record.name,
             slug: record.slug,
+            skillsWriteApproval: record.skills_write_approval !== 0,
             createdAt: record.created_at,
             updatedAt: record.updated_at,
           },
@@ -1491,6 +1615,104 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
 
     async countOrgMemoryProposals(orgId, status) {
       const row = countOrgMemoryProposalsStmt.get(orgId, status) as { count: number };
+      return row.count;
+    },
+
+    async createSkillProposal(record) {
+      createSkillProposalStmt.run(
+        record.id,
+        record.orgId,
+        record.profileId,
+        record.sessionId,
+        record.proposedByUserId,
+        record.action,
+        record.skillName,
+        record.content,
+        record.patchOldString,
+        record.patchNewString,
+        record.status,
+        record.reviewerUserId,
+        record.reviewedAt,
+        record.createdAt,
+      );
+    },
+
+    async listSkillProposals(orgId, options = {}) {
+      const { status, profileId } = options;
+      let rows: SkillProposalRow[];
+      if (status && profileId) {
+        rows = listSkillProposalsByStatusAndProfileStmt.all(
+          orgId,
+          status,
+          profileId,
+        ) as SkillProposalRow[];
+      } else if (status) {
+        rows = listSkillProposalsByStatusStmt.all(orgId, status) as SkillProposalRow[];
+      } else if (profileId) {
+        rows = listAllSkillProposalsForProfileStmt.all(orgId, profileId) as SkillProposalRow[];
+      } else {
+        rows = listAllSkillProposalsStmt.all(orgId) as SkillProposalRow[];
+      }
+      return rows.map(toSkillProposalRecord);
+    },
+
+    async getSkillProposal(orgId, id) {
+      const row = getSkillProposalStmt.get(orgId, id) as SkillProposalRow | null;
+      return row ? toSkillProposalRecord(row) : null;
+    },
+
+    async getPendingSkillProposalForCreate(orgId, profileId, skillName) {
+      const row = getPendingSkillProposalForCreateStmt.get(
+        orgId,
+        profileId,
+        skillName,
+      ) as SkillProposalRow | null;
+      return row ? toSkillProposalRecord(row) : null;
+    },
+
+    async getPendingSkillProposalForSkill(orgId, profileId, skillName) {
+      const row = getPendingSkillProposalForSkillStmt.get(
+        orgId,
+        profileId,
+        skillName,
+      ) as SkillProposalRow | null;
+      return row ? toSkillProposalRecord(row) : null;
+    },
+
+    async getPendingSkillProposalForPatch(
+      orgId,
+      profileId,
+      skillName,
+      patchOldString,
+      patchNewString,
+    ) {
+      const row = getPendingSkillProposalForPatchStmt.get(
+        orgId,
+        profileId,
+        skillName,
+        patchOldString,
+        patchNewString,
+      ) as SkillProposalRow | null;
+      return row ? toSkillProposalRecord(row) : null;
+    },
+
+    async updateSkillProposalStatus(orgId, id, update) {
+      const result = updateSkillProposalStatusStmt.run(
+        update.status,
+        update.reviewerUserId,
+        update.reviewedAt,
+        orgId,
+        id,
+      );
+      return result.changes > 0;
+    },
+
+    async countPendingSkillProposals(orgId, profileId) {
+      const row = (
+        profileId
+          ? countPendingSkillProposalsForProfileStmt.get(orgId, profileId)
+          : countPendingSkillProposalsStmt.get(orgId)
+      ) as { count: number };
       return row.count;
     },
 
@@ -1682,6 +1904,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.isSuper ? 1 : 0,
         record.orgId ?? null,
         record.isDefault ? 1 : 0,
+        record.skillsWriteApproval == null
+          ? null
+          : record.skillsWriteApproval
+            ? 1
+            : 0,
         record.createdAt,
         record.updatedAt,
       );
@@ -2276,6 +2503,8 @@ function toProfileRecord(row: ProfileRow): StoredProfileRecord {
     isSuper: row.is_super !== 0,
     orgId: row.org_id ?? null,
     isDefault: row.is_default !== 0,
+    skillsWriteApproval:
+      row.skills_write_approval == null ? null : row.skills_write_approval !== 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -2720,6 +2949,7 @@ function toOrganizationRecord(row: OrganizationRow): StoredOrganizationRecord {
     id: row.id,
     name: row.name,
     slug: row.slug,
+    skillsWriteApproval: row.skills_write_approval !== 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -2750,6 +2980,25 @@ function toOrgMemoryProposalRecord(row: OrgMemoryProposalRow): StoredOrgMemoryPr
     bullet: row.bullet,
     status: row.status as OrgMemoryProposalStatus,
     pinned: Boolean(row.pinned),
+    reviewerUserId: row.reviewer_user_id,
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
+  };
+}
+
+function toSkillProposalRecord(row: SkillProposalRow): StoredSkillProposal {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    profileId: row.profile_id,
+    sessionId: row.session_id,
+    proposedByUserId: row.proposed_by_user_id,
+    action: row.action as StoredSkillProposal["action"],
+    skillName: row.skill_name,
+    content: row.content,
+    patchOldString: row.patch_old_string,
+    patchNewString: row.patch_new_string,
+    status: row.status as StoredSkillProposal["status"],
     reviewerUserId: row.reviewer_user_id,
     reviewedAt: row.reviewed_at,
     createdAt: row.created_at,

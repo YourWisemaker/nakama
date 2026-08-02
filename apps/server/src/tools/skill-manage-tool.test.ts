@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathExists, runWriteFile } from "@nakama/core";
 import type { ToolContext } from "@nakama/core";
-import { createInMemoryDatabaseAdapter } from "@nakama/db";
+import { createInMemoryDatabaseAdapter, seedOrgDefaultProfile } from "@nakama/db";
 import { SkillsService } from "../services/skills-service";
+import { SkillProposalService } from "../services/skill-proposal-service";
 import { createSkillManageTools } from "./skill-manage-tool";
 
 const ORG_ID = "org_test";
@@ -30,12 +31,42 @@ function memberContext(overrides: Partial<ToolContext> = {}): ToolContext {
   };
 }
 
-function skillManageTool(service: SkillsService) {
-  const [tool] = createSkillManageTools(service);
+function skillManageTool(
+  service: SkillsService,
+  skillProposalService?: SkillProposalService | null,
+) {
+  const [tool] = createSkillManageTools({
+    skillsService: service,
+    skillProposalService: skillProposalService ?? null,
+  });
   if (!tool) {
     throw new Error("skill_manage tool missing");
   }
   return tool;
+}
+
+async function seedOrgProfile(
+  db: ReturnType<typeof createInMemoryDatabaseAdapter>,
+  options: { orgSkillsWriteApproval?: boolean; profileSkillsWriteApproval?: boolean | null } = {},
+) {
+  const now = new Date().toISOString();
+  await db.upsertOrganization({
+    id: ORG_ID,
+    name: "Test Org",
+    slug: "test-org",
+    skillsWriteApproval: options.orgSkillsWriteApproval ?? false,
+    createdAt: now,
+    updatedAt: now,
+  });
+  const profile = await seedOrgDefaultProfile(db, ORG_ID);
+  if (options.profileSkillsWriteApproval !== undefined) {
+    await db.upsertProfile({
+      ...profile,
+      skillsWriteApproval: options.profileSkillsWriteApproval,
+      updatedAt: now,
+    });
+  }
+  return profile;
 }
 
 describe("skill_manage tool", () => {
@@ -332,6 +363,46 @@ Profile body.
         memberContext({ channel: "telegram" }),
       ),
     ).rejects.toThrow(/interactive web or CLI/);
+  });
+
+  test("gate off creates immediately (AE1 regression)", async () => {
+    const { db, tool } = await setup();
+    await seedOrgProfile(db, { orgSkillsWriteApproval: false });
+
+    const result = await tool.run(
+      { action: "create", content: researchSkillMarkdown },
+      memberContext(),
+    );
+
+    expect(result).toMatchObject({
+      action: "create",
+      name: "research-paper",
+      assigned: true,
+    });
+    expect((result as { staged?: boolean }).staged).toBeUndefined();
+  });
+
+  test("gate on stages create without writing disk", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-skill-manage-gate-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+    const db = createInMemoryDatabaseAdapter();
+    const profile = await seedOrgProfile(db, { orgSkillsWriteApproval: true });
+    const service = new SkillsService(db);
+    const proposalService = new SkillProposalService(db, service);
+    const tool = skillManageTool(service, proposalService);
+
+    const result = await tool.run(
+      { action: "create", content: researchSkillMarkdown },
+      memberContext({ profileId: profile.id }),
+    );
+
+    expect(result).toMatchObject({
+      staged: true,
+      action: "create",
+      name: "research-paper",
+      outcome: "created",
+    });
+    expect(await db.listSkillsForProfile(profile.id)).toHaveLength(0);
   });
 
   test("write_file refuses skills/*/SKILL.md when forbidProfileSkillMarkdownWrites is set", async () => {

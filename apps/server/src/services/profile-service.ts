@@ -150,6 +150,10 @@ export class ProfileService {
       name: request.name?.trim() ?? profile.name,
       systemPrompt: request.systemPrompt?.trim() ?? profile.systemPrompt,
       model: request.model === undefined ? profile.model : request.model,
+      skillsWriteApproval:
+        request.skillsWriteApproval === undefined
+          ? profile.skillsWriteApproval
+          : request.skillsWriteApproval,
       updatedAt: now,
     });
 
@@ -528,6 +532,7 @@ export class ProfileService {
       model: profile.model,
       isSuper: profile.isSuper,
       isDefault: profile.isDefault ?? false,
+      skillsWriteApproval: profile.skillsWriteApproval ?? null,
       toolCount: tools.length,
       mcpServerCount: mcpServers.length,
       soulActive: soulStack !== null,

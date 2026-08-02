@@ -15,6 +15,8 @@ import type {
   StoredOrgInviteRecord,
   StoredOrgMemoryProposal,
   OrgMemoryProposalStatus,
+  StoredSkillProposal,
+  SkillProposalStatus,
   StoredArtifactShareRecord,
   StoredOrganizationRecord,
   StoredUserOrganizationRecord,
@@ -66,6 +68,7 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
   const orgInvites = new Map<string, StoredOrgInviteRecord>();
   const orgInvitesByTokenHash = new Map<string, StoredOrgInviteRecord>();
   const orgMemoryProposals = new Map<string, StoredOrgMemoryProposal>();
+  const skillProposals = new Map<string, StoredSkillProposal>();
   const artifactShares = new Map<string, StoredArtifactShareRecord>();
   const artifactSharesByTokenHash = new Map<string, StoredArtifactShareRecord>();
   let llmUsageStats: StoredLlmUsageStatsRecord | null = null;
@@ -329,6 +332,115 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
         if (proposal.orgId === orgId && proposal.status === status) {
           count += 1;
         }
+      }
+      return count;
+    },
+
+    async createSkillProposal(record) {
+      skillProposals.set(record.id, record);
+    },
+
+    async listSkillProposals(orgId, options = {}) {
+      const { status, profileId } = options;
+      const proposals = [...skillProposals.values()].filter((proposal) => {
+        if (proposal.orgId !== orgId) {
+          return false;
+        }
+        if (status && proposal.status !== status) {
+          return false;
+        }
+        if (profileId && proposal.profileId !== profileId) {
+          return false;
+        }
+        return true;
+      });
+      return proposals.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+
+    async getSkillProposal(orgId, id) {
+      const proposal = skillProposals.get(id);
+      if (!proposal || proposal.orgId !== orgId) {
+        return null;
+      }
+      return proposal;
+    },
+
+    async getPendingSkillProposalForCreate(orgId, profileId, skillName) {
+      for (const proposal of skillProposals.values()) {
+        if (
+          proposal.orgId === orgId &&
+          proposal.profileId === profileId &&
+          proposal.skillName === skillName &&
+          proposal.action === "create" &&
+          proposal.status === "pending"
+        ) {
+          return proposal;
+        }
+      }
+      return null;
+    },
+
+    async getPendingSkillProposalForSkill(orgId, profileId, skillName) {
+      for (const proposal of skillProposals.values()) {
+        if (
+          proposal.orgId === orgId &&
+          proposal.profileId === profileId &&
+          proposal.skillName === skillName &&
+          proposal.status === "pending"
+        ) {
+          return proposal;
+        }
+      }
+      return null;
+    },
+
+    async getPendingSkillProposalForPatch(
+      orgId,
+      profileId,
+      skillName,
+      patchOldString,
+      patchNewString,
+    ) {
+      for (const proposal of skillProposals.values()) {
+        if (
+          proposal.orgId === orgId &&
+          proposal.profileId === profileId &&
+          proposal.skillName === skillName &&
+          proposal.action === "patch" &&
+          proposal.patchOldString === patchOldString &&
+          proposal.patchNewString === patchNewString &&
+          proposal.status === "pending"
+        ) {
+          return proposal;
+        }
+      }
+      return null;
+    },
+
+    async updateSkillProposalStatus(orgId, id, update) {
+      const proposal = skillProposals.get(id);
+      if (!proposal || proposal.orgId !== orgId) {
+        return false;
+      }
+      skillProposals.set(id, {
+        ...proposal,
+        status: update.status,
+        reviewerUserId: update.reviewerUserId,
+        reviewedAt: update.reviewedAt,
+      });
+      return true;
+    },
+
+    async countPendingSkillProposals(orgId, profileId) {
+      let count = 0;
+      for (const proposal of skillProposals.values()) {
+        if (proposal.orgId !== orgId || proposal.status !== "pending") {
+          continue;
+        }
+        if (profileId && proposal.profileId !== profileId) {
+          continue;
+        }
+        count += 1;
       }
       return count;
     },
