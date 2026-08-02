@@ -3,6 +3,7 @@ import {
   formatServerError,
   LOCAL_CLIENT_EMAIL,
   NakamaApiError,
+  resolveChatStreamTimeoutMs,
   type AgentChannel,
   type AgentQuestionnaire,
   type AgentTodo,
@@ -388,7 +389,7 @@ export function parseChannel(value: string | undefined): AgentChannel {
   );
 }
 
-const STREAM_TIMEOUT_MS = 600_000;
+const STREAM_TIMEOUT_MS = resolveChatStreamTimeoutMs();
 
 function createStreamSenders(
   sessionId: string,
