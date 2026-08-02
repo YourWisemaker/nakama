@@ -25,7 +25,20 @@ Use `gh` for issues, PRs, checks, reviews, releases, and any GitHub URL. Do not 
 
 Use `agent-browser` cli to do browser automation, screenshot etc. Run the docker first when you need to debug with first installation, for just quick test or screenshot use local dev server that already running.
 
-## Docker
+## Documentation (`docs/website`)
+
+User-facing docs live in `docs/website/content/docs/` (MDX). **Audience is people who use Nakama** — org admins, operators, and chat users — not contributors implementing the product.
+
+When writing or updating docs, prioritize:
+
+1. **Why** — what problem the feature solves and when someone should care
+2. **Value** — what gets better (safety, consistency, less repeat work, team control)
+3. **How to use it** — UI paths, steps, roles, and screenshots for flows; plain language over jargon
+
+Keep contributor detail out of user docs unless it directly helps usage (e.g. env vars for self-hosting). Prefer dashboard navigation names (**System → Organization**) over route paths; put schema, service names, file paths, and HTTP API tables in `AGENTS.md` or code comments, not in product docs unless the page is explicitly for integrators.
+
+Match existing pages: task-oriented headings, tables for roles/options, screenshots under `docs/website/public/screenshots/` (`![alt](/screenshots/foo.png)`), capture scripts in `docs/website/scripts/capture-*.sh`. Cross-link related concepts (e.g. skills ↔ org memory) instead of duplicating internals.
+
 
 One container: API + web + platform workers. Data at `/nakama/data` (`NAKAMA_CONFIG_DIR`). Dashboard: http://localhost:4310
 

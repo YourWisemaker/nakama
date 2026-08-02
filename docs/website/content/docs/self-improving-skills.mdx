@@ -1,0 +1,108 @@
+---
+title: "Self-improving skills"
+description: "Let agents turn successful work into reusable skills, with optional org-admin review before changes go live."
+---
+
+Your agents get better at repeat work when they can **save what worked** as a [skill](/skills) — a short playbook the bot can follow next time.
+
+**Self-improving skills** is Nakama's approach to that: agents can create and update profile skills after complex tasks, while your team keeps control when you need it.
+
+## Why this matters
+
+Without this, every win stays in one chat. The same debugging steps, deploy checklist, or customer workflow gets explained again from scratch.
+
+With self-improving skills:
+
+- **Less repeat explanation** — the agent captures a workflow once and reuses it when a similar request comes up.
+- **Cleaner profiles** — procedures live in skills instead of bloating the main prompt.
+- **Team safety** — org admins can require approval before a new or changed skill affects future behavior.
+
+Think of it as the agent learning *how to do the job*, while you decide whether that learning goes live immediately or waits for a quick review.
+
+## How it works
+
+```text
+Complex task succeeds  →  Agent saves a skill  →  Skill matches on later chats
+                              ↓
+                    (optional) Org admin approves
+```
+
+1. **During chat** — after a hard problem, recovery, or correction, the agent may offer to save the approach as a skill (for example, a deploy checklist or support triage flow).
+2. **On later turns** — when someone asks for something similar, Nakama can load that skill and follow the saved steps.
+3. **Optional gate** — if write approval is on, the skill change waits in a proposal queue until an org admin approves or rejects it.
+
+Skills hold **procedures** (how to do something). Profile memory holds **facts** about the user (preferences, context). Keep preferences in memory; keep repeatable workflows in skills.
+
+## Where it works
+
+| Channel | Agent can update skills? |
+|---------|--------------------------|
+| **Web chat** | Yes |
+| **CLI chat** | Yes |
+| **Telegram, WhatsApp, Discord** | No |
+| **Automations / scheduled runs** | No |
+
+Org **viewers** can read chat but cannot run agents, so they cannot trigger skill updates.
+
+Default and Super Bot profiles include the skill-authoring capability after sync. Other profiles need the **manage-skills** skill assigned — see [Skills](/skills).
+
+## Write approval (optional)
+
+By default, skill changes apply immediately. Turn on **write approval** when you want a human check before creates, edits, or deletes affect the live skill catalog — similar in spirit to [org memory](/org-memory) proposals, but for per-profile workflows.
+
+### Turn it on
+
+Org admins: **System → Organization → Skill write approval → Gate settings**.
+
+- Flip the toggle to require approval for skill writes org-wide.
+- Optionally pick a profile and override: inherit the org default, always require approval, or allow immediate writes for that bot only.
+
+![Enable the org-wide skill write approval gate and optional per-profile overrides](/screenshots/skill-write-approval-gate.png)
+
+When the gate is **off**, nothing changes — agents update skills directly, as before.
+
+### Review proposals
+
+When approval is required, agents still *propose* skill changes during chat. Those proposals appear under **Proposals** on the same card (or via a notification link).
+
+![Pending skill proposals on the Proposals tab](/screenshots/skill-write-approval-proposals.png)
+
+Open **Review** to see the full skill content (or the before/after for an edit). **Approve** applies the change; **Reject** discards it with no effect on live skills.
+
+![Review dialog — preview skill content and approve or reject](/screenshots/skill-write-approval-review.png)
+
+Nakama flags suspicious patterns in proposals the same way it does for org memory — worth a closer look before approving.
+
+Platform admins managing a specific bot can also open **Agent → Profiles**, select the profile, and use the **Proposals** tab there.
+
+## Who can do what
+
+| Role | Chat and trigger skill updates | Approve or reject proposals | Change gate settings |
+|------|-------------------------------|----------------------------|----------------------|
+| **Org admin** | Yes | Yes | Yes |
+| **Org member** | Yes | No | No |
+| **Org viewer** | No (read-only chat) | No | No |
+| **Platform admin** | Yes | Yes | Yes |
+
+## Skills vs org memory
+
+Both help agents stay consistent across your team, but they solve different problems:
+
+| | **Profile skills** | **Org memory** |
+|---|---|---|
+| **What it stores** | Repeatable workflows for one bot | Shared facts for the whole org |
+| **Example** | "How we triage support tickets" | "Support hours are 9–6 SGT" |
+| **Who approves agent writes** | Optional — only when write approval is on | Always — members propose, admins approve |
+| **Where admins manage it** | **System → Organization → Skill write approval** | **System → Organization → Org Memory** |
+
+Use org memory for facts everyone should know. Use skills for how a specific bot should run a task.
+
+## What's next
+
+Nakama is extending this area over time — for example, better visibility into which skills are used, and gentle suggestions after complex turns when saving a skill might help. What you have today is agent-driven skill authoring plus optional org-admin approval.
+
+## Related
+
+- [Skills](/skills) — what skills are, how to assign them, and manual authoring
+- [Org memory](/org-memory) — shared facts and proposal review
+- [Profiles](/profiles) — per-bot identity, memory, and tools

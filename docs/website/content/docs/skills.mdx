@@ -166,11 +166,11 @@ Profiles receive bundled skills for common workflows:
 
 New custom profiles receive the file tools and `knowledge_base_search` by default when those builtins are available. Default and super-bot profiles also receive the bundled skills above when they are installed and synced on the server (except opt-in skills such as `agent-browser`). Super Bot also receives `bash` for one-off host commands and coding-agent workflows.
 
-When `manage-skills` is assigned, interactive chat gets a `skill_manage` tool (`create` / `patch` / `delete`). Creates auto-assign to the profile unless **write approval** is enabled (org default with optional per-profile override). When the gate is on, `skill_manage` stages proposals for org-admin review on the profile **Proposals** tab; skills go live only after approval. Automations and messaging channels do not receive `skill_manage` in this phase. Soft system-prompt guidance nudges crystallization after complex successes, error recovery, or user corrections — treat that as advisory until dogfood confirms useful skill creation.
+When `manage-skills` is assigned, interactive chat gets a `skill_manage` tool (`create` / `patch` / `delete`). Creates auto-assign to the profile. Automations and messaging channels do not receive `skill_manage`. For crystallization, optional write approval, admin review UI, and the Phase 3–4 roadmap, see [Self-improving skills](/self-improving-skills).
 
 ### Write approval (optional)
 
-Org admins can enable **skill write approval** under **Soul → Organization**. Members can still call `skill_manage`, but creates/patches/deletes are queued in `skill_proposals` until an org admin approves or rejects them from the profile **Proposals** tab. Profile settings can override the org default (inherit / require approval / allow immediate writes). Platform-admin HTTP skill CRUD and dashboard manual create remain immediate-write bypass paths.
+Org admins can enable **skill write approval** under **System → Organization → Skill write approval**. When the gate is on, skill changes wait for admin review before they go live; see [Self-improving skills](/self-improving-skills).
 
 ### Bundled system skills
 
@@ -231,6 +231,7 @@ Viewers cannot invoke agents, so they cannot trigger skills either.
 ## Next steps
 
 - [Profiles](/profiles) — how skills attach to a bot
+- [Self-improving skills](/self-improving-skills) — agents save workflows as skills; optional admin approval
 - [Coding agent](/coding-agent) — harness setup and the `coding-agent` skill
 - [Agent browser](/agent-browser) — interactive browsing via `bash` and the `agent-browser` skill
 - [Builtin tools](/builtin-tools) — the actions a profile can take
