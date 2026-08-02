@@ -30,6 +30,7 @@ export function CodeBlock({
   lang,
   className,
   fillHeight = false,
+  maxScrollHeightClass = "max-h-[min(50vh,28rem)]",
   showEdit = false,
   onEdit,
 }: {
@@ -37,6 +38,7 @@ export function CodeBlock({
   lang?: string | null;
   className?: string;
   fillHeight?: boolean;
+  maxScrollHeightClass?: string;
   showEdit?: boolean;
   onEdit?: () => void;
 }) {
@@ -119,7 +121,7 @@ export function CodeBlock({
       <div
         className={cn(
           "relative overflow-auto bg-muted/20",
-          fillHeight ? "min-h-0 flex-1" : "max-h-[min(50vh,28rem)]",
+          fillHeight ? "min-h-0 flex-1" : maxScrollHeightClass,
         )}
         style={gridStyle}
       >

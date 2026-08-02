@@ -154,7 +154,7 @@ function SkillDetailPageContent({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-4">
+    <div className="flex flex-col gap-4 px-6 py-4">
       <div className="flex items-center justify-between gap-3">
         <BackLink />
         {canRemoveFromProfile ? (
