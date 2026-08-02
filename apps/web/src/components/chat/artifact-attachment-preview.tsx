@@ -124,7 +124,7 @@ export function ArtifactAttachmentPreview({
   artifact,
   className,
 }: ArtifactAttachmentPreviewProps) {
-  const { show, update, hide, activeId } = useChatAttachmentPanel();
+  const { show, update, activeId } = useChatAttachmentPanel();
   const share = useArtifactShareControls({ profileId, artifactPath: artifact.path });
   const open = activeId === id;
   const [fullscreen, setFullscreen] = useState(false);
@@ -166,12 +166,6 @@ export function ArtifactAttachmentPreview({
     const timeout = window.setTimeout(() => setCopied(false), 2000);
     return () => window.clearTimeout(timeout);
   }, [copied]);
-
-  useEffect(() => {
-    return () => {
-      hide(id);
-    };
-  }, [hide, id]);
 
   function buildPanelBody(loadingOverride?: boolean) {
     const panelKind = isImage ? "image" : isVideo ? "video" : isHtml ? "html" : "text";

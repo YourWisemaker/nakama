@@ -1,11 +1,13 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   CreateSkillRequest,
   ListSkillsResponse,
+  PatchSkillRequest,
   SkillDetail,
   SkillResponse,
   SkillSummary,
+  SkillUsageSummary,
   SyncSkillsResponse,
   ToolDefinition,
 } from "@nakama/core";
@@ -16,6 +18,7 @@ import {
   composeAgentBrowserCapabilityPrompt,
   composeMatchedSkillsPrompt,
   composeSkillsCatalog,
+  composeSkillMarkdown,
   createId,
   createSkillFile,
   dedupeSkillsByName,
@@ -28,18 +31,37 @@ import {
   loadSkillTools,
   matchSkillsForMessage,
   parseRawProfileSkillContent,
+  parseSkillMarkdown,
   patchSkillFile,
   pickPreferredSkillSourcePath,
   SKILL_FILE_NAME,
   writeRawProfileSkillMarkdown,
   type DiscoveredSkill,
 } from "@nakama/core";
-import type { DatabaseAdapter, StoredSkillRecord } from "@nakama/db";
+import type {
+  DatabaseAdapter,
+  StoredSkillRecord,
+  StoredSkillUsageRecord,
+  SkillCreatedBy,
+} from "@nakama/db";
+import {
+  SkillUsageService,
+  type SkillUsageRecordingContext,
+} from "./skill-usage-service";
+
+export type { SkillUsageRecordingContext };
 
 const bundledSkillNames = new Set<string>(BUNDLED_SKILL_NAMES);
 
 export class SkillsService {
-  constructor(private readonly db: DatabaseAdapter) {}
+  private readonly skillUsageService: SkillUsageService;
+
+  constructor(
+    private readonly db: DatabaseAdapter,
+    skillUsageService?: SkillUsageService,
+  ) {
+    this.skillUsageService = skillUsageService ?? new SkillUsageService(db);
+  }
 
   async syncDiscoveredSkills(): Promise<SyncSkillsResponse> {
     const discovered = await discoverSkills();
@@ -128,6 +150,64 @@ export class SkillsService {
     return this.getSkill(record.id);
   }
 
+  async patchSkill(
+    orgId: string,
+    skillId: string,
+    request: PatchSkillRequest,
+    options?: { profileId?: string },
+  ): Promise<SkillResponse> {
+    const hasDescription = request.description !== undefined;
+    const hasBody = request.body !== undefined;
+    const hasDisableModelInvocation = request.disableModelInvocation !== undefined;
+
+    if (!hasDescription && !hasBody && !hasDisableModelInvocation) {
+      throw new Error("No skill changes provided.");
+    }
+
+    const record = await this.requireSkill(skillId);
+
+    if (bundledSkillNames.has(record.name)) {
+      throw new Error("Bundled system skills cannot be edited.");
+    }
+
+    const skillFilePath = path.join(record.sourcePath, SKILL_FILE_NAME);
+    const existing = await readFile(skillFilePath, "utf8");
+    const parsed = parseSkillMarkdown(existing, skillFilePath);
+    const description = hasDescription ? request.description!.trim() : parsed.frontmatter.description;
+
+    if (!description) {
+      throw new Error("Skill description is required.");
+    }
+
+    const body = hasBody ? request.body! : parsed.body;
+    const disableModelInvocation = hasDisableModelInvocation
+      ? request.disableModelInvocation!
+      : parsed.frontmatter.disableModelInvocation;
+
+    const content = composeSkillMarkdown({
+      name: parsed.frontmatter.name,
+      description,
+      body,
+      disableModelInvocation,
+    });
+
+    parseSkillMarkdown(content, skillFilePath);
+    await writeFile(skillFilePath, content, "utf8");
+
+    const synced = await this.syncSkillRecordFromDirectory(
+      record.sourcePath,
+      parsed.frontmatter.name,
+      "patched",
+    );
+
+    const profileId = options?.profileId?.trim();
+    if (profileId) {
+      await this.skillUsageService.recordPatch(orgId, profileId, synced.id);
+    }
+
+    return this.getSkill(synced.id);
+  }
+
   async createAndAssignSkillToProfile(
     orgId: string,
     profileId: string,
@@ -196,6 +276,7 @@ export class SkillsService {
       written.directory,
       written.name,
       "written",
+      "agent",
     );
 
     if (!isPathWithinProfileSkillsDir(orgId, profileId, record.sourcePath)) {
@@ -229,6 +310,8 @@ export class SkillsService {
       patched.name,
       "patched",
     );
+
+    await this.skillUsageService.recordPatch(orgId, profileId, record.id);
 
     return this.getSkill(record.id);
   }
@@ -297,8 +380,19 @@ export class SkillsService {
     };
   }
 
-  async composeCatalogForProfile(orgId: string, profileId: string): Promise<string> {
+  async composeCatalogForProfile(
+    orgId: string,
+    profileId: string,
+    usageContext?: SkillUsageRecordingContext,
+  ): Promise<string> {
     const assigned = await this.getAssignedDiscoveredSkills(orgId, profileId);
+    const assignedRecords = await this.db.listSkillsForProfile(profileId);
+    const skillIds = assigned
+      .map((skill) => assignedRecords.find((record) => record.name === skill.name)?.id)
+      .filter((skillId): skillId is string => Boolean(skillId));
+
+    void this.skillUsageService.recordCatalogViews(orgId, profileId, skillIds, usageContext);
+
     return composeSkillsCatalog(assigned);
   }
 
@@ -316,11 +410,22 @@ export class SkillsService {
     userMessage: string,
     options: {
       appendContext?: (matched: DiscoveredSkill[]) => string | Promise<string>;
+      usageContext?: SkillUsageRecordingContext;
     } = {},
   ): Promise<string> {
     const assigned = await this.getAssignedDiscoveredSkills(orgId, profileId);
+    const assignedRecords = await this.db.listSkillsForProfile(profileId);
     const matched = matchSkillsForMessage(assigned, userMessage);
     const explicitSkillName = extractExplicitSkillName(userMessage);
+
+    if (matched.length > 0) {
+      const matchedSkillIds = matched
+        .map((skill) => assignedRecords.find((record) => record.name === skill.name)?.id)
+        .filter((skillId): skillId is string => Boolean(skillId));
+
+      void this.skillUsageService.recordMatches(orgId, profileId, matchedSkillIds);
+    }
+
     const prompt = composeMatchedSkillsPrompt(matched, {
       explicitInvocation: explicitSkillName !== null,
     });
@@ -330,6 +435,15 @@ export class SkillsService {
     return [prompt, extraContext?.trim()].filter(Boolean).join("\n\n");
   }
 
+  async listSkillSummariesForProfile(
+    orgId: string,
+    profileId: string,
+  ): Promise<SkillSummary[]> {
+    const records = await this.db.listSkillsForProfile(profileId);
+    const usage = await this.skillUsageService.listForProfile(profileId);
+    return toSkillSummaries(records, usage);
+  }
+
   async loadToolsForProfile(orgId: string, profileId: string): Promise<ToolDefinition[]> {
     const assigned = await this.getAssignedDiscoveredSkills(orgId, profileId);
     return loadSkillTools(assigned.filter((skill) => skill.hasTool));
@@ -337,7 +451,11 @@ export class SkillsService {
 
   async listSkillsForProfile(profileId: string): Promise<SkillSummary[]> {
     const skills = await this.db.listSkillsForProfile(profileId);
-    return skills.map(toSkillSummary);
+    return skills.map((record) => toSkillSummary(record));
+  }
+
+  getSkillUsageService(): SkillUsageService {
+    return this.skillUsageService;
   }
 
   private async getAssignedDiscoveredSkills(
@@ -361,13 +479,14 @@ export class SkillsService {
     directory: string,
     name: string,
     verb: "written" | "patched",
+    createdBy?: SkillCreatedBy,
   ): Promise<StoredSkillRecord> {
     const discovered = await discoverSkillDirectory(directory);
     if (!discovered) {
       throw new Error(`Skill was ${verb} but could not be discovered.`);
     }
 
-    await this.upsertDiscoveredSkill(discovered);
+    await this.upsertDiscoveredSkill(discovered, createdBy);
 
     const record =
       (await this.db.getSkillBySourcePath(directory)) ??
@@ -377,16 +496,27 @@ export class SkillsService {
       throw new Error(`Skill was ${verb} but could not be synced.`);
     }
 
+    if (createdBy && record.createdBy !== createdBy) {
+      const now = new Date().toISOString();
+      const updated = { ...record, createdBy, updatedAt: now };
+      await this.db.upsertSkill(updated);
+      return updated;
+    }
+
     return record;
   }
 
   private async upsertDiscoveredSkill(
     skill: DiscoveredSkill,
+    createdByOverride?: SkillCreatedBy,
   ): Promise<{ created: boolean }> {
     const existingByPath = await this.db.getSkillBySourcePath(skill.directory);
     const existing =
       existingByPath ?? (await this.db.getSkillByName(skill.name)) ?? null;
     const now = new Date().toISOString();
+    const defaultCreatedBy: SkillCreatedBy = isGlobalSkillSourcePath(skill.directory)
+      ? "bundled"
+      : "human";
     const record: StoredSkillRecord = {
       id: existing?.id ?? createId("skill"),
       name: skill.name,
@@ -397,6 +527,7 @@ export class SkillsService {
       hasTool: skill.hasTool,
       disableModelInvocation: skill.disableModelInvocation,
       enabled: existing?.enabled ?? true,
+      createdBy: existing?.createdBy ?? createdByOverride ?? defaultCreatedBy,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -460,7 +591,10 @@ export class SkillsService {
   }
 }
 
-function toSkillSummary(record: StoredSkillRecord): SkillSummary {
+function toSkillSummary(
+  record: StoredSkillRecord,
+  usage?: StoredSkillUsageRecord | null,
+): SkillSummary {
   return {
     id: record.id,
     name: record.name,
@@ -469,8 +603,32 @@ function toSkillSummary(record: StoredSkillRecord): SkillSummary {
     hasTool: record.hasTool,
     disableModelInvocation: record.disableModelInvocation,
     enabled: record.enabled,
+    createdBy: record.createdBy,
+    usage: usage ? toSkillUsageSummary(usage) : undefined,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
+  };
+}
+
+function toSkillUsageSummary(record: StoredSkillUsageRecord | null | undefined): SkillUsageSummary {
+  if (!record) {
+    return {
+      viewCount: 0,
+      useCount: 0,
+      patchCount: 0,
+      lastViewedAt: null,
+      lastUsedAt: null,
+      lastPatchedAt: null,
+    };
+  }
+
+  return {
+    viewCount: record.viewCount,
+    useCount: record.useCount,
+    patchCount: record.patchCount,
+    lastViewedAt: record.lastViewedAt,
+    lastUsedAt: record.lastUsedAt,
+    lastPatchedAt: record.lastPatchedAt,
   };
 }
 
@@ -484,8 +642,15 @@ async function readSkillBody(record: StoredSkillRecord): Promise<string> {
   }
 }
 
-export function toSkillSummaries(records: StoredSkillRecord[]): SkillSummary[] {
-  return records.map(toSkillSummary);
+export function toSkillSummaries(
+  records: StoredSkillRecord[],
+  usageRecords: StoredSkillUsageRecord[] = [],
+): SkillSummary[] {
+  const usageBySkillId = new Map(usageRecords.map((usage) => [usage.skillId, usage]));
+  return records.map((record) => ({
+    ...toSkillSummary(record, usageBySkillId.get(record.id) ?? null),
+    usage: toSkillUsageSummary(usageBySkillId.get(record.id)),
+  }));
 }
 
 export function toSkillDetail(

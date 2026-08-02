@@ -1374,6 +1374,17 @@ export interface ProfileDetail extends ProfileSummary {
   skills: SkillSummary[];
 }
 
+export interface SkillUsageSummary {
+  viewCount: number;
+  useCount: number;
+  patchCount: number;
+  lastViewedAt: string | null;
+  lastUsedAt: string | null;
+  lastPatchedAt: string | null;
+}
+
+export type SkillCreatedBy = "agent" | "human" | "bundled";
+
 export interface SkillSummary {
   id: string;
   name: string;
@@ -1382,6 +1393,8 @@ export interface SkillSummary {
   hasTool: boolean;
   disableModelInvocation: boolean;
   enabled: boolean;
+  createdBy: SkillCreatedBy;
+  usage?: SkillUsageSummary;
   createdAt: string;
   updatedAt: string;
 }
@@ -1408,6 +1421,12 @@ export interface CreateSkillRequest {
   body?: string;
   disableModelInvocation?: boolean;
   profileId?: string;
+}
+
+export interface PatchSkillRequest {
+  description?: string;
+  body?: string;
+  disableModelInvocation?: boolean;
 }
 
 export interface SyncSkillsResponse {

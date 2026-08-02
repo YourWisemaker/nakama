@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { AttachmentDetailPanel } from "@/components/chat/attachment-detail-panel";
+import { clampAttachmentPanelWidth } from "@/components/chat/attachment-panel-width";
 import {
   ChatAttachmentPanelContext,
   type ChatAttachmentPanelConfig,
@@ -42,13 +43,13 @@ export function ChatAttachmentPanelProvider({ children }: { children: ReactNode 
     }
     setConfig(nextConfig);
     if (nextConfig.defaultWidth != null) {
-      setWidth(nextConfig.defaultWidth);
+      setWidth(clampAttachmentPanelWidth(nextConfig.defaultWidth));
     }
   }, []);
 
   const update = useCallback((id: string, patch: Partial<Omit<ChatAttachmentPanelConfig, "id">>) => {
     if (patch.defaultWidth != null) {
-      setWidth(patch.defaultWidth);
+      setWidth(clampAttachmentPanelWidth(patch.defaultWidth));
     }
 
     setConfig((current) => {

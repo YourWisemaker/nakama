@@ -19,6 +19,7 @@ export function ChatPageContent(state: ChatPageState) {
     availableSkills,
     chatStatus,
     busy,
+    turnStartedAt,
     canStop,
     error,
     composerDraft,
@@ -130,6 +131,7 @@ export function ChatPageContent(state: ChatPageState) {
               branchingMessageId={branchingMessageId}
               actionsDisabled={busy || readOnlySession}
               streamActive={busy}
+              turnStartedAt={turnStartedAt}
               onBranchMessage={(message) => void handleBranchMessage(message)}
               onRetryMessage={(message) => void handleTryAgainMessage(message)}
             />

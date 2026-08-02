@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS skills (
   has_tool INTEGER DEFAULT 0 NOT NULL,
   disable_model_invocation INTEGER DEFAULT 0 NOT NULL,
   enabled INTEGER DEFAULT 1 NOT NULL,
+  created_by TEXT NOT NULL DEFAULT 'bundled',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -325,6 +326,25 @@ CREATE TABLE IF NOT EXISTS skill_proposals (
 
 CREATE INDEX IF NOT EXISTS skill_proposals_org_status ON skill_proposals (org_id, status);
 CREATE INDEX IF NOT EXISTS skill_proposals_org_profile_status ON skill_proposals (org_id, profile_id, status);
+
+CREATE TABLE IF NOT EXISTS profile_skill_usage (
+  org_id TEXT NOT NULL,
+  profile_id TEXT NOT NULL,
+  skill_id TEXT NOT NULL,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  use_count INTEGER NOT NULL DEFAULT 0,
+  patch_count INTEGER NOT NULL DEFAULT 0,
+  last_viewed_at TEXT,
+  last_used_at TEXT,
+  last_patched_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (profile_id, skill_id),
+  FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE,
+  FOREIGN KEY (skill_id) REFERENCES skills (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS profile_skill_usage_org_profile ON profile_skill_usage (org_id, profile_id);
 
 CREATE TABLE IF NOT EXISTS channel_org_mappings (
   channel TEXT NOT NULL,

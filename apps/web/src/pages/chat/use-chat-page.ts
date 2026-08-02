@@ -97,6 +97,7 @@ export function useChatPage() {
   const [agentQuestionnaire, setAgentQuestionnaire] = useState<AgentQuestionnaire | null>(null);
   const [contextUsage, setContextUsage] = useState<ChatContextUsage | null>(null);
   const [busy, setBusy] = useState(false);
+  const [turnStartedAt, setTurnStartedAt] = useState<string | null>(null);
   const [branchingMessageId, setBranchingMessageId] = useState<string | null>(null);
   const [canStop, setCanStop] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,6 +302,7 @@ export function useChatPage() {
           const status = await client.getSessionStatus(sessionId);
 
           if (status.active) {
+            setTurnStartedAt(status.startedAt ?? new Date().toISOString());
             listItems = seedStreamingStateForActiveTurn(listItems);
             setMessages(listItems);
 
@@ -339,6 +341,7 @@ export function useChatPage() {
       } finally {
         streamAbortRef.current = null;
         setBusy(false);
+        setTurnStartedAt(null);
       }
     },
     [profileId, syncChatUrl],
@@ -486,6 +489,7 @@ export function useChatPage() {
     ) => {
       isSendingRef.current = true;
       setBusy(true);
+      setTurnStartedAt(new Date().toISOString());
       setError(null);
 
       const images = filePartsToImageAttachments(files);
@@ -615,6 +619,7 @@ export function useChatPage() {
         streamAbortRef.current = null;
         setCanStop(false);
         setBusy(false);
+        setTurnStartedAt(null);
 
         const next = shouldDrainQueue ? messageQueueRef.current.shift() : null;
         if (next) {
@@ -751,6 +756,7 @@ export function useChatPage() {
     availableSkills,
     chatStatus,
     busy,
+    turnStartedAt,
     canStop,
     error,
     composerDraft,

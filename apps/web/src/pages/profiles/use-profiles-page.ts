@@ -97,7 +97,6 @@ export function useProfilesPage() {
   const [removeConfirm, setRemoveConfirm] = useState<RemoveAssignmentTarget | null>(null);
   const [mcpCreateOpen, setMcpCreateOpen] = useState(false);
   const [skillCreateOpen, setSkillCreateOpen] = useState(false);
-  const [detailSkillId, setDetailSkillId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrompt, setEditPrompt] = useState("");
   const [editModel, setEditModel] = useState<string | null>(null);
@@ -851,8 +850,6 @@ export function useProfilesPage() {
     setMcpCreateOpen,
     skillCreateOpen,
     setSkillCreateOpen,
-    detailSkillId,
-    setDetailSkillId,
     editName,
     editPrompt,
     editModel,

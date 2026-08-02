@@ -1,3 +1,4 @@
+import { clampAttachmentPanelWidth } from "@/components/chat/attachment-panel-width";
 import {
   artifactCodeLanguage,
   isDocxFile,
@@ -26,13 +27,13 @@ export function artifactPanelDefaultWidth(
   const isMarkdown = isMarkdownArtifactMimeType(mimeType) || isWordDocument;
   const language = artifactCodeLanguage(filename);
 
-  if (isVideo) {
-    return VIDEO_ARTIFACT_PANEL_WIDTH;
-  }
+  const baseWidth = isVideo
+    ? VIDEO_ARTIFACT_PANEL_WIDTH
+    : isHtml || isImage || isMarkdown || language
+      ? WIDE_ARTIFACT_PANEL_WIDTH
+      : NARROW_ARTIFACT_PANEL_WIDTH;
 
-  return isHtml || isImage || isMarkdown || language
-    ? WIDE_ARTIFACT_PANEL_WIDTH
-    : NARROW_ARTIFACT_PANEL_WIDTH;
+  return clampAttachmentPanelWidth(baseWidth);
 }
 
 export function artifactPanelBodyClassName({

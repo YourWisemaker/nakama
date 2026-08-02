@@ -11,6 +11,7 @@ import type {
   StoredLlmUsageStatsRecord,
   StoredMcpServerRecord,
   StoredSkillRecord,
+  StoredSkillUsageRecord,
   StoredOrgMemberRecord,
   StoredOrgInviteRecord,
   StoredOrgMemoryProposal,
@@ -56,6 +57,7 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
   const skillsByName = new Map<string, StoredSkillRecord>();
   const skillsBySourcePath = new Map<string, StoredSkillRecord>();
   const profileSkills = new Map<string, Set<string>>();
+  const skillUsage = new Map<string, StoredSkillUsageRecord>();
   const sessions = new Map<string, StoredSessionRecord>();
   const sessionMessages = new Map<string, StoredSessionMessageRecord[]>();
   const attachments = new Map<string, StoredAttachmentRecord>();
@@ -1237,6 +1239,50 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
       }
 
       return true;
+    },
+
+    async listSkillUsageForProfile(profileId) {
+      return Array.from(skillUsage.values())
+        .filter((usage) => usage.profileId === profileId)
+        .sort((left, right) => left.skillId.localeCompare(right.skillId));
+    },
+
+    async getSkillUsage(profileId, skillId) {
+      return skillUsage.get(`${profileId}:${skillId}`) ?? null;
+    },
+
+    async incrementSkillUsage(input) {
+      const key = `${input.profileId}:${input.skillId}`;
+      const now = new Date().toISOString();
+      const existing = skillUsage.get(key);
+
+      if (!existing) {
+        skillUsage.set(key, {
+          orgId: input.orgId,
+          profileId: input.profileId,
+          skillId: input.skillId,
+          viewCount: input.viewDelta ?? 0,
+          useCount: input.useDelta ?? 0,
+          patchCount: input.patchDelta ?? 0,
+          lastViewedAt: input.viewedAt ?? null,
+          lastUsedAt: input.usedAt ?? null,
+          lastPatchedAt: input.patchedAt ?? null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        return;
+      }
+
+      skillUsage.set(key, {
+        ...existing,
+        viewCount: existing.viewCount + (input.viewDelta ?? 0),
+        useCount: existing.useCount + (input.useDelta ?? 0),
+        patchCount: existing.patchCount + (input.patchDelta ?? 0),
+        lastViewedAt: input.viewedAt ?? existing.lastViewedAt,
+        lastUsedAt: input.usedAt ?? existing.lastUsedAt,
+        lastPatchedAt: input.patchedAt ?? existing.lastPatchedAt,
+        updatedAt: now,
+      });
     },
   };
 }

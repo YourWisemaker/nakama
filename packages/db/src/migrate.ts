@@ -18,6 +18,7 @@ export function migrateDatabase(db: Database): void {
   migrateOrgMemoryProposalsTable(db);
   migrateSkillProposalsTable(db);
   migrateSkillsWriteApprovalColumns(db);
+  migrateSkillUsageTables(db);
   migrateTenantOrgScope(db);
   migrateProfileOrgColumns(db);
   migrateBrowserSessionsTable(db);
@@ -379,6 +380,41 @@ function migrateSkillsWriteApprovalColumns(db: Database): void {
   if (!new Set(profileColumns.map((column) => column.name)).has("skills_write_approval")) {
     db.exec(`ALTER TABLE profiles ADD COLUMN skills_write_approval INTEGER;`);
   }
+}
+
+function migrateSkillUsageTables(db: Database): void {
+  const skillColumns = db
+    .prepare("PRAGMA table_info(skills)")
+    .all() as Array<{ name: string }>;
+  if (!new Set(skillColumns.map((column) => column.name)).has("created_by")) {
+    db.exec(`ALTER TABLE skills ADD COLUMN created_by TEXT NOT NULL DEFAULT 'bundled';`);
+    db.exec(`
+      UPDATE skills
+      SET created_by = 'human'
+      WHERE source_path LIKE '%/profiles/%/skills/%'
+        AND created_by = 'bundled';
+    `);
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS profile_skill_usage (
+      org_id TEXT NOT NULL,
+      profile_id TEXT NOT NULL,
+      skill_id TEXT NOT NULL,
+      view_count INTEGER NOT NULL DEFAULT 0,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      patch_count INTEGER NOT NULL DEFAULT 0,
+      last_viewed_at TEXT,
+      last_used_at TEXT,
+      last_patched_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (profile_id, skill_id),
+      FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE,
+      FOREIGN KEY (skill_id) REFERENCES skills (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS profile_skill_usage_org_profile ON profile_skill_usage (org_id, profile_id);
+  `);
 }
 
 const TENANT_ORG_ID_TABLES = [

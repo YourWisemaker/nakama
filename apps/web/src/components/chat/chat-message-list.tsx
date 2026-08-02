@@ -26,12 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ThinkingState } from "@/components/chat/ThinkingState";
 import { formatSessionTimestamp, type ChatListItem } from "@/lib/chat-history";
 import {
   awaitingModelLabel,
   isAwaitingModelResponse,
 } from "@/lib/chat-stream";
+import { formatElapsedSeconds, useElapsedSeconds } from "@/lib/elapsed-time";
 import { isPastedTextDocument } from "@/lib/pasted-text";
 import { TextAttachmentPreview } from "@/components/chat/text-attachment-preview";
 import { ImageAttachmentPreview } from "@/components/chat/image-attachment-preview";
@@ -48,6 +48,7 @@ interface ChatMessageListProps {
   actionsDisabled?: boolean;
   /** True while the assistant reply SSE stream is in flight. */
   streamActive?: boolean;
+  turnStartedAt?: string | null;
   onBranchMessage?: (message: ChatListItem) => void;
   onRetryMessage?: (message: ChatListItem) => void;
   emptyMessage?: string;
@@ -69,6 +70,7 @@ export function ChatMessageList({
   branchingMessageId,
   actionsDisabled = false,
   streamActive = false,
+  turnStartedAt = null,
   onBranchMessage,
   onRetryMessage,
   emptyMessage,
@@ -101,9 +103,8 @@ export function ChatMessageList({
               branchingMessageId={branchingMessageId}
               actionsDisabled={actionsDisabled}
               streamActive={streamActive}
-              awaitingLabel={
-                turnIndex === turns.length - 1 ? awaitingLabel : null
-              }
+              showAwaiting={turnIndex === turns.length - 1 && awaitingLabel === "Working…"}
+              turnStartedAt={turnStartedAt}
               onBranchMessage={onBranchMessage}
               onRetryMessage={onRetryMessage}
             />
@@ -149,7 +150,8 @@ function AssistantTurn({
   branchingMessageId,
   actionsDisabled,
   streamActive,
-  awaitingLabel,
+  showAwaiting,
+  turnStartedAt,
   onBranchMessage,
   onRetryMessage,
 }: {
@@ -160,7 +162,8 @@ function AssistantTurn({
   branchingMessageId?: string | null;
   actionsDisabled?: boolean;
   streamActive: boolean;
-  awaitingLabel?: "Thinking…" | "Working…" | null;
+  showAwaiting?: boolean;
+  turnStartedAt?: string | null;
   onBranchMessage?: (message: ChatListItem) => void;
   onRetryMessage?: (message: ChatListItem) => void;
 }) {
@@ -171,7 +174,7 @@ function AssistantTurn({
   const anchorMessage = findAssistantTurnAnchor(turnMessages);
   const turnComplete = isAssistantTurnComplete(turnMessages);
   // Wait for the full SSE reply (tools + final summary), not the brief gap after tool_end.
-  const showArtifacts = !streamActive && turnComplete && artifacts.length > 0;
+  const showArtifacts = turnComplete && artifacts.length > 0;
   const showActions = !streamActive && turnComplete && anchorMessage != null;
 
   return (
@@ -188,7 +191,9 @@ function AssistantTurn({
           modelLabel={modelLabel}
         />
       ))}
-      {awaitingLabel ? <ThinkingState label={awaitingLabel} /> : null}
+      {showAwaiting ? (
+        <TurnAwaitingElapsed startedAt={turnStartedAt} />
+      ) : null}
       {profileId && showArtifacts ? (
         <div className="flex flex-wrap gap-2">
           {artifacts.map((artifact) => {
@@ -216,6 +221,20 @@ function AssistantTurn({
         />
       ) : null}
     </div>
+  );
+}
+
+function TurnAwaitingElapsed({ startedAt }: { startedAt?: string | null }) {
+  const elapsedSeconds = useElapsedSeconds(true, startedAt ?? undefined);
+
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      className="text-xs tabular-nums text-muted-foreground"
+    >
+      {formatElapsedSeconds(elapsedSeconds)}
+    </span>
   );
 }
 

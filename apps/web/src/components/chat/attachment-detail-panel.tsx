@@ -1,10 +1,8 @@
 import { XIcon } from "lucide-react";
-import { useCallback, useRef, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type PointerEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { clampAttachmentPanelWidth } from "@/components/chat/attachment-panel-width";
 import { cn } from "@/lib/utils";
-
-const MIN_PANEL_WIDTH = 320;
-const MAX_PANEL_WIDTH_RATIO = 0.75;
 
 interface AttachmentDetailPanelProps {
   title: string;
@@ -35,10 +33,23 @@ export function AttachmentDetailPanel({
 }: AttachmentDetailPanelProps) {
   const draggingRef = useRef(false);
 
-  const clampWidth = useCallback((nextWidth: number) => {
-    const maxWidth = Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO);
-    return Math.min(maxWidth, Math.max(MIN_PANEL_WIDTH, nextWidth));
-  }, []);
+  const clampWidth = useCallback(
+    (nextWidth: number) => clampAttachmentPanelWidth(nextWidth),
+    [],
+  );
+
+  useEffect(() => {
+    function handleResize() {
+      const clamped = clampWidth(width);
+      if (clamped !== width) {
+        onWidthChange(clamped);
+      }
+    }
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [clampWidth, onWidthChange, width]);
 
   const updateWidthFromPointer = useCallback(
     (clientX: number) => {
@@ -87,7 +98,7 @@ export function AttachmentDetailPanel({
       style={fullscreen ? undefined : { width }}
       className={cn(
         "relative flex min-h-0 shrink-0 flex-col border-l border-border bg-background",
-        fullscreen ? "min-w-0 flex-1" : "max-w-[75vw]",
+        fullscreen ? "min-w-0 flex-1" : "max-w-[50vw] lg:max-w-[75vw]",
         className,
       )}
     >

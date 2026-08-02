@@ -149,14 +149,14 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const isMinimal = props.variant === "minimal";
   const showTips = !isMinimal && props.showTips === true;
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const displayError = error ?? attachmentError;
   const hasTodos = hasActiveAgentTodos(todos);
   const hasQuestionnaire = hasActiveAgentQuestionnaire(questionnaire);
-  const showTodos = hasTodos && !hasQuestionnaire;
+  const showTodos = hasTodos && !hasQuestionnaire && !displayError;
   const hasQueuedMessages = queuedMessages.length > 0;
   const availableSkills = isMinimal ? EMPTY_SKILLS : (props.availableSkills ?? EMPTY_SKILLS);
   const skillPickerKey = availableSkills.map((skill) => skill.id).join("\0");
-  const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const displayError = error ?? attachmentError;
   const composerNotice = displayError ? (
     <ChatComposerError message={displayError} />
   ) : showTips ? (
@@ -289,13 +289,15 @@ export function ChatComposer(props: ChatComposerProps) {
               )}
             >
               {isMinimal ? (
-                <ChatComposerSubmitButton
-                  chatStatus={chatStatus}
-                  busy={busy}
-                  canStop={canStop}
-                  disabled={disabled}
-                  onStop={onStop}
-                />
+                <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                  <ChatComposerSubmitButton
+                    chatStatus={chatStatus}
+                    busy={busy}
+                    canStop={canStop}
+                    disabled={disabled}
+                    onStop={onStop}
+                  />
+                </div>
               ) : (
                 <ChatComposerFullFooter
                   props={props}
