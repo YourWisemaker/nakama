@@ -174,7 +174,7 @@ function AssistantTurn({
   const anchorMessage = findAssistantTurnAnchor(turnMessages);
   const turnComplete = isAssistantTurnComplete(turnMessages);
   // Wait for the full SSE reply (tools + final summary), not the brief gap after tool_end.
-  const showArtifacts = !streamActive && turnComplete && artifacts.length > 0;
+  const showArtifacts = turnComplete && artifacts.length > 0;
   const showActions = !streamActive && turnComplete && anchorMessage != null;
 
   return (
