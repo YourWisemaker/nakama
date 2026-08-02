@@ -204,7 +204,7 @@ export class SkillProposalService {
       );
     }
 
-    const pending = await db.getPendingSkillProposalForCreate(
+    const pending = await db.getPendingSkillProposalForSkill(
       input.orgId,
       input.profileId,
       name,
@@ -213,7 +213,7 @@ export class SkillProposalService {
       return {
         outcome: "already_pending",
         proposalId: pending.id,
-        message: `A create proposal for skill "${name}" is already pending admin approval.`,
+        message: `A pending proposal already exists for skill "${name}".`,
         warnings: this.warningsForContent(content),
       };
     }
@@ -267,6 +267,19 @@ export class SkillProposalService {
       };
     }
 
+    const conflicting = await db.getPendingSkillProposalForSkill(
+      input.orgId,
+      input.profileId,
+      name,
+    );
+    if (conflicting) {
+      return {
+        outcome: "already_pending",
+        proposalId: conflicting.id,
+        message: `A pending proposal already exists for skill "${name}".`,
+      };
+    }
+
     const proposal = await this.insertProposal({
       ...input,
       action: "patch",
@@ -290,7 +303,7 @@ export class SkillProposalService {
     await this.assertProfileOwnedSkill(input.orgId, input.profileId, name);
 
     const db = this.requireDatabase();
-    const pending = await db.getPendingSkillProposalForCreate(
+    const pending = await db.getPendingSkillProposalForSkill(
       input.orgId,
       input.profileId,
       name,

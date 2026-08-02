@@ -227,6 +227,42 @@ describe("SkillProposalService", () => {
     expect(detail.skill.body).not.toContain("deploy checklist");
   });
 
+  test("stage delete blocks when another pending proposal exists for the skill", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const profile = await seedOrg(db);
+    const skills = new SkillsService(db);
+    const service = new SkillProposalService(db, skills);
+
+    const created = await skills.createSkill(ORG_ID, {
+      name: "deploy-notes",
+      description: "Notes about deploy process.",
+      body: "Run the deploy checklist before shipping.",
+      profileId: profile.id,
+    });
+
+    const patchStaged = await service.stageProposal({
+      orgId: ORG_ID,
+      profileId: profile.id,
+      action: "patch",
+      skillName: "deploy-notes",
+      oldString: "deploy checklist",
+      newString: "release checklist",
+    });
+    expect(patchStaged.outcome).toBe("created");
+
+    const deleteStaged = await service.stageProposal({
+      orgId: ORG_ID,
+      profileId: profile.id,
+      action: "delete",
+      skillName: "deploy-notes",
+    });
+    expect(deleteStaged.outcome).toBe("already_pending");
+    expect(deleteStaged.proposalId).toBe(patchStaged.proposalId);
+
+    const detail = await skills.getSkill(created.skill.id);
+    expect(detail.skill.body).toContain("deploy checklist");
+  });
+
   test("cross-org proposal id returns 404 on approve (AE6)", async () => {
     const db = createInMemoryDatabaseAdapter();
     const profile = await seedOrg(db);

@@ -1222,6 +1222,15 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'create' AND status = 'pending'
     LIMIT 1
   `);
+  const getPendingSkillProposalForSkillStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, reviewer_user_id, reviewed_at, created_at
+    FROM skill_proposals
+    WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND status = 'pending'
+    LIMIT 1
+  `);
   const getPendingSkillProposalForPatchStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
@@ -1654,6 +1663,15 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
 
     async getPendingSkillProposalForCreate(orgId, profileId, skillName) {
       const row = getPendingSkillProposalForCreateStmt.get(
+        orgId,
+        profileId,
+        skillName,
+      ) as SkillProposalRow | null;
+      return row ? toSkillProposalRecord(row) : null;
+    },
+
+    async getPendingSkillProposalForSkill(orgId, profileId, skillName) {
+      const row = getPendingSkillProposalForSkillStmt.get(
         orgId,
         profileId,
         skillName,

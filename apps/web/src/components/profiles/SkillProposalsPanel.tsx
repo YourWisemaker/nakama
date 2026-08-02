@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { OrgMemberSummary, SkillProposal } from "@nakama/core/contract";
+import type { OrgMemberSummary, ProfileSummary, SkillProposal } from "@nakama/core/contract";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { useProfilesQuery } from "@/hooks/use-app-queries";
 import { useOrgMembers } from "@/hooks/use-org-members";
 import {
   useApproveSkillProposal,
@@ -135,14 +136,20 @@ function ProposalReviewDialog({
   );
 }
 
+function resolveProfileLabel(profileId: string, profiles: ProfileSummary[]): string {
+  return profiles.find((profile) => profile.id === profileId)?.name ?? shortenId(profileId);
+}
+
 function ProposalRow({
   proposal,
   orgId,
   proposer,
+  profileLabel,
 }: {
   proposal: SkillProposal;
   orgId: string;
   proposer: string | null;
+  profileLabel?: string | null;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const preview = proposalPreview(proposal);
@@ -166,6 +173,7 @@ function ProposalRow({
             <time dateTime={proposal.createdAt} title={formatSessionTimestamp(proposal.createdAt)}>
               {formatSessionRelativeTime(proposal.createdAt)}
             </time>
+            {profileLabel ? <> · {profileLabel}</> : null}
             {proposer ? <> · {proposer}</> : null}
           </p>
         </div>
@@ -188,15 +196,18 @@ function ProposalRow({
 export function SkillProposalsPanel({
   orgId,
   profileId,
+  showProfileLabels = false,
 }: {
   orgId: string;
-  profileId: string;
+  profileId?: string;
+  showProfileLabels?: boolean;
 }) {
   const { data, isLoading, error } = useSkillProposals(orgId, {
     status: "pending",
     profileId,
   });
   const { data: membersData } = useOrgMembers(orgId);
+  const { data: profiles = [] } = useProfilesQuery();
   const proposals = data?.proposals ?? [];
   const members = membersData?.members ?? [];
 
@@ -224,6 +235,9 @@ export function SkillProposalsPanel({
           proposal={proposal}
           orgId={orgId}
           proposer={resolveProposer(proposal.proposedByUserId, members)}
+          profileLabel={
+            showProfileLabels ? resolveProfileLabel(proposal.profileId, profiles) : null
+          }
         />
       ))}
     </div>

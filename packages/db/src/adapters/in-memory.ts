@@ -380,6 +380,20 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
       return null;
     },
 
+    async getPendingSkillProposalForSkill(orgId, profileId, skillName) {
+      for (const proposal of skillProposals.values()) {
+        if (
+          proposal.orgId === orgId &&
+          proposal.profileId === profileId &&
+          proposal.skillName === skillName &&
+          proposal.status === "pending"
+        ) {
+          return proposal;
+        }
+      }
+      return null;
+    },
+
     async getPendingSkillProposalForPatch(
       orgId,
       profileId,

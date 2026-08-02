@@ -482,6 +482,11 @@ export interface DatabaseAdapter {
     profileId: string,
     skillName: string,
   ): Promise<StoredSkillProposal | null>;
+  getPendingSkillProposalForSkill(
+    orgId: string,
+    profileId: string,
+    skillName: string,
+  ): Promise<StoredSkillProposal | null>;
   getPendingSkillProposalForPatch(
     orgId: string,
     profileId: string,

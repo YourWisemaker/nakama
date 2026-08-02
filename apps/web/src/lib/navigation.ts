@@ -181,7 +181,18 @@ export function toolPlaygroundBackTarget(searchParams: URLSearchParams): {
 }
 
 export function profileProposalsPath(profileId: string): string {
-  return `${PAGE_PATHS.profiles}?profile=${encodeURIComponent(profileId)}&tab=proposals`;
+  return orgSkillProposalsPath(profileId);
+}
+
+export function orgSkillProposalsPath(profileId?: string): string {
+  const params = new URLSearchParams({
+    tab: "organization",
+    skillProposals: "proposals",
+  });
+  if (profileId) {
+    params.set("profileId", profileId);
+  }
+  return `${PAGE_PATHS.soul}?${params.toString()}`;
 }
 
 export const PAGE_PATHS: Record<PageId, string> = {

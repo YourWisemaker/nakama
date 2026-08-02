@@ -3,7 +3,7 @@ import { useAuth } from "@/context/use-auth";
 import { useAutomationsQuery } from "@/hooks/use-automations";
 import { useOrgMemoryProposals } from "@/hooks/use-org-memory-proposals";
 import { useSkillProposals } from "@/hooks/use-skill-proposals";
-import { PAGE_PATHS, profileProposalsPath } from "@/lib/navigation";
+import { PAGE_PATHS, orgSkillProposalsPath } from "@/lib/navigation";
 
 export type NotificationKind = "automation-run" | "org-memory-proposal" | "skill-proposal";
 
@@ -88,7 +88,7 @@ export function useNotifications(): {
         kindLabel: "Skill proposal",
         title: `${proposal.action} · ${proposal.skillName}`,
         description: "Skill change awaiting admin approval",
-        href: profileProposalsPath(proposal.profileId),
+        href: orgSkillProposalsPath(proposal.profileId),
         count: 1,
         createdAt: proposal.createdAt,
       });
