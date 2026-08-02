@@ -2885,13 +2885,9 @@ export class AgentService {
 
     const model = getModelById(resolved.model);
 
-    if (!model) {
-      return undefined;
-    }
-
     return {
-      contextWindow: model.contextWindow,
-      maxOutputTokens: model.maxOutputTokens,
+      contextWindow: model?.contextWindow ?? 128_000,
+      maxOutputTokens: model?.maxOutputTokens ?? 8_192,
     };
   }
 
