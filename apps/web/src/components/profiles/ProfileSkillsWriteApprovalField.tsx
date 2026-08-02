@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ProfileDetail } from "@nakama/core/contract";
 import {
   Select,
@@ -42,14 +42,26 @@ export function ProfileSkillsWriteApprovalField({
   profile: ProfileDetail;
   disabled?: boolean;
 }) {
+  return (
+    <ProfileSkillsWriteApprovalFieldBody
+      key={`${profile.id}:${String(profile.skillsWriteApproval)}`}
+      profile={profile}
+      disabled={disabled}
+    />
+  );
+}
+
+function ProfileSkillsWriteApprovalFieldBody({
+  profile,
+  disabled = false,
+}: {
+  profile: ProfileDetail;
+  disabled?: boolean;
+}) {
   const { activeOrg } = useAuth();
   const updateMutation = useUpdateProfileMutation();
-  const [value, setValue] = useState<OverrideValue>(toOverrideValue(profile.skillsWriteApproval));
+  const [value, setValue] = useState<OverrideValue>(() => toOverrideValue(profile.skillsWriteApproval));
   const busy = updateMutation.isPending;
-
-  useEffect(() => {
-    setValue(toOverrideValue(profile.skillsWriteApproval));
-  }, [profile.id, profile.skillsWriteApproval]);
 
   if (!activeOrg || activeOrg.role !== "admin") {
     return null;
