@@ -29,6 +29,31 @@ test("buildChatSystemPrompt omits automation guidance when create_automation is 
   expect(prompt).not.toContain("5-field cron syntax");
 });
 
+test("buildChatSystemPrompt includes skill crystallization nudge when skill_manage is available", () => {
+  const prompt = buildChatSystemPrompt(
+    [
+      {
+        name: "skill_manage",
+        description: "Manage skills",
+        parameters: { type: "object", properties: {} },
+      },
+    ],
+    { enableToolLoop: true },
+  );
+
+  expect(prompt).toContain("skill_manage to crystallize");
+  expect(prompt).toContain("Prefer skill_manage over write_file/edit_file");
+});
+
+test("buildChatSystemPrompt omits skill crystallization nudge when skill_manage is unavailable", () => {
+  const prompt = buildChatSystemPrompt(
+    [{ name: "write_file", description: "Write", parameters: { type: "object", properties: {} } }],
+    { enableToolLoop: true },
+  );
+
+  expect(prompt).not.toContain("skill_manage to crystallize");
+});
+
 test("buildChatSystemPrompt includes memory skill pointers when file tools are available", () => {
   const prompt = buildChatSystemPrompt(
     [
