@@ -42,6 +42,7 @@ import { formatBytes } from "@/lib/knowledge-base-files";
 import { cn } from "@/lib/utils";
 
 const sectionClass = "rounded-md border border-border bg-card";
+const EMPTY_ARTIFACTS: ArtifactFile[] = [];
 
 const artifactTimestampFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
@@ -94,7 +95,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
   } = useArtifactsQuery(profileId);
   const deleteMutation = useDeleteArtifactMutation();
 
-  const artifacts = data?.artifacts ?? [];
+  const artifacts = data?.artifacts ?? EMPTY_ARTIFACTS;
   const typeOptions = useMemo(() => availableArtifactTypeFilters(artifacts), [artifacts]);
 
   useEffect(() => {
