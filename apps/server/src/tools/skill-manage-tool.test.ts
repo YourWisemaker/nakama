@@ -264,6 +264,17 @@ Profile body.
     ).rejects.toThrow("Viewers cannot manage skills.");
   });
 
+  test("refuses missing orgRole", async () => {
+    const { tool } = await setup();
+
+    await expect(
+      tool.run(
+        { action: "create", content: researchSkillMarkdown },
+        memberContext({ orgRole: undefined }),
+      ),
+    ).rejects.toThrow("skill_manage requires an organization role.");
+  });
+
   test("refuses automationId context", async () => {
     const { tool } = await setup();
 
@@ -273,6 +284,17 @@ Profile body.
         memberContext({ automationId: "auto_1" }),
       ),
     ).rejects.toThrow("not available during automation runs");
+  });
+
+  test("refuses non-interactive channel context", async () => {
+    const { tool } = await setup();
+
+    await expect(
+      tool.run(
+        { action: "create", content: researchSkillMarkdown },
+        memberContext({ channel: "telegram" }),
+      ),
+    ).rejects.toThrow(/interactive web or CLI/);
   });
 
   test("write_file refuses skills/*/SKILL.md when forbidProfileSkillMarkdownWrites is set", async () => {

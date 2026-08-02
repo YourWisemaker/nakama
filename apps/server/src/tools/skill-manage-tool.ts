@@ -32,6 +32,15 @@ function requireSkillManageAccess(context: ToolContext): {
     throw new Error("skill_manage is not available during automation runs.");
   }
 
+  const channel = context.channel;
+  if (
+    channel !== undefined &&
+    channel !== "web" &&
+    channel !== "cli"
+  ) {
+    throw new Error("skill_manage is only available in interactive web or CLI chat.");
+  }
+
   const orgId = requireOrgId(context);
   const profileId = requireProfileId(context);
   const role = context.orgRole;

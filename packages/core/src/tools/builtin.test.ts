@@ -364,7 +364,7 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/write_docx/);
   });
 
-  test("write_file and edit_file refuse skills/*/SKILL.md when forbidProfileSkillMarkdownWrites", async () => {
+  test("write_file, edit_file, and delete_file refuse skills/*/SKILL.md when forbidProfileSkillMarkdownWrites", async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-skill-md-"));
     await mkdir(path.join(tempDir, "skills", "notes"), { recursive: true });
     await writeFile(
@@ -391,6 +391,10 @@ describe("file builtin tools", () => {
         context,
         { workspaceRoot: tempDir },
       ),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
+      runDeleteFile({ path: "skills/notes/SKILL.md" }, context, { workspaceRoot: tempDir }),
     ).rejects.toThrow(/Use skill_manage/);
 
     // Sidecar under skills/ remains writable.

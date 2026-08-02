@@ -234,13 +234,14 @@ export class SkillsService {
       );
     }
 
-    await deleteSkillDirectory(record.sourcePath);
     await this.db.unassignSkillFromProfile(profileId, record.id);
     const deleted = await this.db.deleteSkill(record.id);
 
     if (!deleted) {
       throw new Error("Skill not found.");
     }
+
+    await deleteSkillDirectory(record.sourcePath);
   }
 
   async deleteSkill(skillId: string): Promise<void> {

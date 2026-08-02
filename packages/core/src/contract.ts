@@ -1803,6 +1803,8 @@ export interface ToolContext {
   orgId?: string;
   profileId?: string;
   sessionId?: string;
+  /** Session channel when known (used for interactive-only tool gates). */
+  channel?: AgentChannel;
   /** Nesting depth for sub-agent execution (0 = parent, 1 = child). */
   agentDepth?: number;
   /** Browser origin for OAuth callbacks during this tool run. */

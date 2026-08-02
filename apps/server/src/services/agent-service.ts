@@ -2456,6 +2456,7 @@ export class AgentService {
       includeTodoTools?: boolean;
       includeQuestionTools?: boolean;
       includeSubAgentTool?: boolean;
+      includeSkillManageTools?: boolean;
       userId?: string | null;
     } = {},
   ): Promise<ToolDefinition[]> {
@@ -2467,6 +2468,9 @@ export class AgentService {
     const includeTodoTools = options.includeTodoTools ?? true;
     const includeQuestionTools = options.includeQuestionTools ?? true;
     const includeSubAgentTool = options.includeSubAgentTool ?? true;
+    // Default follows interactive automation-tool gate; messaging channels pass false.
+    const includeSkillManageTools =
+      options.includeSkillManageTools ?? includeAutomationTools;
 
     let resolved = [...tools];
 
@@ -2531,8 +2535,8 @@ export class AgentService {
       const skillTools = await this.skillsService.loadToolsForProfile(orgId, profile.id);
       resolved = [...resolved, ...skillTools];
 
-      // Interactive chat only: automation runners set includeAutomationTools: false.
-      if (includeAutomationTools) {
+      // Interactive web/cli only: messaging, automation, task, and subagent omit this.
+      if (includeSkillManageTools) {
         const assignedSkills = await this.skillsService.listSkillsForProfile(profile.id);
         if (assignedSkills.some((skill) => skill.name === "manage-skills")) {
           resolved = [...resolved, ...createSkillManageTools(this.skillsService)];
@@ -2563,7 +2567,11 @@ export class AgentService {
   ): Promise<AgentChatSession> {
     await this.ensureVisionSettingsLoaded();
     const profile = await this.requireProfile(orgId, profileId);
-    const tools = await this.resolveProfileTools(profile, { userId });
+    const includeSkillManageTools = channel === "web" || channel === "cli";
+    const tools = await this.resolveProfileTools(profile, {
+      userId,
+      includeSkillManageTools,
+    });
     const { systemPrompt, soulActive } = await this.resolveProfileSystemPrompt(
       orgId,
       profileId,
@@ -2601,6 +2609,7 @@ export class AgentService {
         orgId,
         profileId,
         sessionId,
+        channel,
         userId: userId ?? undefined,
         orgRole: orgRole ?? undefined,
         loadAttachment,

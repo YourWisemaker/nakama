@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathExists } from "../fs";
@@ -14,6 +15,41 @@ import {
 
 const bundledSkillNames = new Set<string>(BUNDLED_SKILL_NAMES);
 const SKILL_NAME_PATTERN = /^[a-z0-9-]{1,64}$/;
+
+/**
+ * Resolve a path with realpath when possible; if the leaf does not exist yet,
+ * realpath the deepest existing parent and rejoin the remainder (same pattern as
+ * packages/core/src/tools/paths.ts).
+ */
+function resolveWithRealpath(targetPath: string): string {
+  const absolute = path.resolve(targetPath);
+  try {
+    return realpathSync(absolute);
+  } catch {
+    let dir = path.dirname(absolute);
+    const root = path.parse(dir).root;
+
+    while (true) {
+      try {
+        const resolvedDir = realpathSync(dir);
+        const relativeDir = path.relative(dir, path.dirname(absolute));
+        return path.resolve(resolvedDir, relativeDir, path.basename(absolute));
+      } catch {
+        if (dir === root) {
+          return absolute;
+        }
+        dir = path.dirname(dir);
+      }
+    }
+  }
+}
+
+function isResolvedWithinRoot(resolvedRoot: string, resolvedTarget: string): boolean {
+  return (
+    resolvedTarget === resolvedRoot ||
+    resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)
+  );
+}
 
 export interface CreateSkillFileOptions {
   name: string;
@@ -92,9 +128,9 @@ export function isPathWithinProfileSkillsDir(
   profileId: string,
   targetPath: string,
 ): boolean {
-  const skillsRoot = path.resolve(getProfileSkillsDir(orgId, profileId));
-  const resolved = path.resolve(targetPath);
-  return resolved === skillsRoot || resolved.startsWith(`${skillsRoot}${path.sep}`);
+  const skillsRoot = resolveWithRealpath(getProfileSkillsDir(orgId, profileId));
+  const resolved = resolveWithRealpath(targetPath);
+  return isResolvedWithinRoot(skillsRoot, resolved);
 }
 
 export function resolveProfileSkillDirectory(
@@ -105,10 +141,10 @@ export function resolveProfileSkillDirectory(
   const skillName = assertValidSkillName(name);
   assertNotBundledSkillName(skillName);
 
-  const skillsRoot = path.resolve(getProfileSkillsDir(orgId, profileId));
-  const directory = path.resolve(path.join(skillsRoot, skillName));
+  const skillsRoot = resolveWithRealpath(getProfileSkillsDir(orgId, profileId));
+  const directory = resolveWithRealpath(path.join(skillsRoot, skillName));
 
-  if (directory !== skillsRoot && !directory.startsWith(`${skillsRoot}${path.sep}`)) {
+  if (!isResolvedWithinRoot(skillsRoot, directory)) {
     throw new Error("Skill directory escapes the profile skills path.");
   }
 
@@ -120,7 +156,7 @@ export function assertPathWithinProfileSkillsDir(
   profileId: string,
   targetPath: string,
 ): string {
-  const resolved = path.resolve(targetPath);
+  const resolved = resolveWithRealpath(targetPath);
 
   if (!isPathWithinProfileSkillsDir(orgId, profileId, resolved)) {
     throw new Error("Path is outside the profile skills directory.");
@@ -294,10 +330,10 @@ export async function patchSkillFile(options: {
 }
 
 function isManagedSkillDirectory(directory: string): boolean {
-  const configDir = path.resolve(getUserConfigDir());
-  const resolved = path.resolve(directory);
+  const configDir = resolveWithRealpath(getUserConfigDir());
+  const resolved = resolveWithRealpath(directory);
 
-  if (!resolved.startsWith(`${configDir}${path.sep}`)) {
+  if (!isResolvedWithinRoot(configDir, resolved)) {
     return false;
   }
 

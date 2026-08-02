@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathExists } from "../fs";
 import {
+  assertPathWithinProfileSkillsDir,
   assertValidSkillName,
   composeSkillMarkdown,
   createSkillFile,
   deleteSkillDirectory,
+  isPathWithinProfileSkillsDir,
   patchSkillFile,
   resolveProfileSkillDirectory,
   writeRawProfileSkillMarkdown,
@@ -167,7 +170,7 @@ Old body.
     });
 
     expect(result.created).toBe(false);
-    expect(result.directory).toBe(directory);
+    expect(result.directory).toBe(realpathSync(directory));
   });
 
   test("refuses bundled skill names", async () => {
@@ -323,14 +326,44 @@ describe("resolveProfileSkillDirectory", () => {
     }
   });
 
-  test("resolves under profile skills dir and rejects escape names", () => {
-    configDir = "/tmp/nakama-skill-resolve-fake";
+  test("resolves under profile skills dir and rejects escape names", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-skill-resolve-"));
     process.env.NAKAMA_CONFIG_DIR = configDir;
+    await mkdir(join(configDir, "orgs", ORG_ID, "profiles", PROFILE_ID, "skills"), {
+      recursive: true,
+    });
 
     expect(resolveProfileSkillDirectory(ORG_ID, PROFILE_ID, "ok-skill")).toBe(
-      join(configDir, "orgs", ORG_ID, "profiles", PROFILE_ID, "skills", "ok-skill"),
+      join(
+        realpathSync(configDir),
+        "orgs",
+        ORG_ID,
+        "profiles",
+        PROFILE_ID,
+        "skills",
+        "ok-skill",
+      ),
     );
 
     expect(() => resolveProfileSkillDirectory(ORG_ID, PROFILE_ID, "../x")).toThrow();
+  });
+
+  test("refuses symlink escape outside the profile skills dir", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-skill-symlink-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+
+    const skillsRoot = join(configDir, "orgs", ORG_ID, "profiles", PROFILE_ID, "skills");
+    const outside = join(configDir, "outside-secret");
+    await mkdir(skillsRoot, { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await writeFile(join(outside, "SKILL.md"), "---\nname: leaked\ndescription: x\n---\n");
+    await symlink(outside, join(skillsRoot, "leaked"));
+
+    expect(isPathWithinProfileSkillsDir(ORG_ID, PROFILE_ID, join(skillsRoot, "leaked"))).toBe(
+      false,
+    );
+    expect(() =>
+      assertPathWithinProfileSkillsDir(ORG_ID, PROFILE_ID, join(skillsRoot, "leaked", "SKILL.md")),
+    ).toThrow(/outside the profile skills directory/);
   });
 });
