@@ -8,11 +8,21 @@ import type { RemoveAssignmentTarget } from "@/pages/profiles/profiles-page.shar
 
 const UNUSED_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
 
+const EMPTY_SKILL_USAGE: SkillUsageSummary = {
+  viewCount: 0,
+  useCount: 0,
+  patchCount: 0,
+  lastViewedAt: null,
+  lastUsedAt: null,
+  lastPatchedAt: null,
+};
+
+function skillUsage(skill: SkillSummary): SkillUsageSummary {
+  return skill.usage ?? EMPTY_SKILL_USAGE;
+}
+
 function formatSkillUsageHint(skill: SkillSummary): string | null {
-  const usage = skill.usage;
-  if (!usage) {
-    return null;
-  }
+  const usage = skillUsage(skill);
 
   if (usage.useCount === 0 && !usage.lastUsedAt) {
     return "Never matched";
@@ -26,10 +36,7 @@ function formatSkillUsageHint(skill: SkillSummary): string | null {
 }
 
 function isSkillUnused(skill: SkillSummary): boolean {
-  const usage = skill.usage;
-  if (!usage) {
-    return false;
-  }
+  const usage = skillUsage(skill);
 
   if (!usage.lastUsedAt) {
     return usage.useCount === 0;
@@ -95,7 +102,9 @@ export function ProfileSkillsSection({
         </p>
       ) : detail.skills.length === 0 ? null : (
         <ul className="divide-y divide-border rounded-md border border-border">
-          {detail.skills.map((skill) => (
+          {detail.skills.map((skill) => {
+            const usageHint = formatSkillUsageHint(skill);
+            return (
             <li
               key={skill.id}
               className="group flex items-center justify-between gap-2 px-3 py-2 first:rounded-t-md last:rounded-b-md hover:bg-muted/40"
@@ -117,11 +126,7 @@ export function ProfileSkillsSection({
                     </span>
                   ) : null}
                 </div>
-                {formatSkillUsageHint(skill) ? (
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {formatSkillUsageHint(skill)}
-                  </p>
-                ) : null}
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{usageHint}</p>
               </button>
               <Button
                 type="button"
@@ -135,7 +140,8 @@ export function ProfileSkillsSection({
                 <Trash2Icon className="size-4" aria-hidden />
               </Button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>

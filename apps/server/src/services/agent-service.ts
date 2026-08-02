@@ -20,6 +20,7 @@ import type {
   CreateProfileRequest,
   DeleteArtifactResponse,
   CreateSkillRequest,
+  PatchSkillRequest,
   CreateToolRequest,
   InitSoulResponse,
   InitUserContextResponse,
@@ -2173,6 +2174,15 @@ export class AgentService {
 
   async createSkill(orgId: string, request: CreateSkillRequest): Promise<SkillResponse> {
     return this.requireSkillsService().createSkill(orgId, request);
+  }
+
+  async patchSkill(
+    orgId: string,
+    skillId: string,
+    request: PatchSkillRequest,
+    options?: { profileId?: string },
+  ): Promise<SkillResponse> {
+    return this.requireSkillsService().patchSkill(orgId, skillId, request, options);
   }
 
   async deleteSkill(skillId: string): Promise<void> {

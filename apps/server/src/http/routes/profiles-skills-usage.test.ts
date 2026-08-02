@@ -120,7 +120,14 @@ describe("profile skills usage API", () => {
     };
     const skill = body.profile.skills.find((entry) => entry.id === skillId);
     expect(skill?.createdBy).toBe("human");
-    expect(skill?.usage).toBeUndefined();
+    expect(skill?.usage).toEqual({
+      viewCount: 0,
+      useCount: 0,
+      patchCount: 0,
+      lastViewedAt: null,
+      lastUsedAt: null,
+      lastPatchedAt: null,
+    });
   });
 
   test("cross-org profile access returns 404", async () => {

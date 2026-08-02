@@ -13,6 +13,7 @@ import type {
   UpdateMcpServerRequest,
   CreateProfileRequest,
   CreateSkillRequest,
+  PatchSkillRequest,
   CreateSessionResponse,
   CreateToolRequest,
   DeleteArtifactResponse,
@@ -663,6 +664,25 @@ export class NakamaClient {
 
   async getSkill(skillId: string): Promise<SkillResponse> {
     return this.request<SkillResponse>(`/v1/skills/${encodeURIComponent(skillId)}`);
+  }
+
+  async patchSkill(
+    skillId: string,
+    request: PatchSkillRequest,
+    options?: { profileId?: string },
+  ): Promise<SkillResponse> {
+    const params = new URLSearchParams();
+    if (options?.profileId) {
+      params.set("profileId", options.profileId);
+    }
+
+    const query = params.toString();
+    const path = `/v1/skills/${encodeURIComponent(skillId)}${query ? `?${query}` : ""}`;
+
+    return this.request<SkillResponse>(path, {
+      method: "PATCH",
+      body: JSON.stringify(request),
+    });
   }
 
   async deleteSkill(skillId: string): Promise<void> {

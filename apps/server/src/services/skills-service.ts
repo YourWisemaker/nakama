@@ -610,7 +610,18 @@ function toSkillSummary(
   };
 }
 
-function toSkillUsageSummary(record: StoredSkillUsageRecord): SkillUsageSummary {
+function toSkillUsageSummary(record: StoredSkillUsageRecord | null | undefined): SkillUsageSummary {
+  if (!record) {
+    return {
+      viewCount: 0,
+      useCount: 0,
+      patchCount: 0,
+      lastViewedAt: null,
+      lastUsedAt: null,
+      lastPatchedAt: null,
+    };
+  }
+
   return {
     viewCount: record.viewCount,
     useCount: record.useCount,
@@ -636,7 +647,10 @@ export function toSkillSummaries(
   usageRecords: StoredSkillUsageRecord[] = [],
 ): SkillSummary[] {
   const usageBySkillId = new Map(usageRecords.map((usage) => [usage.skillId, usage]));
-  return records.map((record) => toSkillSummary(record, usageBySkillId.get(record.id) ?? null));
+  return records.map((record) => ({
+    ...toSkillSummary(record, usageBySkillId.get(record.id) ?? null),
+    usage: toSkillUsageSummary(usageBySkillId.get(record.id)),
+  }));
 }
 
 export function toSkillDetail(

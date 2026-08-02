@@ -146,7 +146,8 @@ export function Layout() {
               page === "chat" ||
               page === "tasks" ||
               page === "automations" ||
-              location.pathname.startsWith(`${PAGE_PATHS.soul}/playground/`)
+              location.pathname.startsWith(`${PAGE_PATHS.soul}/playground/`) ||
+              location.pathname.startsWith(`${PAGE_PATHS.profiles}/skills/`)
                 ? "flex min-h-0 flex-1 flex-col overflow-hidden"
                 : "min-h-0 flex-1 overflow-y-auto p-6"
             }

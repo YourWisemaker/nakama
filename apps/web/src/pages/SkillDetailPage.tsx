@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/context/use-auth";
 import { useProfileQuery, useSkillQuery } from "@/hooks/use-app-queries";
-import { useUnassignSkillMutation } from "@/hooks/use-resource-mutations";
+import { usePatchSkillMutation, useUnassignSkillMutation } from "@/hooks/use-resource-mutations";
 import { formatError } from "@/lib/client";
 import { canAccessSystemPage, skillDetailBackTarget } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export function SkillDetailPage() {
 
   if (skillError && !skill) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 px-6 py-4">
         <BackLink />
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {formatError(skillError)}
@@ -93,8 +93,12 @@ function SkillDetailPageContent({
 }) {
   const navigate = useNavigate();
   const unassignSkillMutation = useUnassignSkillMutation();
+  const patchSkillMutation = usePatchSkillMutation();
   const [removeOpen, setRemoveOpen] = useState(false);
-  const busy = unassignSkillMutation.isPending;
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(skill.body);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const busy = unassignSkillMutation.isPending || patchSkillMutation.isPending;
 
   function handleRemoveOpenChange(open: boolean) {
     if (!open && busy) {
@@ -114,8 +118,43 @@ function SkillDetailPageContent({
     navigate(back.href);
   }
 
+  function handleStartEdit() {
+    setEditBody(skill.body);
+    setSaveError(null);
+    setEditing(true);
+  }
+
+  function handleCancelEdit() {
+    if (busy) {
+      return;
+    }
+
+    setEditing(false);
+    setEditBody(skill.body);
+    setSaveError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (busy) {
+      return;
+    }
+
+    setSaveError(null);
+
+    try {
+      await patchSkillMutation.mutateAsync({
+        skillId: skill.id,
+        input: { body: editBody },
+        profileId: profileId ?? undefined,
+      });
+      setEditing(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : formatError(error));
+    }
+  }
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col space-y-4 p-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-4">
       <div className="flex items-center justify-between gap-3">
         <BackLink />
         {canRemoveFromProfile ? (
@@ -133,13 +172,19 @@ function SkillDetailPageContent({
         ) : null}
       </div>
 
-      <section className={cn(sectionClass, "p-4 sm:p-6")}>
-        <SkillDetailContent
-          skill={skill}
-          usageSummary={usageSummary}
-          createdBy={createdBy}
-        />
-      </section>
+      <SkillDetailContent
+        skill={skill}
+        usageSummary={usageSummary}
+        createdBy={createdBy}
+        editing={editing}
+        editBody={editBody}
+        onEditBodyChange={setEditBody}
+        onStartEdit={handleStartEdit}
+        onCancelEdit={handleCancelEdit}
+        onSaveEdit={() => void handleSaveEdit()}
+        saveBusy={patchSkillMutation.isPending}
+        saveError={saveError}
+      />
 
       <RemoveSkillFromProfileDialog
         open={removeOpen}
@@ -172,7 +217,7 @@ function BackLink() {
 
 function PageState({ message }: { message: string }) {
   return (
-    <div className="p-6">
+    <div className="px-6 py-4">
       <div
         className={cn(
           sectionClass,
