@@ -19,6 +19,7 @@ export function ChatPageContent(state: ChatPageState) {
     availableSkills,
     chatStatus,
     busy,
+    turnStartedAt,
     canStop,
     error,
     composerDraft,
@@ -62,6 +63,7 @@ export function ChatPageContent(state: ChatPageState) {
         className={isEmptyState && !error ? "py-0 [&>p:first-child]:min-h-0 z-10" : "py-0 z-10"}
         chatStatus={chatStatus}
         busy={busy}
+        turnStartedAt={turnStartedAt}
         canStop={canStop}
         disabled={composerDisabled}
         error={error}

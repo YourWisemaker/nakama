@@ -27,6 +27,7 @@ import { WebFetchToolRow } from "@/components/chat/WebFetchToolRow";
 import { isArtifactMetaSidecarTool } from "@/lib/chat-artifacts";
 import { ThinkingReasoning } from "@/components/chat/ThinkingReasoning";
 import thinkingStyles from "@/components/chat/ThinkingReasoning.module.css";
+import { formatElapsedSeconds, useElapsedSeconds } from "@/lib/elapsed-time";
 import { cn } from "@/lib/utils";
 
 import {
@@ -238,24 +239,6 @@ function ThinkingBlock({ message }: { message: ChatListItem }) {
   );
 }
 
-function formatElapsedSeconds(totalSeconds: number): string {
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
-  }
-
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainderMinutes = minutes % 60;
-
-  return remainderMinutes > 0 ? `${hours}h ${remainderMinutes}m` : `${hours}h`;
-}
-
 function useWorkDuration(active: boolean, startedAt?: string): number {
   const anchorRef = useRef<number | null>(null);
   const frozenRef = useRef<number | null>(null);
@@ -282,34 +265,6 @@ function useWorkDuration(active: boolean, startedAt?: string): number {
 
     const update = () => {
       setElapsed(Math.max(1, Math.floor((Date.now() - anchorRef.current!) / 1000)));
-    };
-
-    update();
-    const intervalId = window.setInterval(update, 1000);
-    return () => window.clearInterval(intervalId);
-  }, [active, startedAt]);
-
-  return elapsed;
-}
-
-function useElapsedSeconds(active: boolean, startedAt?: string): number {
-  const anchorRef = useRef<number | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    if (!active) {
-      anchorRef.current = null;
-      setElapsed(0);
-      return;
-    }
-
-    if (anchorRef.current === null) {
-      const parsed = startedAt ? new Date(startedAt).getTime() : Number.NaN;
-      anchorRef.current = Number.isNaN(parsed) ? Date.now() : parsed;
-    }
-
-    const update = () => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - anchorRef.current!) / 1000)));
     };
 
     update();
