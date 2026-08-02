@@ -1,3 +1,4 @@
+import type { SkillCreatedBy, SkillUsageSummary } from "@nakama/core/contract";
 import { BookOpenIcon, Trash2Icon } from "lucide-react";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,37 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { useSkillQuery } from "@/hooks/use-app-queries";
+import { formatSessionRelativeTime } from "@/lib/chat-history";
 import { formatError } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
 interface SkillDetailDialogProps {
   skillId: string | null;
   busy: boolean;
+  usageSummary?: SkillUsageSummary | null;
+  createdBy?: SkillCreatedBy | null;
   onOpenChange: (open: boolean) => void;
   onRemoveFromProfile?: (skillId: string, skillName: string) => void;
+}
+
+function formatCreatedByLabel(value: SkillCreatedBy): string {
+  if (value === "agent") {
+    return "Agent";
+  }
+
+  if (value === "human") {
+    return "Human";
+  }
+
+  return "Bundled";
+}
+
+function formatUsageTimestamp(value: string | null | undefined): string {
+  if (!value) {
+    return "Never";
+  }
+
+  return formatSessionRelativeTime(value);
 }
 
 function formatSkillMeta(skill: {
@@ -41,6 +65,8 @@ function formatSkillMeta(skill: {
 export function SkillDetailDialog({
   skillId,
   busy,
+  usageSummary,
+  createdBy,
   onOpenChange,
   onRemoveFromProfile,
 }: SkillDetailDialogProps) {
@@ -88,6 +114,41 @@ export function SkillDetailDialog({
                       {label}
                     </span>
                   ))}
+                </div>
+              ) : null}
+              {usageSummary || createdBy ? (
+                <div className="mt-2 space-y-1 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  {createdBy ? (
+                    <p>
+                      <span className="font-medium text-foreground">Created by:</span>{" "}
+                      {formatCreatedByLabel(createdBy)}
+                    </p>
+                  ) : null}
+                  {usageSummary ? (
+                    <>
+                      <p>
+                        <span className="font-medium text-foreground">Catalog views:</span>{" "}
+                        {usageSummary.viewCount}
+                        {usageSummary.lastViewedAt
+                          ? ` · last ${formatUsageTimestamp(usageSummary.lastViewedAt)}`
+                          : ""}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">Matches:</span>{" "}
+                        {usageSummary.useCount}
+                        {usageSummary.lastUsedAt
+                          ? ` · last ${formatUsageTimestamp(usageSummary.lastUsedAt)}`
+                          : ""}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">Updates:</span>{" "}
+                        {usageSummary.patchCount}
+                        {usageSummary.lastPatchedAt
+                          ? ` · last ${formatUsageTimestamp(usageSummary.lastPatchedAt)}`
+                          : ""}
+                      </p>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
             </DialogHeader>

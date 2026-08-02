@@ -14,6 +14,7 @@ import type {
   StoredLlmUsageStatsRecord,
   StoredMcpServerRecord,
   StoredSkillRecord,
+  StoredSkillUsageRecord,
   StoredOrgMemberRecord,
   StoredOrgInviteRecord,
   StoredOrgMemoryProposal,
@@ -245,6 +246,21 @@ interface SkillRow {
   has_tool: number;
   disable_model_invocation: number;
   enabled: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SkillUsageRow {
+  org_id: string;
+  profile_id: string;
+  skill_id: string;
+  view_count: number;
+  use_count: number;
+  patch_count: number;
+  last_viewed_at: string | null;
+  last_used_at: string | null;
+  last_patched_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -696,9 +712,9 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const getSkillBySourcePathStmt = db.prepare("SELECT * FROM skills WHERE source_path = ?");
   const upsertSkillStmt = db.prepare(`
     INSERT INTO skills (
-      id, name, description, source_path, has_tool, disable_model_invocation, enabled, created_at, updated_at
+      id, name, description, source_path, has_tool, disable_model_invocation, enabled, created_by, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       description = excluded.description,
@@ -706,6 +722,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       has_tool = excluded.has_tool,
       disable_model_invocation = excluded.disable_model_invocation,
       enabled = excluded.enabled,
+      created_by = excluded.created_by,
       updated_at = excluded.updated_at
   `);
   const deleteSkillStmt = db.prepare("DELETE FROM skills WHERE id = ?");
@@ -723,6 +740,36 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const unassignSkillStmt = db.prepare(`
     DELETE FROM profile_skills
     WHERE profile_id = ? AND skill_id = ?
+  `);
+  const listSkillUsageForProfileStmt = db.prepare(`
+    SELECT * FROM profile_skill_usage WHERE profile_id = ?
+  `);
+  const getSkillUsageStmt = db.prepare(`
+    SELECT * FROM profile_skill_usage WHERE profile_id = ? AND skill_id = ?
+  `);
+  const incrementSkillUsageStmt = db.prepare(`
+    INSERT INTO profile_skill_usage (
+      org_id,
+      profile_id,
+      skill_id,
+      view_count,
+      use_count,
+      patch_count,
+      last_viewed_at,
+      last_used_at,
+      last_patched_at,
+      created_at,
+      updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(profile_id, skill_id) DO UPDATE SET
+      view_count = profile_skill_usage.view_count + excluded.view_count,
+      use_count = profile_skill_usage.use_count + excluded.use_count,
+      patch_count = profile_skill_usage.patch_count + excluded.patch_count,
+      last_viewed_at = COALESCE(excluded.last_viewed_at, profile_skill_usage.last_viewed_at),
+      last_used_at = COALESCE(excluded.last_used_at, profile_skill_usage.last_used_at),
+      last_patched_at = COALESCE(excluded.last_patched_at, profile_skill_usage.last_patched_at),
+      updated_at = excluded.updated_at
   `);
 
   const incrementLlmUsageStatsStmt = db.prepare(`
@@ -2436,6 +2483,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.hasTool ? 1 : 0,
         record.disableModelInvocation ? 1 : 0,
         record.enabled ? 1 : 0,
+        record.createdBy,
         record.createdAt,
         record.updatedAt,
       );
@@ -2459,6 +2507,34 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     async unassignSkillFromProfile(profileId, skillId) {
       const result = unassignSkillStmt.run(profileId, skillId);
       return result.changes > 0;
+    },
+
+    async listSkillUsageForProfile(profileId) {
+      return listSkillUsageForProfileStmt
+        .all(profileId)
+        .map((row) => toSkillUsageRecord(row as SkillUsageRow));
+    },
+
+    async getSkillUsage(profileId, skillId) {
+      const row = getSkillUsageStmt.get(profileId, skillId) as SkillUsageRow | null;
+      return row ? toSkillUsageRecord(row) : null;
+    },
+
+    async incrementSkillUsage(input) {
+      const now = new Date().toISOString();
+      incrementSkillUsageStmt.run(
+        input.orgId,
+        input.profileId,
+        input.skillId,
+        input.viewDelta ?? 0,
+        input.useDelta ?? 0,
+        input.patchDelta ?? 0,
+        input.viewedAt ?? null,
+        input.usedAt ?? null,
+        input.patchedAt ?? null,
+        now,
+        now,
+      );
     },
   };
 }
@@ -2519,9 +2595,34 @@ function toSkillRecord(row: SkillRow): StoredSkillRecord {
     hasTool: row.has_tool !== 0,
     disableModelInvocation: row.disable_model_invocation !== 0,
     enabled: row.enabled !== 0,
+    createdBy: normalizeSkillCreatedBy(row.created_by),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function toSkillUsageRecord(row: SkillUsageRow): StoredSkillUsageRecord {
+  return {
+    orgId: row.org_id,
+    profileId: row.profile_id,
+    skillId: row.skill_id,
+    viewCount: row.view_count,
+    useCount: row.use_count,
+    patchCount: row.patch_count,
+    lastViewedAt: row.last_viewed_at,
+    lastUsedAt: row.last_used_at,
+    lastPatchedAt: row.last_patched_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function normalizeSkillCreatedBy(value: string): StoredSkillRecord["createdBy"] {
+  if (value === "agent" || value === "human") {
+    return value;
+  }
+
+  return "bundled";
 }
 
 function toMcpServerRecord(row: McpServerRow): StoredMcpServerRecord {

@@ -273,7 +273,24 @@ export interface StoredSkillRecord {
   hasTool: boolean;
   disableModelInvocation: boolean;
   enabled: boolean;
+  createdBy: SkillCreatedBy;
   orgId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SkillCreatedBy = "agent" | "human" | "bundled";
+
+export interface StoredSkillUsageRecord {
+  orgId: string;
+  profileId: string;
+  skillId: string;
+  viewCount: number;
+  useCount: number;
+  patchCount: number;
+  lastViewedAt: string | null;
+  lastUsedAt: string | null;
+  lastPatchedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -688,4 +705,18 @@ export interface DatabaseAdapter {
   listSkillsForProfile(profileId: string): Promise<StoredSkillRecord[]>;
   assignSkillToProfile(profileId: string, skillId: string): Promise<void>;
   unassignSkillFromProfile(profileId: string, skillId: string): Promise<boolean>;
+
+  listSkillUsageForProfile(profileId: string): Promise<StoredSkillUsageRecord[]>;
+  getSkillUsage(profileId: string, skillId: string): Promise<StoredSkillUsageRecord | null>;
+  incrementSkillUsage(input: {
+    orgId: string;
+    profileId: string;
+    skillId: string;
+    viewDelta?: number;
+    useDelta?: number;
+    patchDelta?: number;
+    viewedAt?: string;
+    usedAt?: string;
+    patchedAt?: string;
+  }): Promise<void>;
 }

@@ -30,6 +30,7 @@ export function ProfilesDialogs(state: ProfilesPageState) {
     handleCreateSkill,
     detailSkillId,
     setDetailSkillId,
+    detail,
     busy,
     setRemoveConfirm,
     mcpCreateOpen,
@@ -55,6 +56,10 @@ export function ProfilesDialogs(state: ProfilesPageState) {
   const onAskSuperBot = superBotProfileId
     ? () => navigateToNewChat(superBotProfileId)
     : undefined;
+  const detailSkillSummary =
+    detailSkillId && detail
+      ? detail.skills.find((skill) => skill.id === detailSkillId)
+      : undefined;
 
   return (
     <>
@@ -77,6 +82,8 @@ export function ProfilesDialogs(state: ProfilesPageState) {
       <SkillDetailDialog
         skillId={detailSkillId}
         busy={busy}
+        usageSummary={detailSkillSummary?.usage}
+        createdBy={detailSkillSummary?.createdBy}
         onOpenChange={(open) => {
           if (!open) {
             setDetailSkillId(null);

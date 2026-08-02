@@ -1,9 +1,42 @@
 import { Trash2Icon } from "lucide-react";
 import { BASH_TOOL_ID } from "@nakama/core/tools/protected";
+import type { ProfileDetail, SkillSummary } from "@nakama/core/contract";
 import { SkillAssignPicker } from "@/components/SkillAssignPicker";
 import { Button } from "@/components/ui/button";
-import type { ProfileDetail, SkillSummary } from "@nakama/core/contract";
+import { formatSessionRelativeTime } from "@/lib/chat-history";
 import type { RemoveAssignmentTarget } from "@/pages/profiles/profiles-page.shared";
+
+const UNUSED_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+function formatSkillUsageHint(skill: SkillSummary): string | null {
+  const usage = skill.usage;
+  if (!usage) {
+    return null;
+  }
+
+  if (usage.useCount === 0 && !usage.lastUsedAt) {
+    return "Never matched";
+  }
+
+  const lastLabel = usage.lastUsedAt
+    ? formatSessionRelativeTime(usage.lastUsedAt)
+    : "never";
+  const useLabel = usage.useCount === 1 ? "use" : "uses";
+  return `Last matched ${lastLabel} · ${usage.useCount} ${useLabel}`;
+}
+
+function isSkillUnused(skill: SkillSummary): boolean {
+  const usage = skill.usage;
+  if (!usage) {
+    return false;
+  }
+
+  if (!usage.lastUsedAt) {
+    return usage.useCount === 0;
+  }
+
+  return Date.now() - new Date(usage.lastUsedAt).getTime() >= UNUSED_AFTER_MS;
+}
 
 export function ProfileSkillsSection({
   detail,
@@ -74,9 +107,21 @@ export function ProfileSkillsSection({
                 aria-label={`View details for ${skill.name}`}
                 onClick={() => onViewDetail(skill.id)}
               >
-                <p className="truncate text-sm font-medium leading-tight text-foreground">
-                  {skill.name}
-                </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="truncate text-sm font-medium leading-tight text-foreground">
+                    {skill.name}
+                  </p>
+                  {isSkillUnused(skill) ? (
+                    <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Unused
+                    </span>
+                  ) : null}
+                </div>
+                {formatSkillUsageHint(skill) ? (
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {formatSkillUsageHint(skill)}
+                  </p>
+                ) : null}
               </button>
               <Button
                 type="button"

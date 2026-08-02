@@ -2592,11 +2592,16 @@ export class AgentService {
       userId,
       includeSkillManageTools,
     });
+    const skillUsageContext =
+      channel === "web" || channel === "cli"
+        ? { sessionId, seenCatalogSkillIds: new Set<string>() }
+        : undefined;
     const { systemPrompt, soulActive } = await this.resolveProfileSystemPrompt(
       orgId,
       profileId,
       profile.systemPrompt,
       orgRole,
+      skillUsageContext,
     );
     const resolvedSystemPrompt = profile.isSuper
       ? `${systemPrompt.trim()}\n\n${SUPER_BOT_TOOL_AUTHORING_RULES}`
@@ -2661,6 +2666,7 @@ export class AgentService {
             profileId,
             context.userMessage,
             {
+              usageContext: skillUsageContext,
               appendContext: async (matched) => {
                 const parts: string[] = [];
 
@@ -2800,6 +2806,7 @@ export class AgentService {
     profileId: string,
     profilePrompt: string,
     orgRole?: OrgRole | null,
+    usageContext?: import("./skills-service").SkillUsageRecordingContext,
   ): Promise<{ systemPrompt: string; soulActive: boolean }> {
     const stack = await resolveSoulStackForProfile(orgId, profileId);
     let systemPrompt = stack
@@ -2807,7 +2814,11 @@ export class AgentService {
       : profilePrompt;
 
     if (this.skillsService) {
-      const skillsCatalog = await this.skillsService.composeCatalogForProfile(orgId, profileId);
+      const skillsCatalog = await this.skillsService.composeCatalogForProfile(
+        orgId,
+        profileId,
+        usageContext,
+      );
 
       if (skillsCatalog.trim()) {
         systemPrompt = `${systemPrompt.trim()}\n\n${skillsCatalog.trim()}`;

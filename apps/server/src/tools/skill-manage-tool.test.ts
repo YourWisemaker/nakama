@@ -300,6 +300,7 @@ Global body.
       hasTool: false,
       disableModelInvocation: false,
       enabled: true,
+      createdBy: "bundled",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

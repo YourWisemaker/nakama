@@ -97,9 +97,26 @@ Both help agents stay consistent across your team, but they solve different prob
 
 Use org memory for facts everyone should know. Use skills for how a specific bot should run a task.
 
+## See which skills are used
+
+After your team has been chatting for a while, you may wonder which skills actually help and which just sit on the shelf. Nakama tracks that automatically for each **assigned** skill on a profile.
+
+Open **Agent → Profiles**, select a bot, and scroll to **Skills**. Each skill shows a short hint such as **Last matched 2 days ago · 5 uses**, or **Never matched** when it has not been selected for a turn yet. Skills with no match in the last 30 days get an **Unused** badge — that is advisory only; nothing is deleted or archived automatically.
+
+Click a skill to open its detail dialog for the full breakdown:
+
+- **Created by** — whether the skill came from an agent, a human admin, or the bundled library
+- **Catalog views** — how often the skill appeared in the bot's skill list during chat (counted once per chat session)
+- **Matches** — how often the skill was actually used on a user message
+- **Updates** — how often the skill content was patched (including after an approved proposal)
+
+These numbers update during **web** and **CLI** chat. They do not change from Telegram, WhatsApp, Discord, or automations — those channels do not run the skill-authoring flow today.
+
+Automated cleanup (archiving unused skills, curator reports) is planned for a later release. For now, use the usage hints to decide what to unassign, edit, or keep.
+
 ## What's next
 
-Nakama is extending this area over time — for example, better visibility into which skills are used, and gentle suggestions after complex turns when saving a skill might help. What you have today is agent-driven skill authoring plus optional org-admin approval.
+Nakama is extending this area over time — for example, gentle suggestions after complex turns when saving a skill might help, and automated curation for skills that stay unused. What you have today is agent-driven skill authoring, optional org-admin approval, and usage visibility on each profile's skills list.
 
 ## Related
 

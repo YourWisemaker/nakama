@@ -92,6 +92,7 @@ export class ProfileService {
     const tools = await this.db.listToolsForProfile(profileId);
     const mcpServers = await this.db.listMcpServersForProfile(profileId);
     const skills = await this.db.listSkillsForProfile(profileId);
+    const skillUsage = await this.db.listSkillUsageForProfile(profileId);
 
     return {
       profile: {
@@ -99,7 +100,7 @@ export class ProfileService {
         systemPrompt: profile.systemPrompt,
         tools: tools.map(toToolSummary),
         mcpServers: toMcpServerSummaries(mcpServers),
-        skills: toSkillSummaries(skills),
+        skills: toSkillSummaries(skills, skillUsage),
       },
     };
   }
