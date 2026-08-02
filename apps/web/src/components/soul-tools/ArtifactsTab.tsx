@@ -7,7 +7,7 @@ import {
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
@@ -97,18 +97,15 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
 
   const artifacts = data?.artifacts ?? EMPTY_ARTIFACTS;
   const typeOptions = useMemo(() => availableArtifactTypeFilters(artifacts), [artifacts]);
-
-  useEffect(() => {
-    if (!typeOptions.includes(typeFilter)) {
-      setTypeFilter("all");
-    }
-  }, [typeFilter, typeOptions]);
+  const effectiveTypeFilter: ArtifactTypeFilter = typeOptions.includes(typeFilter)
+    ? typeFilter
+    : "all";
 
   const filteredArtifacts = useMemo(() => {
     const trimmed = searchQuery.trim().toLowerCase();
 
     return artifacts.filter((artifact) => {
-      if (!artifactMatchesTypeFilter(artifact, typeFilter)) {
+      if (!artifactMatchesTypeFilter(artifact, effectiveTypeFilter)) {
         return false;
       }
 
@@ -119,7 +116,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
       const haystack = `${artifact.filename} ${artifact.mimeType}`.toLowerCase();
       return haystack.includes(trimmed);
     });
-  }, [artifacts, searchQuery, typeFilter]);
+  }, [artifacts, searchQuery, effectiveTypeFilter]);
 
   if (!profileId) {
     return null;
@@ -139,8 +136,8 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
 
   const emptyFilterMessage = (() => {
     const parts: string[] = [];
-    if (typeFilter !== "all") {
-      parts.push(ARTIFACT_TYPE_FILTER_LABELS[typeFilter].toLowerCase());
+    if (effectiveTypeFilter !== "all") {
+      parts.push(ARTIFACT_TYPE_FILTER_LABELS[effectiveTypeFilter].toLowerCase());
     }
     const trimmed = searchQuery.trim();
     if (trimmed) {
@@ -185,7 +182,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
                   />
                 </div>
                 <Select
-                  value={typeFilter}
+                  value={effectiveTypeFilter}
                   onValueChange={(value) => {
                     if (value != null) {
                       setTypeFilter(value as ArtifactTypeFilter);
@@ -197,7 +194,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
                     className="h-8 w-full shrink-0 border-border/60 bg-muted/20 shadow-none sm:w-40 dark:bg-muted/15"
                     aria-label="Filter by file type"
                   >
-                    <SelectValue>{ARTIFACT_TYPE_FILTER_LABELS[typeFilter]}</SelectValue>
+                    <SelectValue>{ARTIFACT_TYPE_FILTER_LABELS[effectiveTypeFilter]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {typeOptions.map((option) => (
