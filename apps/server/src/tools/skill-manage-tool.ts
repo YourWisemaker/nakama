@@ -87,14 +87,18 @@ function skillManageResult(options: {
   description?: string;
   created?: boolean;
 }) {
+  const matchHint =
+    options.action === "delete"
+      ? "The skill was removed from this profile (disk, assignment, and DB row). Keyword match and /skill will no longer find it."
+      : "The skill is assigned for this profile. Keyword match and /skill work on later turns; the baked session skills catalog list may refresh on a new session.";
+
   return {
     action: options.action,
     name: options.name,
     assigned: options.assigned,
     ...(options.description !== undefined ? { description: options.description } : {}),
     ...(options.created !== undefined ? { created: options.created } : {}),
-    matchHint:
-      "The skill is assigned for this profile. Keyword match and /skill work on later turns; the baked session skills catalog list may refresh on a new session.",
+    matchHint,
   };
 }
 

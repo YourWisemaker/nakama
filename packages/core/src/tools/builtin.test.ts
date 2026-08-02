@@ -397,6 +397,14 @@ describe("file builtin tools", () => {
       runDeleteFile({ path: "skills/notes/SKILL.md" }, context, { workspaceRoot: tempDir }),
     ).rejects.toThrow(/Use skill_manage/);
 
+    await expect(
+      runWriteFile(
+        { path: "skills/notes/Skill.md", content: "---\nname: notes\ndescription: x\n---\n" },
+        context,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/Use skill_manage/);
+
     // Sidecar under skills/ remains writable.
     const sidecar = await runWriteFile(
       { path: "skills/notes/README.md", content: "ok" },
@@ -404,6 +412,44 @@ describe("file builtin tools", () => {
       { workspaceRoot: tempDir },
     );
     expect(await readFile(sidecar.path, "utf8")).toBe("ok");
+  });
+
+  test("write_file, edit_file, and delete_file refuse skills/*/tool.js and tool.ts", async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-skill-tool-"));
+    await mkdir(path.join(tempDir, "skills", "notes"), { recursive: true });
+
+    await expect(
+      runWriteFile(
+        { path: "skills/notes/tool.js", content: "export default {};" },
+        PROFILE_CONTEXT,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/tool\.js.*Phase 1/);
+
+    await expect(
+      runWriteFile(
+        { path: "skills/notes/tool.ts", content: "export default {};" },
+        PROFILE_CONTEXT,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/tool\.ts.*Phase 1/);
+
+    await writeFile(path.join(tempDir, "skills", "notes", "tool.js"), "export default {};", "utf8");
+
+    await expect(
+      runEditFile(
+        {
+          path: "skills/notes/tool.js",
+          edits: [{ oldText: "export default {};", newText: "export default { x: 1 };" }],
+        },
+        PROFILE_CONTEXT,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/tool\.js.*Phase 1/);
+
+    await expect(
+      runDeleteFile({ path: "skills/notes/tool.js" }, PROFILE_CONTEXT, { workspaceRoot: tempDir }),
+    ).rejects.toThrow(/tool\.js.*Phase 1/);
   });
 
   test("write_docx produces a real Word archive that reads back as markdown", async () => {

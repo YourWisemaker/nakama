@@ -181,11 +181,48 @@ describe("skill_manage tool", () => {
       name: "research-paper",
       assigned: false,
     });
+    expect(String((result as { matchHint?: string }).matchHint)).toContain("removed");
+    expect(String((result as { matchHint?: string }).matchHint)).not.toContain(
+      "is assigned for this profile",
+    );
     expect(await pathExists(skillDir)).toBe(false);
     expect(await db.listSkillsForProfile(PROFILE_ID)).toHaveLength(0);
     expect((await db.listSkills()).some((skill) => skill.name === "research-paper")).toBe(
       false,
     );
+  });
+
+  test("create adopts identical assigned skill but refuses content overwrite", async () => {
+    const { tool } = await setup();
+    await tool.run({ action: "create", content: researchSkillMarkdown }, memberContext());
+
+    const identical = await tool.run(
+      { action: "create", content: researchSkillMarkdown },
+      memberContext(),
+    );
+    expect(identical).toMatchObject({
+      action: "create",
+      name: "research-paper",
+      assigned: true,
+      created: false,
+    });
+
+    await expect(
+      tool.run(
+        {
+          action: "create",
+          content: `---
+name: research-paper
+description: Research a paper and summarize it.
+include-body-on-match: true
+---
+
+Completely different body.
+`,
+        },
+        memberContext(),
+      ),
+    ).rejects.toThrow(/already assigned.*patch/i);
   });
 
   test("refuses bundled skill names on create", async () => {

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type {
   CreateSkillRequest,
   ListSkillsResponse,
@@ -29,6 +30,7 @@ import {
   parseRawProfileSkillContent,
   patchSkillFile,
   pickPreferredSkillSourcePath,
+  SKILL_FILE_NAME,
   writeRawProfileSkillMarkdown,
   type DiscoveredSkill,
 } from "@nakama/core";
@@ -161,6 +163,26 @@ export class SkillsService {
       throw new Error(
         `Skill "${name}" already exists at a different source path and cannot be attached to this profile.`,
       );
+    }
+
+    if (
+      existingByName &&
+      isPathWithinProfileSkillsDir(orgId, profileId, existingByName.sourcePath)
+    ) {
+      const assigned = await this.db.listSkillsForProfile(profileId);
+      if (assigned.some((skill) => skill.id === existingByName.id)) {
+        const skillFile = path.join(existingByName.sourcePath, SKILL_FILE_NAME);
+        const existingContent = await readFile(skillFile, "utf8");
+        const nextContent = content.endsWith("\n") ? content : `${content}\n`;
+        const normalizedExisting = existingContent.endsWith("\n")
+          ? existingContent
+          : `${existingContent}\n`;
+        if (normalizedExisting !== nextContent) {
+          throw new Error(
+            `Skill "${name}" is already assigned to this profile. Use action patch to update it.`,
+          );
+        }
+      }
     }
 
     const written = await writeRawProfileSkillMarkdown({
