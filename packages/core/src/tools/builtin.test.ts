@@ -364,6 +364,44 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/write_docx/);
   });
 
+  test("write_file and edit_file refuse skills/*/SKILL.md when forbidProfileSkillMarkdownWrites", async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-skill-md-"));
+    await mkdir(path.join(tempDir, "skills", "notes"), { recursive: true });
+    await writeFile(
+      path.join(tempDir, "skills", "notes", "SKILL.md"),
+      "---\nname: notes\ndescription: Notes.\n---\n\nBody.\n",
+      "utf8",
+    );
+    const context = { ...PROFILE_CONTEXT, forbidProfileSkillMarkdownWrites: true };
+
+    await expect(
+      runWriteFile(
+        { path: "skills/notes/SKILL.md", content: "---\nname: notes\ndescription: x\n---\n" },
+        context,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
+      runEditFile(
+        {
+          path: "skills/notes/SKILL.md",
+          edits: [{ oldText: "Body.", newText: "Updated." }],
+        },
+        context,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    // Sidecar under skills/ remains writable.
+    const sidecar = await runWriteFile(
+      { path: "skills/notes/README.md", content: "ok" },
+      context,
+      { workspaceRoot: tempDir },
+    );
+    expect(await readFile(sidecar.path, "utf8")).toBe("ok");
+  });
+
   test("write_docx produces a real Word archive that reads back as markdown", async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-docx-"));
     const targetPath = path.join(tempDir, "laporan.docx");

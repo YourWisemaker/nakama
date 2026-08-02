@@ -191,6 +191,7 @@ import {
 } from "./provider-instance-helpers";
 import { createSuperBotTools } from "../tools/super-bot-tools";
 import { createOrgMemoryTools } from "../tools/org-memory-tools";
+import { createSkillManageTools } from "../tools/skill-manage-tool";
 import { createAskUserQuestionTools } from "../tools/ask-user-question-tool";
 import { createTodoTools } from "../tools/todo-tools";
 import { SUB_AGENT_TOOL_NAME } from "../tools/sub-agent-tool";
@@ -2529,6 +2530,14 @@ export class AgentService {
 
       const skillTools = await this.skillsService.loadToolsForProfile(orgId, profile.id);
       resolved = [...resolved, ...skillTools];
+
+      // Interactive chat only: automation runners set includeAutomationTools: false.
+      if (includeAutomationTools) {
+        const assignedSkills = await this.skillsService.listSkillsForProfile(profile.id);
+        if (assignedSkills.some((skill) => skill.name === "manage-skills")) {
+          resolved = [...resolved, ...createSkillManageTools(this.skillsService)];
+        }
+      }
     }
 
     if (profile.isSuper) {
@@ -2576,6 +2585,7 @@ export class AgentService {
       channel,
     });
     const loadAttachment = createAttachmentLoader(this.db, { orgId, profileId });
+    const hasSkillManage = tools.some((tool) => tool.name === "skill_manage");
 
     const session = harness.createChatSession({
       channel,
@@ -2594,6 +2604,7 @@ export class AgentService {
         userId: userId ?? undefined,
         orgRole: orgRole ?? undefined,
         loadAttachment,
+        forbidProfileSkillMarkdownWrites: hasSkillManage,
       }),
       resolvePromptContext: async (context) => {
         const parts: string[] = [];

@@ -1811,6 +1811,11 @@ export interface ToolContext {
   workspaceRoot?: string;
   /** Org role of the invoking user. Org-memory tools gate on this; undefined means deny-by-default. */
   orgRole?: OrgRole;
+  /**
+   * When true (skill_manage is in the session tool list), write_file / edit_file / delete_file
+   * refuse paths matching skills/<name>/SKILL.md under the profile workspace.
+   */
+  forbidProfileSkillMarkdownWrites?: boolean;
   /** Loads a provider-neutral document/image reference scoped to this execution. */
   loadAttachment?: LoadAttachmentBytes;
   /** Emits concise live status lines while a sub-agent child loop runs (parent web UI). */

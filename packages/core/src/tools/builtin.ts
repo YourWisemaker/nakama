@@ -164,6 +164,37 @@ function requireProfileScope(context: ToolContext): { orgId: string; profileId: 
   return { orgId, profileId };
 }
 
+/**
+ * When skill_manage is available, refuse mutating profile SKILL.md via file tools
+ * so creates always go through the assign path.
+ *
+ * Call after path guard succeeds. Matches `.../skills/<name>/SKILL.md` on the
+ * resolved path (including realpath'd absolute paths under the workspace).
+ */
+export function refuseProfileSkillMarkdownWrite(
+  context: ToolContext,
+  resolvedPath: string,
+): void {
+  if (!context.forbidProfileSkillMarkdownWrites) {
+    return;
+  }
+
+  const normalized = resolvedPath.replace(/\\/g, "/");
+  const match = normalized.match(/(?:^|\/)skills\/([^/]+)\/SKILL\.md$/);
+  if (!match) {
+    return;
+  }
+
+  const skillName = match[1];
+  if (!skillName || skillName === "." || skillName === "..") {
+    return;
+  }
+
+  throw new Error(
+    `Use skill_manage to create, patch, or delete profile skills; writing skills/${skillName}/SKILL.md via file tools is not allowed when skill_manage is available.`,
+  );
+}
+
 function buildFileGuardOptions(
   context: ToolContext,
   options: FileToolRunOptions = {},
@@ -225,6 +256,7 @@ export async function runWriteFile(
     contentBytes,
     guardOptions,
   );
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
   const { orgId, profileId } = requireProfileScope(context);
   const workspaceRoot = options.workspaceRoot ?? getProfileSoulDir(orgId, profileId);
   let filePath = guarded.resolved;
@@ -308,6 +340,7 @@ export async function runDeleteFile(
   const guardOptions = buildFileGuardOptions(context, options);
 
   const guarded = await guardFilePath(parsed.path, parsed.cwd ?? null, undefined, guardOptions);
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
   await unlink(guarded.resolved);
 
   return { path: guarded.resolved, deleted: true };
@@ -335,6 +368,7 @@ export async function runEditFile(
   const guardOptions = buildFileGuardOptions(context, options);
   const maxBytes = guardOptions.maxFileBytes ?? 10 * 1024 * 1024;
   const guarded = await guardFilePath(parsed.path, parsed.cwd ?? null, undefined, guardOptions);
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
   const filePath = guarded.resolved;
 
   if (BLOCKED_READ_BASENAMES.includes(path.basename(filePath).toLowerCase())) {
