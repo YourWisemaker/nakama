@@ -5,7 +5,6 @@ import {
   hasOpenCodeZenProvider,
   isOpenCodeZenBaseUrl,
   isProviderTypeAlreadyConfigured,
-  resolveModelContextWindow,
   resolveModelThinkingSupport,
   resolveModelVisionSupport,
 } from "./models";
@@ -207,26 +206,6 @@ describe("resolveModelVisionSupport", () => {
         group("fw-1", "fireworks", { supportsVision: true }),
       ),
     ).toBe(true);
-  });
-});
-
-describe("resolveModelContextWindow", () => {
-  test("returns the model context window when present", () => {
-    expect(
-      resolveModelContextWindow(
-        encodeModelSelection("openai-1", "model-1"),
-        group("openai-1", "openai", { contextWindow: 200_000 }),
-      ),
-    ).toBe(200_000);
-  });
-
-  test("returns undefined when context window is missing", () => {
-    expect(
-      resolveModelContextWindow(
-        encodeModelSelection("openai-1", "model-1"),
-        group("openai-1", "openai"),
-      ),
-    ).toBeUndefined();
   });
 });
 

@@ -73,6 +73,9 @@ export async function readStreamEvents(
       }
 
       if (payload.type === "done") {
+        if (payload.contextUsage) {
+          handlers.onContextUsage?.(payload.contextUsage);
+        }
         return payload.reply;
       }
 

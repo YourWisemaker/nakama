@@ -54,13 +54,12 @@ import {
   decodeModelSelection,
   effectiveProfileModelSelection,
   groupModelsByProvider,
-  resolveModelContextWindow,
   resolveModelThinkingSupport,
   resolveModelVisionSupport,
 } from "@/lib/models";
-import { buildChatContextUsage } from "@/lib/chat-context-usage";
 import { SETUP_PATH } from "@/lib/navigation";
 import { findRetryCheckpoint, findRetryPrompt } from "@/pages/chat/chat-page.shared";
+import type { ChatContextUsage } from "@nakama/core/contract";
 
 interface SendMessageOptions {
   sessionOverride?: RemoteChatSession;
@@ -96,6 +95,7 @@ export function useChatPage() {
   const [messages, setMessages] = useState<ChatListItem[]>([]);
   const [agentTodos, setAgentTodos] = useState<AgentTodo[]>([]);
   const [agentQuestionnaire, setAgentQuestionnaire] = useState<AgentQuestionnaire | null>(null);
+  const [contextUsage, setContextUsage] = useState<ChatContextUsage | null>(null);
   const [busy, setBusy] = useState(false);
   const [branchingMessageId, setBranchingMessageId] = useState<string | null>(null);
   const [canStop, setCanStop] = useState(false);
@@ -261,6 +261,7 @@ export function useChatPage() {
       setError(null);
       setAgentTodos([]);
       setAgentQuestionnaire(null);
+      setContextUsage(null);
       // Session routes remount ChatPage on /chat — pass profile in the query so it survives.
       // The ?new=1 handler then replaces the URL with bare /chat.
       if (location.pathname !== buildChatBasePath()) {
@@ -283,6 +284,7 @@ export function useChatPage() {
           messageMeta,
           todos,
           questionnaire,
+          contextUsage: nextContextUsage,
         } = await client.getSessionMessages(sessionId);
         const nextSession = client.createChatSession(sessionId, channel);
         let listItems = chatMessagesToListItems(storedMessages, messageMeta);
@@ -292,6 +294,7 @@ export function useChatPage() {
         setMessages(listItems);
         setAgentTodos(todos);
         setAgentQuestionnaire(questionnaire);
+        setContextUsage(nextContextUsage ?? null);
         syncChatUrl(nextProfileId, sessionId);
 
         if (channel === "web") {
@@ -310,6 +313,7 @@ export function useChatPage() {
               handlers: buildStreamHandlers(setMessages, {
                 onTodosUpdated: setAgentTodos,
                 onQuestionnaireUpdated: setAgentQuestionnaire,
+                onContextUsage: setContextUsage,
               }),
               signal: abortController.signal,
             });
@@ -318,6 +322,7 @@ export function useChatPage() {
             setMessages(chatMessagesToListItems(refreshed.messages, refreshed.messageMeta));
             setAgentTodos(refreshed.todos);
             setAgentQuestionnaire(refreshed.questionnaire);
+            setContextUsage(refreshed.contextUsage ?? null);
 
             if (!reconnected && !status.active) {
               setError(null);
@@ -415,6 +420,7 @@ export function useChatPage() {
     setError(null);
     setAgentTodos([]);
     setAgentQuestionnaire(null);
+    setContextUsage(null);
 
     if (requestedProfile && requestedProfile !== profileIdRef.current) {
       setProfileId(requestedProfile);
@@ -557,6 +563,7 @@ export function useChatPage() {
           buildStreamHandlers(setMessages, {
             onTodosUpdated: setAgentTodos,
             onQuestionnaireUpdated: setAgentQuestionnaire,
+            onContextUsage: setContextUsage,
           }),
           { signal: abortController.signal },
         );
@@ -566,10 +573,12 @@ export function useChatPage() {
           messageMeta,
           todos,
           questionnaire,
+          contextUsage: nextContextUsage,
         } = await client.getSessionMessages(activeSession.id);
         setMessages(chatMessagesToListItems(storedMessages, messageMeta));
         setAgentTodos(todos);
         setAgentQuestionnaire(questionnaire);
+        setContextUsage(nextContextUsage ?? null);
       } catch (err) {
         if (isAbortError(err)) {
           setMessages((current) => finalizeStreamingMessages(current));
@@ -733,17 +742,6 @@ export function useChatPage() {
   const isEmptyState = messages.length === 0 && !busy;
   const composerDisabled = !profileId || readOnlySession;
 
-  const contextUsage = useMemo(() => {
-    if (isEmptyState) {
-      return null;
-    }
-
-    return buildChatContextUsage(
-      messages,
-      resolveModelContextWindow(currentModelSelection, providerModelGroups),
-    );
-  }, [currentModelSelection, isEmptyState, messages, providerModelGroups]);
-
   return {
     session,
     messages,
@@ -769,7 +767,7 @@ export function useChatPage() {
     isEmptyState,
     composerDisabled,
     sessionChannel,
-    contextUsage,
+    contextUsage: isEmptyState ? null : contextUsage,
     handleProfileSwitch,
     handleModelChange,
     renderModelLabel,

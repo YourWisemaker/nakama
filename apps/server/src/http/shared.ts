@@ -565,7 +565,8 @@ export function streamMessage(
           }),
         ]);
 
-        send({ type: "done", reply });
+        const contextUsage = session.getContextUsage() ?? undefined;
+        send({ type: "done", reply, ...(contextUsage ? { contextUsage } : {}) });
       } catch (error) {
         send({ type: "error", error: formatServerError(error) });
       } finally {

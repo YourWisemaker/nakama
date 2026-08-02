@@ -859,40 +859,6 @@ export function resolveModelVisionSupport(
   return model.supportsVision !== false;
 }
 
-export function resolveModelContextWindow(
-  selection: string | null | undefined,
-  groups: ReturnType<typeof groupModelsByProvider>,
-): number | undefined {
-  if (!selection) {
-    return undefined;
-  }
-
-  const decoded = decodeModelSelection(selection);
-  const resolvedModelId = decoded?.modelId ?? selection;
-
-  const findModel = () => {
-    if (decoded && decoded.providerId !== "__unknown__") {
-      const group = groups.find((entry) => entry.providerId === decoded.providerId);
-      const match = group?.models.find((model) => model.id === resolvedModelId);
-      if (match) {
-        return match;
-      }
-    }
-
-    for (const group of groups) {
-      const match = group.models.find((model) => model.id === resolvedModelId);
-      if (match) {
-        return match;
-      }
-    }
-
-    return undefined;
-  };
-
-  const contextWindow = findModel()?.contextWindow;
-  return contextWindow && contextWindow > 0 ? contextWindow : undefined;
-}
-
 export const TRANSCRIPTION_MODEL_OPTIONS = [
   { id: "whisper-1", name: "Whisper" },
   { id: "gpt-4o-transcribe", name: "GPT-4o Transcribe" },
