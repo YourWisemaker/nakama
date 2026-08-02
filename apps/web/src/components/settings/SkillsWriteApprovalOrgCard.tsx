@@ -69,6 +69,57 @@ function SkillApprovalTabButton({
   );
 }
 
+function OrgProfileSkillsWriteApprovalOverrideSelect({
+  profile,
+  disabled = false,
+}: {
+  profile: ProfileSummary;
+  disabled?: boolean;
+}) {
+  const updateMutation = useUpdateProfileMutation();
+  const [value, setValue] = useState<OverrideValue>(() => toOverrideValue(profile.skillsWriteApproval));
+  const busy = updateMutation.isPending;
+
+  async function handleOverrideChange(nextValue: OverrideValue) {
+    setValue(nextValue);
+    try {
+      await updateMutation.mutateAsync({
+        profileId: profile.id,
+        input: { skillsWriteApproval: fromOverrideValue(nextValue) },
+      });
+      toast("Profile skill write approval setting saved.");
+    } catch (err) {
+      setValue(toOverrideValue(profile.skillsWriteApproval));
+      toast(formatError(err));
+    }
+  }
+
+  return (
+    <>
+      <Select
+        value={value}
+        disabled={disabled || busy}
+        onValueChange={(next) => {
+          if (!next) {
+            return;
+          }
+          void handleOverrideChange(next as OverrideValue);
+        }}
+      >
+        <SelectTrigger className="h-8 max-w-xs" aria-label="Skill write approval override">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="inherit">Inherit org default</SelectItem>
+          <SelectItem value="on">Require approval</SelectItem>
+          <SelectItem value="off">Allow immediate writes</SelectItem>
+        </SelectContent>
+      </Select>
+      {busy ? <Spinner /> : null}
+    </>
+  );
+}
+
 function OrgProfileSkillsWriteApprovalField({
   profiles,
   disabled = false,
@@ -76,36 +127,8 @@ function OrgProfileSkillsWriteApprovalField({
   profiles: ProfileSummary[];
   disabled?: boolean;
 }) {
-  const updateMutation = useUpdateProfileMutation();
   const [profileId, setProfileId] = useState<string>("");
   const selectedProfile = profiles.find((profile) => profile.id === profileId) ?? null;
-  const [value, setValue] = useState<OverrideValue>("inherit");
-  const busy = updateMutation.isPending;
-
-  useEffect(() => {
-    if (!selectedProfile) {
-      setValue("inherit");
-      return;
-    }
-    setValue(toOverrideValue(selectedProfile.skillsWriteApproval));
-  }, [selectedProfile]);
-
-  async function handleOverrideChange(nextValue: OverrideValue) {
-    if (!selectedProfile) {
-      return;
-    }
-    setValue(nextValue);
-    try {
-      await updateMutation.mutateAsync({
-        profileId: selectedProfile.id,
-        input: { skillsWriteApproval: fromOverrideValue(nextValue) },
-      });
-      toast("Profile skill write approval setting saved.");
-    } catch (err) {
-      setValue(toOverrideValue(selectedProfile.skillsWriteApproval));
-      toast(formatError(err));
-    }
-  }
 
   if (profiles.length === 0) {
     return null;
@@ -117,7 +140,7 @@ function OrgProfileSkillsWriteApprovalField({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Select
           value={profileId}
-          disabled={disabled || busy}
+          disabled={disabled}
           onValueChange={(next) => setProfileId(next ? String(next) : "")}
         >
           <SelectTrigger className="h-8 max-w-xs" aria-label="Profile">
@@ -131,26 +154,24 @@ function OrgProfileSkillsWriteApprovalField({
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={value}
-          disabled={disabled || busy || !selectedProfile}
-          onValueChange={(next) => {
-            if (!next) {
-              return;
-            }
-            void handleOverrideChange(next as OverrideValue);
-          }}
-        >
-          <SelectTrigger className="h-8 max-w-xs" aria-label="Skill write approval override">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="inherit">Inherit org default</SelectItem>
-            <SelectItem value="on">Require approval</SelectItem>
-            <SelectItem value="off">Allow immediate writes</SelectItem>
-          </SelectContent>
-        </Select>
-        {busy ? <Spinner /> : null}
+        {selectedProfile ? (
+          <OrgProfileSkillsWriteApprovalOverrideSelect
+            key={`${selectedProfile.id}:${String(selectedProfile.skillsWriteApproval)}`}
+            profile={selectedProfile}
+            disabled={disabled}
+          />
+        ) : (
+          <Select value="inherit" disabled>
+            <SelectTrigger className="h-8 max-w-xs" aria-label="Skill write approval override">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="inherit">Inherit org default</SelectItem>
+              <SelectItem value="on">Require approval</SelectItem>
+              <SelectItem value="off">Allow immediate writes</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
       <p className="mt-1.5 text-xs text-muted-foreground">
         Overrides the org-wide gate for the selected profile only.
