@@ -159,7 +159,7 @@ export function ProfileSkillsSection({
   onAssignBash: () => void | Promise<void>;
 }) {
   const sortedSkills = useMemo(
-    () => [...detail.skills].sort(compareAssignedSkills),
+    () => detail.skills.toSorted(compareAssignedSkills),
     [detail.skills],
   );
   const customSkills = useMemo(
