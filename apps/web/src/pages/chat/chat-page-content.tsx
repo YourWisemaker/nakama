@@ -35,6 +35,7 @@ export function ChatPageContent(state: ChatPageState) {
     isEmptyState,
     composerDisabled,
     sessionChannel,
+    contextUsage,
     handleProfileSwitch,
     handleModelChange,
     renderModelLabel,
@@ -64,12 +65,8 @@ export function ChatPageContent(state: ChatPageState) {
         canStop={canStop}
         disabled={composerDisabled}
         error={error}
-        profileId={profileId}
-        profiles={profiles}
-        activeProfile={activeProfile}
+        contextUsage={contextUsage}
         availableSkills={availableSkills}
-        onProfileSwitch={handleProfileSwitch}
-        showProfileSwitch={!isEmptyState}
         showTips={isEmptyState}
         showOfflineHint={showOfflineHint}
         providerConfigured={health?.providerConfigured}

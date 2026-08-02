@@ -5,11 +5,14 @@ import {
   isImageArtifactMimeType,
   isLegacyDocFile,
   isMarkdownArtifactMimeType,
+  isVideoArtifactMimeType,
 } from "@/lib/chat-artifacts";
 import { formatBytes } from "@/lib/knowledge-base-files";
 
 const WIDE_ARTIFACT_PANEL_WIDTH = 768;
 const NARROW_ARTIFACT_PANEL_WIDTH = 448;
+/** Videos (often portrait reels) leave chat usable on tablet; avoid the 768 wide default. */
+const VIDEO_ARTIFACT_PANEL_WIDTH = 420;
 
 export function artifactPanelDefaultWidth(
   filename: string,
@@ -17,10 +20,15 @@ export function artifactPanelDefaultWidth(
 ): number {
   const isHtml = isHtmlArtifactMimeType(mimeType);
   const isImage = isImageArtifactMimeType(mimeType);
+  const isVideo = isVideoArtifactMimeType(mimeType);
   const isWordDocument =
     isDocxFile(filename, mimeType) || isLegacyDocFile(filename, mimeType);
   const isMarkdown = isMarkdownArtifactMimeType(mimeType) || isWordDocument;
   const language = artifactCodeLanguage(filename);
+
+  if (isVideo) {
+    return VIDEO_ARTIFACT_PANEL_WIDTH;
+  }
 
   return isHtml || isImage || isMarkdown || language
     ? WIDE_ARTIFACT_PANEL_WIDTH
@@ -30,13 +38,15 @@ export function artifactPanelDefaultWidth(
 export function artifactPanelBodyClassName({
   isHtml,
   isImage,
+  isVideo = false,
   isMarkdown,
 }: {
   isHtml: boolean;
   isImage: boolean;
+  isVideo?: boolean;
   isMarkdown: boolean;
 }): string | undefined {
-  if (isHtml || isImage) {
+  if (isHtml || isImage || isVideo) {
     return "flex flex-col overflow-hidden p-0";
   }
 
@@ -82,6 +92,10 @@ export function downloadActionLabel(mimeType: string): string {
 
   if (isImageArtifactMimeType(mimeType)) {
     return "Download image";
+  }
+
+  if (isVideoArtifactMimeType(mimeType)) {
+    return "Download video";
   }
 
   if (mimeType === "application/json") {

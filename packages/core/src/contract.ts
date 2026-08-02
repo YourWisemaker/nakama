@@ -582,12 +582,24 @@ export interface SessionMessageMeta {
   createdAt: string;
 }
 
+/** How full the model context window is for the current chat session. */
+export type ChatContextUsageSource = "provider" | "estimate";
+
+export interface ChatContextUsage {
+  usedTokens: number;
+  /** Denominator matching compaction usable context (window minus reserved output). */
+  usableContextTokens: number;
+  contextWindow: number;
+  source: ChatContextUsageSource;
+}
+
 export interface SessionMessagesResponse {
   channel: AgentChannel;
   messages: ChatMessage[];
   messageMeta: SessionMessageMeta[];
   todos: AgentTodo[];
   questionnaire: AgentQuestionnaire | null;
+  contextUsage?: ChatContextUsage | null;
 }
 
 export interface SessionStatusResponse {
@@ -663,6 +675,7 @@ export interface SendMessageRequest {
 
 export interface SendMessageResponse {
   reply: string;
+  contextUsage?: ChatContextUsage;
 }
 
 export type StreamEvent =
@@ -694,7 +707,7 @@ export type StreamEvent =
       parentToolCallId: string;
       label: string;
     }
-  | { type: "done"; reply: string }
+  | { type: "done"; reply: string; contextUsage?: ChatContextUsage }
   | { type: "error"; error: string };
 
 export interface DraftAutomationRequest {
@@ -1737,6 +1750,8 @@ export interface ChatCompletionResult {
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
+    /** True when input/output tokens were estimated rather than reported by the provider. */
+    estimated?: boolean;
   };
 }
 

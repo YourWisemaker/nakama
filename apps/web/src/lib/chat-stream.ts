@@ -5,6 +5,7 @@ import type {
   AgentQuestionAnswer,
   AgentQuestionnaire,
   AgentTodo,
+  ChatContextUsage,
 } from "@nakama/core/contract";
 import type { StreamHandlers } from "@nakama/client";
 import type { ChatListItem } from "@/lib/chat-history";
@@ -476,6 +477,7 @@ export function buildStreamHandlers(
   options: {
     onTodosUpdated?: (todos: AgentTodo[]) => void;
     onQuestionnaireUpdated?: (questionnaire: AgentQuestionnaire | null) => void;
+    onContextUsage?: (usage: ChatContextUsage) => void;
   } = {},
 ): StreamHandlers {
   return {
@@ -607,6 +609,7 @@ export function buildStreamHandlers(
     },
     onTodosUpdated: options.onTodosUpdated,
     onQuestionnaireUpdated: options.onQuestionnaireUpdated,
+    onContextUsage: options.onContextUsage,
   };
 }
 

@@ -14,6 +14,7 @@ import type {
   AssignSkillRequest,
   AssignToolRequest,
   BranchSessionResponse,
+  ChatContextUsage,
   ChatMessage,
   CompactionResponse,
   CreateProfileRequest,
@@ -1309,6 +1310,7 @@ export class AgentService {
     channel: AgentChannel;
     messages: ChatMessage[];
     messageMeta: Array<{ id: string; seq: number; createdAt: string }>;
+    contextUsage: ChatContextUsage | null;
   } | null> {
     const record = await this.db.getSession(sessionId);
 
@@ -1338,11 +1340,16 @@ export class AgentService {
             seq: index,
             createdAt: startedAt,
           })),
+          contextUsage: liveSession.getContextUsage(),
         };
       }
     }
 
     const storedMessages = await this.db.listMessagesForSession(sessionId);
+    const cached = this.sessions.get(sessionId)?.session;
+    const contextUsage = cached
+      ? cached.getContextUsage()
+      : (await this.resolveSession(sessionId))?.getContextUsage() ?? null;
 
     return {
       channel,
@@ -1352,6 +1359,7 @@ export class AgentService {
         seq: message.seq,
         createdAt: message.createdAt,
       })),
+      contextUsage,
     };
   }
 
@@ -2897,13 +2905,9 @@ export class AgentService {
 
     const model = getModelById(resolved.model);
 
-    if (!model) {
-      return undefined;
-    }
-
     return {
-      contextWindow: model.contextWindow,
-      maxOutputTokens: model.maxOutputTokens,
+      contextWindow: model?.contextWindow ?? 128_000,
+      maxOutputTokens: model?.maxOutputTokens ?? 8_192,
     };
   }
 

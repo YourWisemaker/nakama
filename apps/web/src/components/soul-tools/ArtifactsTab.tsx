@@ -1,5 +1,12 @@
 import type { ArtifactFile } from "@nakama/core/contract";
-import { FileDownIcon, FileTextIcon, ImageIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import {
+  FileDownIcon,
+  FileTextIcon,
+  FilmIcon,
+  ImageIcon,
+  SearchIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -12,8 +19,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { ArtifactShareControls } from "@/components/chat/artifact-share-controls";
+import {
+  ARTIFACT_TYPE_FILTER_LABELS,
+  artifactMatchesTypeFilter,
+  availableArtifactTypeFilters,
+  classifyArtifactType,
+  type ArtifactTypeFilter,
+} from "@/components/soul-tools/artifacts-tab-filters";
 import { useArtifactsQuery, useDeleteArtifactMutation } from "@/hooks/use-resource-mutations";
 import { formatError } from "@/lib/client";
 import { client } from "@/lib/client";
@@ -21,6 +42,7 @@ import { formatBytes } from "@/lib/knowledge-base-files";
 import { cn } from "@/lib/utils";
 
 const sectionClass = "rounded-md border border-border bg-card";
+const EMPTY_ARTIFACTS: ArtifactFile[] = [];
 
 const artifactTimestampFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
@@ -40,9 +62,21 @@ function getArtifactDownloadUrl(profileId: string, filename: string): string {
   return `${client.baseUrl}/v1/profiles/${encodeURIComponent(profileId)}/artifacts/content?${query.toString()}`;
 }
 
-function ArtifactIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith("image/")) {
+function ArtifactIcon({ mimeType, filename }: { mimeType: string; filename: string }) {
+  const kind = classifyArtifactType({
+    filename,
+    mimeType,
+    path: filename,
+    sizeBytes: 0,
+    updatedAt: "",
+  });
+
+  if (kind === "image") {
     return <ImageIcon className="mt-0.5 size-4 text-muted-foreground" aria-hidden />;
+  }
+
+  if (kind === "video") {
+    return <FilmIcon className="mt-0.5 size-4 text-muted-foreground" aria-hidden />;
   }
 
   return <FileTextIcon className="mt-0.5 size-4 text-muted-foreground" aria-hidden />;
@@ -51,6 +85,7 @@ function ArtifactIcon({ mimeType }: { mimeType: string }) {
 export function ArtifactsTab({ profileId }: { profileId: string | null }) {
   const [deleteTarget, setDeleteTarget] = useState<ArtifactFile | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<ArtifactTypeFilter>("all");
   const {
     data,
     isLoading,
@@ -60,19 +95,28 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
   } = useArtifactsQuery(profileId);
   const deleteMutation = useDeleteArtifactMutation();
 
+  const artifacts = data?.artifacts ?? EMPTY_ARTIFACTS;
+  const typeOptions = useMemo(() => availableArtifactTypeFilters(artifacts), [artifacts]);
+  const effectiveTypeFilter: ArtifactTypeFilter = typeOptions.includes(typeFilter)
+    ? typeFilter
+    : "all";
+
   const filteredArtifacts = useMemo(() => {
-    const artifacts = data?.artifacts ?? [];
     const trimmed = searchQuery.trim().toLowerCase();
 
-    if (!trimmed) {
-      return artifacts;
-    }
-
     return artifacts.filter((artifact) => {
+      if (!artifactMatchesTypeFilter(artifact, effectiveTypeFilter)) {
+        return false;
+      }
+
+      if (!trimmed) {
+        return true;
+      }
+
       const haystack = `${artifact.filename} ${artifact.mimeType}`.toLowerCase();
       return haystack.includes(trimmed);
     });
-  }, [data?.artifacts, searchQuery]);
+  }, [artifacts, searchQuery, effectiveTypeFilter]);
 
   if (!profileId) {
     return null;
@@ -89,6 +133,21 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
     });
     setDeleteTarget(null);
   }
+
+  const emptyFilterMessage = (() => {
+    const parts: string[] = [];
+    if (effectiveTypeFilter !== "all") {
+      parts.push(ARTIFACT_TYPE_FILTER_LABELS[effectiveTypeFilter].toLowerCase());
+    }
+    const trimmed = searchQuery.trim();
+    if (trimmed) {
+      parts.push(`“${trimmed}”`);
+    }
+    if (parts.length === 0) {
+      return "No artifacts match.";
+    }
+    return `No artifacts match ${parts.join(" · ")}.`;
+  })();
 
   return (
     <>
@@ -108,18 +167,43 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
               </Button>
             </div>
 
-            {data && data.artifacts.length > 0 ? (
-              <div className="relative">
-                <SearchIcon
-                  className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search files…"
-                  className="h-8 border-border/60 bg-muted/20 pl-8 text-sm shadow-none focus-visible:border-foreground/20 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-foreground/10 dark:bg-muted/15 dark:focus-visible:bg-background/60"
-                />
+            {artifacts.length > 0 ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <SearchIcon
+                    className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden
+                  />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search files…"
+                    className="h-8 border-border/60 bg-muted/20 pl-8 text-sm shadow-none focus-visible:border-foreground/20 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-foreground/10 dark:bg-muted/15 dark:focus-visible:bg-background/60"
+                  />
+                </div>
+                <Select
+                  value={effectiveTypeFilter}
+                  onValueChange={(value) => {
+                    if (value != null) {
+                      setTypeFilter(value as ArtifactTypeFilter);
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-8 w-full shrink-0 border-border/60 bg-muted/20 shadow-none sm:w-40 dark:bg-muted/15"
+                    aria-label="Filter by file type"
+                  >
+                    <SelectValue>{ARTIFACT_TYPE_FILTER_LABELS[effectiveTypeFilter]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {ARTIFACT_TYPE_FILTER_LABELS[option]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ) : null}
           </div>
@@ -131,13 +215,13 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
             </div>
           ) : error ? (
             <div className="px-4 py-6 text-sm text-destructive">{formatError(error)}</div>
-          ) : !data || data.artifacts.length === 0 ? (
+          ) : artifacts.length === 0 ? (
             <div className="px-4 py-6 text-sm text-muted-foreground">
               No artifacts yet.
             </div>
           ) : filteredArtifacts.length === 0 ? (
             <div className="px-4 py-6 text-sm text-muted-foreground">
-              No artifacts match &ldquo;{searchQuery.trim()}&rdquo;.
+              {emptyFilterMessage}
             </div>
           ) : (
             <ul className="divide-y divide-border">
@@ -147,7 +231,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
                   className="flex items-center justify-between gap-3 px-4 py-3"
                 >
                   <div className="flex min-w-0 items-start gap-3">
-                    <ArtifactIcon mimeType={artifact.mimeType} />
+                    <ArtifactIcon mimeType={artifact.mimeType} filename={artifact.filename} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">
                         {artifact.filename}
