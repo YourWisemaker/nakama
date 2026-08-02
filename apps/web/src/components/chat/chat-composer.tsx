@@ -54,7 +54,6 @@ import {
   composerInputGroupClass,
   composerToolbarClass,
 } from "@/lib/chat-stream";
-import { formatElapsedSeconds, useElapsedSeconds } from "@/lib/elapsed-time";
 import { AgentTodoPanel } from "@/components/chat/AgentTodoPanel";
 import { AgentQuestionnairePanel } from "@/components/chat/AgentQuestionnairePanel";
 import {
@@ -86,7 +85,6 @@ import { ChatComposerError, ChatTips } from "./chat-tips";
 interface ChatComposerBaseProps {
   chatStatus: ChatStatus;
   busy: boolean;
-  turnStartedAt?: string | null;
   canStop: boolean;
   disabled?: boolean;
   error: string | null;
@@ -151,14 +149,14 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const isMinimal = props.variant === "minimal";
   const showTips = !isMinimal && props.showTips === true;
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const displayError = error ?? attachmentError;
   const hasTodos = hasActiveAgentTodos(todos);
   const hasQuestionnaire = hasActiveAgentQuestionnaire(questionnaire);
-  const showTodos = hasTodos && !hasQuestionnaire;
+  const showTodos = hasTodos && !hasQuestionnaire && !displayError;
   const hasQueuedMessages = queuedMessages.length > 0;
   const availableSkills = isMinimal ? EMPTY_SKILLS : (props.availableSkills ?? EMPTY_SKILLS);
   const skillPickerKey = availableSkills.map((skill) => skill.id).join("\0");
-  const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const displayError = error ?? attachmentError;
   const composerNotice = displayError ? (
     <ChatComposerError message={displayError} />
   ) : showTips ? (
@@ -292,7 +290,6 @@ export function ChatComposer(props: ChatComposerProps) {
             >
               {isMinimal ? (
                 <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                  <ChatComposerElapsed busy={busy} turnStartedAt={props.turnStartedAt} />
                   <ChatComposerSubmitButton
                     chatStatus={chatStatus}
                     busy={busy}
@@ -552,8 +549,6 @@ function ChatComposerFullFooter({
       >
         <ChatAttachmentButton disabled={disabled} />
 
-        <ChatComposerElapsed busy={busy} turnStartedAt={props.turnStartedAt} />
-
         <span className="h-5 w-px bg-border" aria-hidden />
 
         <ChatComposerSubmitButton
@@ -570,30 +565,6 @@ function ChatComposerFullFooter({
 
 const composerSubmitButtonClassName =
   "size-8 shrink-0 rounded-full bg-primary text-primary-foreground shadow-none transition-colors hover:bg-primary/90 disabled:opacity-50";
-
-function ChatComposerElapsed({
-  busy,
-  turnStartedAt,
-}: {
-  busy: boolean;
-  turnStartedAt?: string | null;
-}) {
-  const elapsedSeconds = useElapsedSeconds(busy, turnStartedAt ?? undefined);
-
-  if (!busy) {
-    return null;
-  }
-
-  return (
-    <span
-      role="status"
-      aria-live="off"
-      className="text-xs tabular-nums text-muted-foreground"
-    >
-      {formatElapsedSeconds(elapsedSeconds)}
-    </span>
-  );
-}
 
 function ChatComposerSubmitButton({
   chatStatus,

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ThinkingReasoning.module.css";
 import { ThinkingState } from "@/components/chat/ThinkingState";
 import { splitThinkingLines } from "@/lib/thinking-text";
+import { formatElapsedSeconds } from "@/lib/elapsed-time";
 import { cn } from "@/lib/utils";
 
 const MAX_H = 100;
@@ -200,7 +201,11 @@ export function ThinkingReasoning({
             <span className={styles.verb}>Thought</span> for {elapsedSeconds}s
           </span>
         ) : (
-          <span className={cn(styles.label, styles.shimmer)}>Thinking…</span>
+          <span className={cn(styles.label, styles.shimmer)}>
+            {children && !isThinkingStreaming
+              ? `Working… · ${formatElapsedSeconds(elapsedSeconds)}`
+              : "Thinking…"}
+          </span>
         )}
         {done ? (
           <svg

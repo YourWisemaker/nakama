@@ -63,7 +63,6 @@ export function ChatPageContent(state: ChatPageState) {
         className={isEmptyState && !error ? "py-0 [&>p:first-child]:min-h-0 z-10" : "py-0 z-10"}
         chatStatus={chatStatus}
         busy={busy}
-        turnStartedAt={turnStartedAt}
         canStop={canStop}
         disabled={composerDisabled}
         error={error}
@@ -132,6 +131,7 @@ export function ChatPageContent(state: ChatPageState) {
               branchingMessageId={branchingMessageId}
               actionsDisabled={busy || readOnlySession}
               streamActive={busy}
+              turnStartedAt={turnStartedAt}
               onBranchMessage={(message) => void handleBranchMessage(message)}
               onRetryMessage={(message) => void handleTryAgainMessage(message)}
             />

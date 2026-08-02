@@ -173,7 +173,9 @@ function ToolOnlyWorkGroup({
             {formatElapsedSeconds(elapsedSeconds)}
           </span>
         ) : (
-          <span className={cn(thinkingStyles.label, thinkingStyles.shimmer)}>Working…</span>
+          <span className={cn(thinkingStyles.label, thinkingStyles.shimmer)}>
+            Working… · {formatElapsedSeconds(elapsedSeconds)}
+          </span>
         )}
         {done ? (
           <svg
