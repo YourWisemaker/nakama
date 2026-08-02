@@ -96,6 +96,14 @@ export function buildChatSystemPrompt(
     );
   }
 
+  if (options.enableToolLoop && tools.some((tool) => tool.name === "skill_manage")) {
+    sections.push(
+      "When a complex multi-step task succeeds (roughly 5+ tool calls), you recover from an error, or the user corrects your approach, use skill_manage to crystallize a reusable profile skill (prefer action patch for fixes, create for new workflows).",
+      "Prefer skill_manage over write_file/edit_file for skills/*/SKILL.md. Do not store procedures in MEMORY.md — use update-profile-memory for facts only.",
+      "Bundled and global skills are read-only. skill_manage is unavailable in automations.",
+    );
+  }
+
   if (options.enableToolLoop && tools.length > 0) {
     sections.push(
       "",

@@ -164,6 +164,69 @@ function requireProfileScope(context: ToolContext): { orgId: string; profileId: 
   return { orgId, profileId };
 }
 
+/**
+ * When skill_manage is available, refuse mutating profile SKILL.md via file tools
+ * so creates always go through the assign path.
+ *
+ * Call after path guard succeeds. Matches `.../skills/<name>/SKILL.md` on the
+ * resolved path (including realpath'd absolute paths under the workspace).
+ */
+export function refuseProfileSkillMarkdownWrite(
+  context: ToolContext,
+  resolvedPath: string,
+): void {
+  if (!context.forbidProfileSkillMarkdownWrites) {
+    return;
+  }
+
+  const normalized = resolvedPath.replace(/\\/g, "/");
+  const match = normalized.match(/(?:^|\/)skills\/([^/]+)\/([^/]+)$/i);
+  if (!match) {
+    return;
+  }
+
+  const skillName = match[1];
+  const fileName = match[2];
+  if (!skillName || skillName === "." || skillName === ".." || !fileName) {
+    return;
+  }
+
+  if (fileName.toLowerCase() !== "skill.md") {
+    return;
+  }
+
+  throw new Error(
+    `Use skill_manage to create, patch, or delete profile skills; writing skills/${skillName}/SKILL.md via file tools is not allowed when skill_manage is available.`,
+  );
+}
+
+/**
+ * Always refuse agent writes of skill-local executables under skills/<name>/.
+ * Those modules are loaded via dynamic import and must stay admin-authored in Phase 1.
+ */
+export function refuseSkillLocalToolFileWrite(resolvedPath: string): void {
+  const normalized = resolvedPath.replace(/\\/g, "/");
+  const match = normalized.match(/(?:^|\/)skills\/([^/]+)\/([^/]+)$/i);
+  if (!match) {
+    return;
+  }
+
+  const skillName = match[1];
+  const fileName = match[2];
+  if (!skillName || skillName === "." || skillName === ".." || !fileName) {
+    return;
+  }
+
+  const lower = fileName.toLowerCase();
+  if (lower !== "tool.ts" && lower !== "tool.js") {
+    return;
+  }
+
+  throw new Error(
+    `Skill-local tools (${fileName}) under skills/${skillName}/ cannot be written by agents in Phase 1.`,
+  );
+}
+
 function buildFileGuardOptions(
   context: ToolContext,
   options: FileToolRunOptions = {},
@@ -225,6 +288,8 @@ export async function runWriteFile(
     contentBytes,
     guardOptions,
   );
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
+  refuseSkillLocalToolFileWrite(guarded.resolved);
   const { orgId, profileId } = requireProfileScope(context);
   const workspaceRoot = options.workspaceRoot ?? getProfileSoulDir(orgId, profileId);
   let filePath = guarded.resolved;
@@ -308,6 +373,8 @@ export async function runDeleteFile(
   const guardOptions = buildFileGuardOptions(context, options);
 
   const guarded = await guardFilePath(parsed.path, parsed.cwd ?? null, undefined, guardOptions);
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
+  refuseSkillLocalToolFileWrite(guarded.resolved);
   await unlink(guarded.resolved);
 
   return { path: guarded.resolved, deleted: true };
@@ -335,6 +402,8 @@ export async function runEditFile(
   const guardOptions = buildFileGuardOptions(context, options);
   const maxBytes = guardOptions.maxFileBytes ?? 10 * 1024 * 1024;
   const guarded = await guardFilePath(parsed.path, parsed.cwd ?? null, undefined, guardOptions);
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
+  refuseSkillLocalToolFileWrite(guarded.resolved);
   const filePath = guarded.resolved;
 
   if (BLOCKED_READ_BASENAMES.includes(path.basename(filePath).toLowerCase())) {

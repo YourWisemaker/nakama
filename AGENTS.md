@@ -105,6 +105,7 @@ Path: `~/.nakama/orgs/{orgId}/profiles/{profileId}/` (`getProfileSoulDir`). Load
 | `coding-agent` | Codex / Claude Code / OpenCode via `bash` |
 | `agent-browser` | Opt-in browser CLI; needs host install — `docs/website/agent-browser.md` |
 | `create-profile` | Super Bot only, confirm-first — `apps/server/src/tools/super-bot-tools.ts` |
+| `skill_manage` | Interactive web/cli with `manage-skills` — create/patch/delete profile skills + auto-assign (`apps/server/src/tools/skill-manage-tool.ts`). When present, file tools refuse `skills/*/SKILL.md` (`forbidProfileSkillMarkdownWrites`). Not injected for automations or Telegram/WhatsApp/Discord. |
 | Composio | Org toolkits + per-user OAuth — `docs/website/composio.md` |
 
 **Channel artifacts (Telegram/Discord):** `packages/core/src/channel-artifacts.ts`, `channel-artifact-delivery.ts`; handlers in `apps/platform/{telegram,discord}/src/channel-artifact-flow.ts`.

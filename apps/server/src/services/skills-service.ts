@@ -10,6 +10,8 @@ import type {
   ToolDefinition,
 } from "@nakama/core";
 import {
+  assertNotBundledSkillName,
+  assertValidSkillName,
   BUNDLED_SKILL_NAMES,
   composeAgentBrowserCapabilityPrompt,
   composeMatchedSkillsPrompt,
@@ -22,9 +24,14 @@ import {
   discoverSkills,
   extractExplicitSkillName,
   isGlobalSkillSourcePath,
+  isPathWithinProfileSkillsDir,
   loadSkillTools,
   matchSkillsForMessage,
+  parseRawProfileSkillContent,
+  patchSkillFile,
   pickPreferredSkillSourcePath,
+  SKILL_FILE_NAME,
+  writeRawProfileSkillMarkdown,
   type DiscoveredSkill,
 } from "@nakama/core";
 import type { DatabaseAdapter, StoredSkillRecord } from "@nakama/db";
@@ -136,6 +143,129 @@ export class SkillsService {
     return created;
   }
 
+  /**
+   * Single-write create/adopt path for agents: write raw SKILL.md under the profile
+   * skills dir, upsert discovered metadata, and assign. Does not call createSkill
+   * then createAndAssign (which would double-write).
+   */
+  async createAndAssignRawSkillToProfile(
+    orgId: string,
+    profileId: string,
+    content: string,
+  ): Promise<SkillResponse & { created: boolean }> {
+    const { name } = parseRawProfileSkillContent(content, orgId, profileId);
+
+    const existingByName = await this.db.getSkillByName(name);
+    if (
+      existingByName &&
+      !isPathWithinProfileSkillsDir(orgId, profileId, existingByName.sourcePath)
+    ) {
+      throw new Error(
+        `Skill "${name}" already exists at a different source path and cannot be attached to this profile.`,
+      );
+    }
+
+    if (
+      existingByName &&
+      isPathWithinProfileSkillsDir(orgId, profileId, existingByName.sourcePath)
+    ) {
+      const assigned = await this.db.listSkillsForProfile(profileId);
+      if (assigned.some((skill) => skill.id === existingByName.id)) {
+        const skillFile = path.join(existingByName.sourcePath, SKILL_FILE_NAME);
+        const existingContent = await readFile(skillFile, "utf8");
+        const nextContent = content.endsWith("\n") ? content : `${content}\n`;
+        const normalizedExisting = existingContent.endsWith("\n")
+          ? existingContent
+          : `${existingContent}\n`;
+        if (normalizedExisting !== nextContent) {
+          throw new Error(
+            `Skill "${name}" is already assigned to this profile. Use action patch to update it.`,
+          );
+        }
+      }
+    }
+
+    const written = await writeRawProfileSkillMarkdown({
+      orgId,
+      profileId,
+      content,
+      allowExisting: true,
+    });
+
+    const record = await this.syncSkillRecordFromDirectory(
+      written.directory,
+      written.name,
+      "written",
+    );
+
+    if (!isPathWithinProfileSkillsDir(orgId, profileId, record.sourcePath)) {
+      throw new Error(
+        `Skill "${written.name}" resolved outside this profile skills directory.`,
+      );
+    }
+
+    await this.db.assignSkillToProfile(profileId, record.id);
+    const response = await this.getSkill(record.id);
+    return { ...response, created: written.created };
+  }
+
+  async patchAssignedProfileSkill(
+    orgId: string,
+    profileId: string,
+    name: string,
+    oldString: string,
+    newString: string,
+  ): Promise<SkillResponse> {
+    const patched = await patchSkillFile({
+      orgId,
+      profileId,
+      name,
+      oldString,
+      newString,
+    });
+
+    const record = await this.syncSkillRecordFromDirectory(
+      patched.directory,
+      patched.name,
+      "patched",
+    );
+
+    return this.getSkill(record.id);
+  }
+
+  async deleteAssignedProfileSkill(
+    orgId: string,
+    profileId: string,
+    name: string,
+  ): Promise<void> {
+    const skillName = assertValidSkillName(name);
+    assertNotBundledSkillName(skillName);
+
+    const record = await this.db.getSkillByName(skillName);
+    if (!record) {
+      throw new Error(`Skill "${skillName}" not found.`);
+    }
+
+    if (isGlobalSkillSourcePath(record.sourcePath)) {
+      throw new Error("Global skills cannot be deleted by agents.");
+    }
+
+    if (!isPathWithinProfileSkillsDir(orgId, profileId, record.sourcePath)) {
+      throw new Error(
+        `Skill "${skillName}" is not owned by this profile and cannot be deleted.`,
+      );
+    }
+
+    await this.db.unassignSkillFromProfile(profileId, record.id);
+    const deleted = await this.db.deleteSkill(record.id);
+
+    if (!deleted) {
+      throw new Error("Skill not found.");
+    }
+
+    await deleteSkillDirectory(record.sourcePath);
+  }
+
   async deleteSkill(skillId: string): Promise<void> {
     const record = await this.requireSkill(skillId);
 
@@ -225,6 +355,29 @@ export class SkillsService {
           bySourcePath.get(record.sourcePath) ?? byName.get(record.name) ?? null,
       )
       .filter((skill): skill is DiscoveredSkill => skill !== null);
+  }
+
+  private async syncSkillRecordFromDirectory(
+    directory: string,
+    name: string,
+    verb: "written" | "patched",
+  ): Promise<StoredSkillRecord> {
+    const discovered = await discoverSkillDirectory(directory);
+    if (!discovered) {
+      throw new Error(`Skill was ${verb} but could not be discovered.`);
+    }
+
+    await this.upsertDiscoveredSkill(discovered);
+
+    const record =
+      (await this.db.getSkillBySourcePath(directory)) ??
+      (await this.db.getSkillByName(name));
+
+    if (!record) {
+      throw new Error(`Skill was ${verb} but could not be synced.`);
+    }
+
+    return record;
   }
 
   private async upsertDiscoveredSkill(

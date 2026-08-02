@@ -157,7 +157,7 @@ The dashboard also supports a shared skill library through the skills API and sy
 Profiles receive bundled skills for common workflows:
 
 - `create-automation` — scheduling, reminders, and saved automations
-- `manage-skills` — create and update profile-scoped skills with `write_file`, `read_file`, `search_files`, and `edit_file`
+- `manage-skills` — create, patch, and delete profile-scoped skills with the `skill_manage` tool (file tools still inspect skills; they cannot write `skills/*/SKILL.md` when `skill_manage` is present)
 - `update-profile-memory` — record facts in active `MEMORY.md` via file tools
 - `archive-profile-memory` — move facts from active `MEMORY.md` into `memory-archive/` without deleting them
 - `save-artifact` — save persistent text outputs under `artifacts/` via `write_file`
@@ -165,6 +165,8 @@ Profiles receive bundled skills for common workflows:
 - `agent-browser` — interactive browser automation via `bash` (opt-in; see [Agent browser](/agent-browser))
 
 New custom profiles receive the file tools and `knowledge_base_search` by default when those builtins are available. Default and super-bot profiles also receive the bundled skills above when they are installed and synced on the server (except opt-in skills such as `agent-browser`). Super Bot also receives `bash` for one-off host commands and coding-agent workflows.
+
+When `manage-skills` is assigned, interactive chat gets a `skill_manage` tool (`create` / `patch` / `delete`). Creates auto-assign to the profile. Automations and messaging channels do not receive `skill_manage` in this phase. Soft system-prompt guidance nudges crystallization after complex successes, error recovery, or user corrections — treat that as advisory until dogfood confirms useful skill creation.
 
 ### Bundled system skills
 

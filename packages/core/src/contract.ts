@@ -1803,6 +1803,8 @@ export interface ToolContext {
   orgId?: string;
   profileId?: string;
   sessionId?: string;
+  /** Session channel when known (used for interactive-only tool gates). */
+  channel?: AgentChannel;
   /** Nesting depth for sub-agent execution (0 = parent, 1 = child). */
   agentDepth?: number;
   /** Browser origin for OAuth callbacks during this tool run. */
@@ -1811,6 +1813,11 @@ export interface ToolContext {
   workspaceRoot?: string;
   /** Org role of the invoking user. Org-memory tools gate on this; undefined means deny-by-default. */
   orgRole?: OrgRole;
+  /**
+   * When true (skill_manage is in the session tool list), write_file / edit_file / delete_file
+   * refuse paths matching skills/<name>/SKILL.md under the profile workspace.
+   */
+  forbidProfileSkillMarkdownWrites?: boolean;
   /** Loads a provider-neutral document/image reference scoped to this execution. */
   loadAttachment?: LoadAttachmentBytes;
   /** Emits concise live status lines while a sub-agent child loop runs (parent web UI). */

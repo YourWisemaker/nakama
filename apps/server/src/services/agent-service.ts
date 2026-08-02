@@ -191,6 +191,7 @@ import {
 } from "./provider-instance-helpers";
 import { createSuperBotTools } from "../tools/super-bot-tools";
 import { createOrgMemoryTools } from "../tools/org-memory-tools";
+import { createSkillManageTools } from "../tools/skill-manage-tool";
 import { createAskUserQuestionTools } from "../tools/ask-user-question-tool";
 import { createTodoTools } from "../tools/todo-tools";
 import { SUB_AGENT_TOOL_NAME } from "../tools/sub-agent-tool";
@@ -2455,6 +2456,7 @@ export class AgentService {
       includeTodoTools?: boolean;
       includeQuestionTools?: boolean;
       includeSubAgentTool?: boolean;
+      includeSkillManageTools?: boolean;
       userId?: string | null;
     } = {},
   ): Promise<ToolDefinition[]> {
@@ -2466,6 +2468,9 @@ export class AgentService {
     const includeTodoTools = options.includeTodoTools ?? true;
     const includeQuestionTools = options.includeQuestionTools ?? true;
     const includeSubAgentTool = options.includeSubAgentTool ?? true;
+    // Default follows interactive automation-tool gate; messaging channels pass false.
+    const includeSkillManageTools =
+      options.includeSkillManageTools ?? includeAutomationTools;
 
     let resolved = [...tools];
 
@@ -2529,6 +2534,14 @@ export class AgentService {
 
       const skillTools = await this.skillsService.loadToolsForProfile(orgId, profile.id);
       resolved = [...resolved, ...skillTools];
+
+      // Interactive web/cli only: messaging, automation, task, and subagent omit this.
+      if (includeSkillManageTools) {
+        const assignedSkills = await this.skillsService.listSkillsForProfile(profile.id);
+        if (assignedSkills.some((skill) => skill.name === "manage-skills")) {
+          resolved = [...resolved, ...createSkillManageTools(this.skillsService)];
+        }
+      }
     }
 
     if (profile.isSuper) {
@@ -2554,7 +2567,11 @@ export class AgentService {
   ): Promise<AgentChatSession> {
     await this.ensureVisionSettingsLoaded();
     const profile = await this.requireProfile(orgId, profileId);
-    const tools = await this.resolveProfileTools(profile, { userId });
+    const includeSkillManageTools = channel === "web" || channel === "cli";
+    const tools = await this.resolveProfileTools(profile, {
+      userId,
+      includeSkillManageTools,
+    });
     const { systemPrompt, soulActive } = await this.resolveProfileSystemPrompt(
       orgId,
       profileId,
@@ -2576,6 +2593,7 @@ export class AgentService {
       channel,
     });
     const loadAttachment = createAttachmentLoader(this.db, { orgId, profileId });
+    const hasSkillManage = tools.some((tool) => tool.name === "skill_manage");
 
     const session = harness.createChatSession({
       channel,
@@ -2591,9 +2609,11 @@ export class AgentService {
         orgId,
         profileId,
         sessionId,
+        channel,
         userId: userId ?? undefined,
         orgRole: orgRole ?? undefined,
         loadAttachment,
+        forbidProfileSkillMarkdownWrites: hasSkillManage,
       }),
       resolvePromptContext: async (context) => {
         const parts: string[] = [];

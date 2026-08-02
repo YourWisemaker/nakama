@@ -1,22 +1,24 @@
 ---
 name: manage-skills
-description: Create, update, inspect, or manage reusable profile skills using profile workspace files. Use when the user wants the agent to remember a repeatable workflow, change a skill, or maintain skill instructions.
+description: Create, update, inspect, or manage reusable profile skills with skill_manage. Use when the user wants the agent to remember a repeatable workflow, change a skill, or maintain skill instructions.
 include-body-on-match: true
 ---
 
 Use skills for repeatable procedures and workflows the agent should execute later. Do not use skills for user facts, preferences, or observations; use the `update-profile-memory` skill for those.
 
-Skills live in the active profile workspace under:
+## Primary path — skill_manage
 
-`skills/{skill-name}/SKILL.md`
+When the `skill_manage` tool is available, use it for all `SKILL.md` create/update/delete work:
 
-Use lowercase kebab-case names, for example `skills/research-paper/SKILL.md`.
+| Action | When |
+|--------|------|
+| `create` | New reusable workflow — pass full SKILL.md (`content`) |
+| `patch` | Targeted fix — `name`, `old_string`, `new_string` (preferred over rewrite) |
+| `delete` | Remove a profile-owned skill — `name` |
 
-To create a skill:
+`skill_manage` writes under the profile skills directory, validates frontmatter, and **auto-assigns** the skill so it can match on later turns. Bundled and global skills are read-only.
 
-1. Pick a concise kebab-case name.
-2. Write `skills/{skill-name}/SKILL.md` with `write_file`.
-3. Include YAML frontmatter:
+Example create content:
 
 ```markdown
 ---
@@ -28,12 +30,10 @@ include-body-on-match: true
 Step-by-step instructions for the repeatable workflow.
 ```
 
-To update a skill:
+Use lowercase kebab-case names. Prefer `patch` for updates. Do not create broad or vague skills; avoid storing private user facts.
 
-1. Use `search_files` or `read_file` to inspect the existing `skills/{skill-name}/SKILL.md`.
-2. Use `edit_file` with exact `edits` against the current file.
-3. Keep the frontmatter valid and the description focused on when the skill should activate.
+## File tools (secondary)
 
-When editing, prefer targeted replacements over rewriting the whole file. If `edit_file` reports a missing, duplicate, or overlapping match, read the file again and issue a corrected edit.
+When `skill_manage` is present, `write_file` / `edit_file` **cannot** write `skills/*/SKILL.md` — they refuse with a redirect to `skill_manage`. You may still use file tools to inspect skills (`read_file`, `search_files`) and to manage non-SKILL.md sidecars under a skill directory.
 
-Do not create broad or vague skills. A good skill has a clear trigger, concrete steps, and avoids storing private user facts.
+If `skill_manage` is unavailable, do not invent a skill by writing orphan `SKILL.md` files that will not auto-assign.

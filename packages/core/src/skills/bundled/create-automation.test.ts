@@ -218,4 +218,17 @@ describe("ensureBundledSkillFiles", () => {
     expect(created).not.toContain("create-automation");
     expect(await readFile(skillPath, "utf8")).toContain("description: custom");
   });
+
+  test("force-refreshes manage-skills even when an installed copy exists", async () => {
+    const skillPath = join(configDir, "agent", "skills", "manage-skills", "SKILL.md");
+    await mkdir(join(configDir, "agent", "skills", "manage-skills"), { recursive: true });
+    await Bun.write(skillPath, "---\nname: manage-skills\ndescription: stale\n---\n");
+
+    const created = await ensureBundledSkillFiles();
+    const content = await readFile(skillPath, "utf8");
+
+    expect(created).toContain("manage-skills");
+    expect(content).toContain("skill_manage");
+    expect(content).not.toContain("description: stale");
+  });
 });
