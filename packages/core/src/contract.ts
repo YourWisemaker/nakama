@@ -1423,6 +1423,12 @@ export interface CreateSkillRequest {
   profileId?: string;
 }
 
+export interface PatchSkillRequest {
+  description?: string;
+  body?: string;
+  disableModelInvocation?: boolean;
+}
+
 export interface SyncSkillsResponse {
   discovered: number;
   created: number;

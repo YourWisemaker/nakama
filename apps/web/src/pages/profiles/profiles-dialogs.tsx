@@ -1,7 +1,6 @@
 import { ProfileCreateDialog } from "@/components/ProfileCreateDialog";
 import { McpServerDialog } from "@/components/soul-tools/mcp-tab/McpServerDialog";
 import { SkillCreateDialog } from "@/components/SkillCreateDialog";
-import { SkillDetailDialog } from "@/components/SkillDetailDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,9 +27,6 @@ export function ProfilesDialogs(state: ProfilesPageState) {
     assignSkillMutation,
     selectedId,
     handleCreateSkill,
-    detailSkillId,
-    setDetailSkillId,
-    detail,
     busy,
     setRemoveConfirm,
     mcpCreateOpen,
@@ -56,10 +52,6 @@ export function ProfilesDialogs(state: ProfilesPageState) {
   const onAskSuperBot = superBotProfileId
     ? () => navigateToNewChat(superBotProfileId)
     : undefined;
-  const detailSkillSummary =
-    detailSkillId && detail
-      ? detail.skills.find((skill) => skill.id === detailSkillId)
-      : undefined;
 
   return (
     <>
@@ -77,22 +69,6 @@ export function ProfilesDialogs(state: ProfilesPageState) {
         profileId={selectedId}
         onOpenChange={setSkillCreateOpen}
         onSubmit={handleCreateSkill}
-      />
-
-      <SkillDetailDialog
-        skillId={detailSkillId}
-        busy={busy}
-        usageSummary={detailSkillSummary?.usage}
-        createdBy={detailSkillSummary?.createdBy}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDetailSkillId(null);
-          }
-        }}
-        onRemoveFromProfile={(skillId, skillName) => {
-          setDetailSkillId(null);
-          setRemoveConfirm({ kind: "skill", id: skillId, name: skillName });
-        }}
       />
 
       <McpServerDialog

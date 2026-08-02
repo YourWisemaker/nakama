@@ -1,8 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   CreateSkillRequest,
   ListSkillsResponse,
+  PatchSkillRequest,
   SkillDetail,
   SkillResponse,
   SkillSummary,
@@ -17,6 +18,7 @@ import {
   composeAgentBrowserCapabilityPrompt,
   composeMatchedSkillsPrompt,
   composeSkillsCatalog,
+  composeSkillMarkdown,
   createId,
   createSkillFile,
   dedupeSkillsByName,
@@ -29,6 +31,7 @@ import {
   loadSkillTools,
   matchSkillsForMessage,
   parseRawProfileSkillContent,
+  parseSkillMarkdown,
   patchSkillFile,
   pickPreferredSkillSourcePath,
   SKILL_FILE_NAME,
@@ -145,6 +148,64 @@ export class SkillsService {
     }
 
     return this.getSkill(record.id);
+  }
+
+  async patchSkill(
+    orgId: string,
+    skillId: string,
+    request: PatchSkillRequest,
+    options?: { profileId?: string },
+  ): Promise<SkillResponse> {
+    const hasDescription = request.description !== undefined;
+    const hasBody = request.body !== undefined;
+    const hasDisableModelInvocation = request.disableModelInvocation !== undefined;
+
+    if (!hasDescription && !hasBody && !hasDisableModelInvocation) {
+      throw new Error("No skill changes provided.");
+    }
+
+    const record = await this.requireSkill(skillId);
+
+    if (bundledSkillNames.has(record.name)) {
+      throw new Error("Bundled system skills cannot be edited.");
+    }
+
+    const skillFilePath = path.join(record.sourcePath, SKILL_FILE_NAME);
+    const existing = await readFile(skillFilePath, "utf8");
+    const parsed = parseSkillMarkdown(existing, skillFilePath);
+    const description = hasDescription ? request.description!.trim() : parsed.frontmatter.description;
+
+    if (!description) {
+      throw new Error("Skill description is required.");
+    }
+
+    const body = hasBody ? request.body! : parsed.body;
+    const disableModelInvocation = hasDisableModelInvocation
+      ? request.disableModelInvocation!
+      : parsed.frontmatter.disableModelInvocation;
+
+    const content = composeSkillMarkdown({
+      name: parsed.frontmatter.name,
+      description,
+      body,
+      disableModelInvocation,
+    });
+
+    parseSkillMarkdown(content, skillFilePath);
+    await writeFile(skillFilePath, content, "utf8");
+
+    const synced = await this.syncSkillRecordFromDirectory(
+      record.sourcePath,
+      parsed.frontmatter.name,
+      "patched",
+    );
+
+    const profileId = options?.profileId?.trim();
+    if (profileId) {
+      await this.skillUsageService.recordPatch(orgId, profileId, synced.id);
+    }
+
+    return this.getSkill(synced.id);
   }
 
   async createAndAssignSkillToProfile(

@@ -97,23 +97,25 @@ export function CodeBlock({
       </div>
       <div
         className={cn(
-          "overflow-auto bg-muted/20 px-1 py-2",
+          "overflow-auto bg-muted/20",
           fillHeight ? "min-h-0 flex-1" : "max-h-[min(50vh,28rem)]",
         )}
       >
-        {lines.map((line, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 px-2"
-          >
-            <span className="select-none pt-px text-right font-mono text-xs leading-6 text-muted-foreground/70 tabular-nums">
-              {index + 1}
-            </span>
-            <code className="block min-w-0 whitespace-pre-wrap break-words font-mono text-xs leading-6 text-foreground">
-              {line || "\u00A0"}
-            </code>
-          </div>
-        ))}
+        <div className="min-w-full py-2">
+          {lines.map((line, index) => (
+            <div key={index} className="grid grid-cols-[auto_minmax(0,1fr)]">
+              <span
+                className="border-r border-border/70 bg-muted/50 py-0 pl-2 pr-3 text-right font-mono text-xs leading-6 text-muted-foreground/80 tabular-nums select-none"
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              <code className="block min-w-0 whitespace-pre-wrap break-words px-2 pl-3 font-mono text-xs leading-6 text-foreground">
+                {line || "\u00A0"}
+              </code>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
