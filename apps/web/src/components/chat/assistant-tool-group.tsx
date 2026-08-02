@@ -110,7 +110,10 @@ function AssistantWorkGroup({
           {isDedicatedTool(tool) ? (
             <DedicatedToolRow message={tool} modelLabel={modelLabel} />
           ) : (
-            <ToolTimelineItem message={tool} />
+            <ToolTimelineItem
+              message={tool}
+              defaultDetailsOpen={visibleTools.length === 1}
+            />
           )}
         </TimelineStep>
       ))}
@@ -136,11 +139,15 @@ function ToolOnlyWorkGroup({
       return;
     }
 
+    if (tools.length === 1) {
+      return;
+    }
+
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const delay = reducedMotion ? 0 : 360;
     const timerId = window.setTimeout(() => setOpen(false), delay);
     return () => window.clearTimeout(timerId);
-  }, [isWorkActive]);
+  }, [isWorkActive, tools.length]);
 
   const done = !isWorkActive;
   const expanded = done ? open : true;
@@ -201,7 +208,10 @@ function ToolOnlyWorkGroup({
                   {isDedicatedTool(tool) ? (
                     <DedicatedToolRow message={tool} modelLabel={modelLabel} />
                   ) : (
-                    <ToolTimelineItem message={tool} />
+                    <ToolTimelineItem
+                      message={tool}
+                      defaultDetailsOpen={tools.length === 1}
+                    />
                   )}
                 </TimelineStep>
               ))}
@@ -482,7 +492,13 @@ function SubAgentMark({ className, active }: { className?: string; active?: bool
   );
 }
 
-function ToolTimelineItem({ message }: { message: ChatListItem }) {
+function ToolTimelineItem({
+  message,
+  defaultDetailsOpen = false,
+}: {
+  message: ChatListItem;
+  defaultDetailsOpen?: boolean;
+}) {
   const isRunning = message.toolStatus === "running";
   const label = formatToolActionLabel(message.tool, message.toolInput);
   const command =
@@ -497,25 +513,23 @@ function ToolTimelineItem({ message }: { message: ChatListItem }) {
     message.toolStatus === "done" &&
     isToolResultError(message.toolResult, output);
   const hasDetails = Boolean(isRunning || command || output);
-  const [collapsedWhileRunning, setCollapsedWhileRunning] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(defaultDetailsOpen);
   const [prevIsRunning, setPrevIsRunning] = useState(isRunning);
 
   if (isRunning !== prevIsRunning) {
     setPrevIsRunning(isRunning);
     if (isRunning) {
-      setCollapsedWhileRunning(false);
+      setDetailsOpen(true);
     }
   }
-
-  const open = isRunning ? !collapsedWhileRunning : false;
 
   return (
     <div>
       <CollapsibleTrigger
-        open={open}
+        open={detailsOpen}
         onToggle={() => {
-          if (hasDetails && isRunning) {
-            setCollapsedWhileRunning((current) => !current);
+          if (hasDetails) {
+            setDetailsOpen((current) => !current);
           }
         }}
         label={label}
@@ -523,7 +537,7 @@ function ToolTimelineItem({ message }: { message: ChatListItem }) {
         disabled={!hasDetails}
         className="pl-0"
       />
-      {open && hasDetails ? (
+      {detailsOpen && hasDetails ? (
         <div className="mt-2 space-y-2">
           {command ? <DetailBlock label="Command" content={command} tone="command" /> : null}
           {isRunning ? (
