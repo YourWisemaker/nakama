@@ -169,6 +169,8 @@ import type {
   OrgMemoryProposalResponse,
   ListSkillProposalsResponse,
   SkillProposalResponse,
+  ListSkillSuggestionsResponse,
+  ApplySkillSuggestionResponse,
   ListOrgMemoryHistoryResponse,
   RestoreOrgMemoryHistoryResponse,
   OrgMemoryHistoryRevisionResponse,
@@ -1843,6 +1845,40 @@ export class NakamaClient {
   ): Promise<SkillProposalResponse> {
     return this.request<SkillProposalResponse>(
       `/v1/orgs/${encodeURIComponent(orgId)}/skill-proposals/${encodeURIComponent(proposalId)}/reject`,
+      {
+        method: "POST",
+        headers: { "X-Org-Id": orgId },
+      },
+    );
+  }
+
+  async listSkillSuggestions(
+    orgId: string,
+    options: { sessionId?: string; status?: "pending" | "applied"; profileId?: string } = {},
+  ): Promise<ListSkillSuggestionsResponse> {
+    const params = new URLSearchParams();
+    if (options.sessionId) {
+      params.set("sessionId", options.sessionId);
+    }
+    if (options.status) {
+      params.set("status", options.status);
+    }
+    if (options.profileId) {
+      params.set("profileId", options.profileId);
+    }
+    const query = params.toString();
+    return this.request<ListSkillSuggestionsResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/skill-suggestions${query ? `?${query}` : ""}`,
+      { headers: { "X-Org-Id": orgId } },
+    );
+  }
+
+  async applySkillSuggestion(
+    orgId: string,
+    suggestionId: string,
+  ): Promise<ApplySkillSuggestionResponse> {
+    return this.request<ApplySkillSuggestionResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/skill-suggestions/${encodeURIComponent(suggestionId)}/apply`,
       {
         method: "POST",
         headers: { "X-Org-Id": orgId },

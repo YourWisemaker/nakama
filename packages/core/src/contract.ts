@@ -512,6 +512,40 @@ export interface SkillProposalResponse {
   proposal: SkillProposal;
 }
 
+export type SkillSuggestionStatus = "pending" | "applied";
+export type SkillSuggestionAction = "create" | "patch";
+export type SkillSuggestionSource = "post_turn_review";
+
+export interface SkillSuggestion {
+  id: string;
+  orgId: string;
+  profileId: string;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  action: SkillSuggestionAction;
+  skillName: string;
+  content: string | null;
+  patchOldString: string | null;
+  patchNewString: string | null;
+  status: SkillSuggestionStatus;
+  source: SkillSuggestionSource;
+  warnings?: string[];
+  createdAt: string;
+  appliedAt: string | null;
+}
+
+export interface ListSkillSuggestionsResponse {
+  suggestions: SkillSuggestion[];
+}
+
+export type ApplySkillSuggestionOutcome = "applied" | "already_applied" | "staged_as_proposal";
+
+export interface ApplySkillSuggestionResponse {
+  outcome: ApplySkillSuggestionOutcome;
+  suggestion: SkillSuggestion;
+  proposalId?: string;
+}
+
 export interface InviteOrgMemberRequest {
   email: string;
   role: OrgRole;

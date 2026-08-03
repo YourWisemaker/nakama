@@ -18,6 +18,7 @@ import type {
   OrgMemoryProposalStatus,
   StoredSkillProposal,
   SkillProposalStatus,
+  StoredSkillSuggestion,
   StoredArtifactShareRecord,
   StoredOrganizationRecord,
   StoredUserOrganizationRecord,
@@ -71,6 +72,7 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
   const orgInvitesByTokenHash = new Map<string, StoredOrgInviteRecord>();
   const orgMemoryProposals = new Map<string, StoredOrgMemoryProposal>();
   const skillProposals = new Map<string, StoredSkillProposal>();
+  const skillSuggestions = new Map<string, StoredSkillSuggestion>();
   const artifactShares = new Map<string, StoredArtifactShareRecord>();
   const artifactSharesByTokenHash = new Map<string, StoredArtifactShareRecord>();
   let llmUsageStats: StoredLlmUsageStatsRecord | null = null;
@@ -445,6 +447,51 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
         count += 1;
       }
       return count;
+    },
+
+    async createSkillSuggestion(record) {
+      skillSuggestions.set(record.id, record);
+    },
+
+    async listSkillSuggestions(orgId, options = {}) {
+      const { sessionId, status, profileId } = options;
+      const suggestions = [...skillSuggestions.values()].filter((suggestion) => {
+        if (suggestion.orgId !== orgId) {
+          return false;
+        }
+        if (sessionId && suggestion.sessionId !== sessionId) {
+          return false;
+        }
+        if (status && suggestion.status !== status) {
+          return false;
+        }
+        if (profileId && suggestion.profileId !== profileId) {
+          return false;
+        }
+        return true;
+      });
+      return suggestions.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+
+    async getSkillSuggestion(orgId, id) {
+      const suggestion = skillSuggestions.get(id);
+      if (!suggestion || suggestion.orgId !== orgId) {
+        return null;
+      }
+      return suggestion;
+    },
+
+    async markSkillSuggestionApplied(orgId, id, appliedAt) {
+      const suggestion = skillSuggestions.get(id);
+      if (!suggestion || suggestion.orgId !== orgId) {
+        return false;
+      }
+      skillSuggestions.set(id, {
+        ...suggestion,
+        status: "applied",
+        appliedAt,
+      });
+      return true;
     },
 
     async createArtifactShare(record) {

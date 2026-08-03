@@ -245,6 +245,7 @@ import { OrgMemoryService } from "./org-memory-service";
 import { ProfileService } from "./profile-service";
 import type { SkillsService } from "./skills-service";
 import type { SkillProposalService } from "./skill-proposal-service";
+import type { SkillSuggestionService } from "./skill-suggestion-service";
 import { SessionTitleService } from "./session-title-service";
 import { SkillPostTurnReviewService } from "./skill-post-turn-review-service";
 import { SuperBotSessionState } from "./super-bot-session-state";
@@ -308,6 +309,7 @@ export class AgentService {
   private composioService: ComposioService | null = null;
   private skillsService: SkillsService | null = null;
   private skillProposalService: SkillProposalService | null = null;
+  private skillSuggestionService: SkillSuggestionService | null = null;
   private orgMemoryService: OrgMemoryService | null = null;
   private readonly sessions = new Map<string, StoredSession>();
   private readonly sessionTitleService: SessionTitleService;
@@ -402,6 +404,65 @@ export class AgentService {
 
   setSkillProposalService(service: SkillProposalService): void {
     this.skillProposalService = service;
+    this.wireSkillPostTurnReviewOutcomeHandling();
+  }
+
+  setSkillSuggestionService(service: SkillSuggestionService): void {
+    this.skillSuggestionService = service;
+    this.wireSkillPostTurnReviewOutcomeHandling();
+  }
+
+  /**
+   * U4: once both services are injected, review outcomes from the LLM runner
+   * are turned into a staged proposal (write-approval gate on) or a pending
+   * suggestion (gate off) instead of being discarded.
+   */
+  private wireSkillPostTurnReviewOutcomeHandling(): void {
+    const proposals = this.skillProposalService;
+    const suggestions = this.skillSuggestionService;
+    if (!proposals || !suggestions) {
+      return;
+    }
+
+    this.skillPostTurnReviewService.setRunner(async (context) => {
+      const outcome = await this.skillPostTurnReviewService.reviewTurnWithLlm(context);
+      if (outcome.action === "noop") {
+        return outcome;
+      }
+
+      try {
+        const writeApprovalRequired = await proposals.isWriteApprovalRequired(
+          context.orgId,
+          context.profileId,
+        );
+
+        if (writeApprovalRequired) {
+          await proposals.stageProposal({
+            orgId: context.orgId,
+            profileId: context.profileId,
+            action: outcome.action,
+            skillName: outcome.name,
+            content: outcome.action === "create" ? outcome.content : undefined,
+            oldString: outcome.action === "patch" ? outcome.oldString : undefined,
+            newString: outcome.action === "patch" ? outcome.newString : undefined,
+            sessionId: context.sessionId,
+            proposedByUserId: context.userId,
+          });
+        } else {
+          await suggestions.createSuggestion({
+            orgId: context.orgId,
+            profileId: context.profileId,
+            sessionId: context.sessionId,
+            proposedByUserId: context.userId,
+            outcome,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to record post-turn skill review outcome:", error);
+      }
+
+      return outcome;
+    });
   }
 
   getMcpService(): McpService {

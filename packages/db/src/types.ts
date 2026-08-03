@@ -395,6 +395,28 @@ export interface StoredSkillProposal {
   createdAt: string;
 }
 
+export type SkillSuggestionStatus = "pending" | "applied";
+export type SkillSuggestionAction = "create" | "patch";
+export type SkillSuggestionSource = "post_turn_review";
+
+export interface StoredSkillSuggestion {
+  id: string;
+  orgId: string;
+  profileId: string;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  action: SkillSuggestionAction;
+  skillName: string;
+  content: string | null;
+  patchOldString: string | null;
+  patchNewString: string | null;
+  status: SkillSuggestionStatus;
+  source: SkillSuggestionSource;
+  warnings: string[] | null;
+  createdAt: string;
+  appliedAt: string | null;
+}
+
 export interface StoredArtifactShareRecord {
   id: string;
   orgId: string;
@@ -524,6 +546,14 @@ export interface DatabaseAdapter {
     },
   ): Promise<boolean>;
   countPendingSkillProposals(orgId: string, profileId?: string): Promise<number>;
+
+  createSkillSuggestion(record: StoredSkillSuggestion): Promise<void>;
+  listSkillSuggestions(
+    orgId: string,
+    options?: { sessionId?: string; status?: SkillSuggestionStatus; profileId?: string },
+  ): Promise<StoredSkillSuggestion[]>;
+  getSkillSuggestion(orgId: string, id: string): Promise<StoredSkillSuggestion | null>;
+  markSkillSuggestionApplied(orgId: string, id: string, appliedAt: string): Promise<boolean>;
 
   createArtifactShare(record: StoredArtifactShareRecord): Promise<void>;
   updateArtifactShareSnapshot(
