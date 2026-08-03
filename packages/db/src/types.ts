@@ -516,7 +516,7 @@ export interface DatabaseAdapter {
   createSkillProposal(record: StoredSkillProposal): Promise<void>;
   listSkillProposals(
     orgId: string,
-    options?: { status?: SkillProposalStatus; profileId?: string },
+    options?: { status?: SkillProposalStatus; profileId?: string; sessionId?: string },
   ): Promise<StoredSkillProposal[]>;
   getSkillProposal(orgId: string, id: string): Promise<StoredSkillProposal | null>;
   getPendingSkillProposalForCreate(

@@ -1735,7 +1735,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     },
 
     async listSkillProposals(orgId, options = {}) {
-      const { status, profileId } = options;
+      const { status, profileId, sessionId } = options;
       let rows: SkillProposalRow[];
       if (status && profileId) {
         rows = listSkillProposalsByStatusAndProfileStmt.all(
@@ -1750,7 +1750,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       } else {
         rows = listAllSkillProposalsStmt.all(orgId) as SkillProposalRow[];
       }
-      return rows.map(toSkillProposalRecord);
+      const records = rows.map(toSkillProposalRecord);
+      if (!sessionId) {
+        return records;
+      }
+      return records.filter((proposal) => proposal.sessionId === sessionId);
     },
 
     async getSkillProposal(orgId, id) {

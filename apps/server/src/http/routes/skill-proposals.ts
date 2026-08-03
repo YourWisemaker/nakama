@@ -7,7 +7,10 @@ import type {
 import type { HonoApp } from "../types";
 import type { ServerOptions } from "../context";
 import { json } from "../shared";
-import { requireOrgAdminFromContext } from "../org-guards";
+import {
+  requireNotViewerFromContext,
+  requireOrgAdminFromContext,
+} from "../org-guards";
 import { SkillProposalService, toSkillProposal } from "../../services/skill-proposal-service";
 
 export function registerSkillProposalRoutes(app: HonoApp, options: ServerOptions): void {
@@ -52,6 +55,7 @@ export function registerSkillProposalRoutes(app: HonoApp, options: ServerOptions
         query: z.object({
           status: z.enum(["pending", "approved", "rejected"]).optional(),
           profileId: z.string().optional(),
+          sessionId: z.string().optional(),
         }),
       },
       responses: {
@@ -67,14 +71,20 @@ export function registerSkillProposalRoutes(app: HonoApp, options: ServerOptions
   );
 
   app.get("/v1/orgs/:orgId/skill-proposals", async (c) => {
-    const auth = requireOrgAdminFromContext(c);
+    const auth = requireNotViewerFromContext(c);
     const orgId = resolveOrgId(c, auth.activeOrgId ?? "");
     const service = requireService();
     const status = c.req.query("status") as "pending" | "approved" | "rejected" | undefined;
     const profileId = c.req.query("profileId");
+    const sessionId = c.req.query("sessionId");
+    const isOrgAdmin = auth.orgRole === "admin" || auth.isPlatformAdmin;
+    if (!isOrgAdmin && !sessionId) {
+      throw new NakamaApiError("Forbidden", 403);
+    }
     const result = await service.listProposals(orgId, {
       status,
       profileId: profileId || undefined,
+      sessionId: sessionId || undefined,
     });
     return json<ListSkillProposalsResponse>({
       proposals: result.proposals.map(toSkillProposal),

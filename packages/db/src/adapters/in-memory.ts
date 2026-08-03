@@ -345,7 +345,7 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
     },
 
     async listSkillProposals(orgId, options = {}) {
-      const { status, profileId } = options;
+      const { status, profileId, sessionId } = options;
       const proposals = [...skillProposals.values()].filter((proposal) => {
         if (proposal.orgId !== orgId) {
           return false;
@@ -354,6 +354,9 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
           return false;
         }
         if (profileId && proposal.profileId !== profileId) {
+          return false;
+        }
+        if (sessionId && proposal.sessionId !== sessionId) {
           return false;
         }
         return true;

@@ -85,11 +85,17 @@ export class SkillProposalService {
 
   async listProposals(
     orgId: string,
-    options: { status?: StoredSkillProposal["status"]; profileId?: string } = {},
+    options: {
+      status?: StoredSkillProposal["status"];
+      profileId?: string;
+      sessionId?: string;
+    } = {},
   ): Promise<{ proposals: StoredSkillProposal[]; pendingCount: number }> {
     const db = this.requireDatabase();
     const proposals = await db.listSkillProposals(orgId, options);
-    const pendingCount = await db.countPendingSkillProposals(orgId, options.profileId);
+    const pendingCount = options.sessionId
+      ? proposals.filter((proposal) => proposal.status === "pending").length
+      : await db.countPendingSkillProposals(orgId, options.profileId);
     return { proposals: proposals.map((proposal) => this.withWarnings(proposal)), pendingCount };
   }
 

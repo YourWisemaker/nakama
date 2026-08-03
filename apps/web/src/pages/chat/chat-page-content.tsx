@@ -6,6 +6,7 @@ import { ArtifactStreamingPanelBridge } from "@/components/chat/artifact-streami
 import { formatAgentQuestionnaireAnswersMessage } from "@nakama/core/agent-questionnaire";
 import { formatSessionChannelLabel } from "@/lib/chat-history";
 import { extractModelId } from "@/lib/models";
+import { usePostTurnSkillReviewOverlay } from "@/hooks/use-post-turn-skill-review-overlay";
 import { ChatPageColumn, ChatWelcome } from "@/pages/chat/chat-page-layout";
 import type { ChatPageState } from "@/pages/chat/use-chat-page";
 
@@ -19,6 +20,7 @@ export function ChatPageContent(state: ChatPageState) {
     availableSkills,
     chatStatus,
     busy,
+    lastSuccessfulTurnAt,
     turnStartedAt,
     canStop,
     error,
@@ -53,6 +55,14 @@ export function ChatPageContent(state: ChatPageState) {
     agentQuestionnaire,
   } = state;
 
+  const { banner: skillReviewBanner } = usePostTurnSkillReviewOverlay({
+    sessionId: session?.id ?? null,
+    profile: activeProfile,
+    sessionChannel,
+    lastSuccessfulTurnAt,
+    readOnlySession,
+  });
+
   const readOnlyBanner = readOnlySession ? (
     <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
       View-only {formatSessionChannelLabel(sessionChannel)} conversation. Reply from{" "}
@@ -62,6 +72,7 @@ export function ChatPageContent(state: ChatPageState) {
 
   const composer = (
     <PromptInputProvider key={composerDraft || "empty"} initialInput={composerDraft}>
+      {skillReviewBanner}
       {readOnlyBanner}
       <ChatComposer
         className={isEmptyState && !error ? "py-0 [&>p:first-child]:min-h-0 z-10" : "py-0 z-10"}

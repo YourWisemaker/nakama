@@ -1810,7 +1810,11 @@ export class NakamaClient {
 
   async listSkillProposals(
     orgId: string,
-    options: { status?: "pending" | "approved" | "rejected"; profileId?: string } = {},
+    options: {
+      status?: "pending" | "approved" | "rejected";
+      profileId?: string;
+      sessionId?: string;
+    } = {},
   ): Promise<ListSkillProposalsResponse> {
     const params = new URLSearchParams();
     if (options.status) {
@@ -1818,6 +1822,9 @@ export class NakamaClient {
     }
     if (options.profileId) {
       params.set("profileId", options.profileId);
+    }
+    if (options.sessionId) {
+      params.set("sessionId", options.sessionId);
     }
     const query = params.toString();
     return this.request<ListSkillProposalsResponse>(

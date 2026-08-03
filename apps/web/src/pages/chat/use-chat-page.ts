@@ -113,6 +113,7 @@ export function useChatPage() {
   const [agentQuestionnaire, setAgentQuestionnaire] = useState<AgentQuestionnaire | null>(null);
   const [contextUsage, setContextUsage] = useState<ChatContextUsage | null>(null);
   const [busy, setBusy] = useState(false);
+  const [lastSuccessfulTurnAt, setLastSuccessfulTurnAt] = useState<number | null>(null);
   const [turnStartedAt, setTurnStartedAt] = useState<string | null>(null);
   const [branchingMessageId, setBranchingMessageId] = useState<string | null>(null);
   const [canStop, setCanStop] = useState(false);
@@ -462,6 +463,10 @@ export function useChatPage() {
             setAgentQuestionnaire(refreshed.questionnaire);
             setContextUsage(refreshed.contextUsage ?? null);
 
+            if (reconnected) {
+              setLastSuccessfulTurnAt(Date.now());
+            }
+
             if (!reconnected && !status.active) {
               setError(null);
             }
@@ -719,6 +724,7 @@ export function useChatPage() {
         setAgentTodos(todos);
         setAgentQuestionnaire(questionnaire);
         setContextUsage(nextContextUsage ?? null);
+        setLastSuccessfulTurnAt(Date.now());
       } catch (err) {
         if (isAbortError(err)) {
           setMessages((current) => finalizeStreamingMessages(current));
@@ -892,6 +898,7 @@ export function useChatPage() {
     availableSkills,
     chatStatus,
     busy,
+    lastSuccessfulTurnAt,
     turnStartedAt,
     canStop,
     error,

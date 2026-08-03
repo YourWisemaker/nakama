@@ -49,18 +49,20 @@ function createApp() {
 const BASE = "http://localhost:4310";
 
 describe("skill proposal routes (v1)", () => {
-  test("admin can list, approve, and reject proposals; member cannot list", async () => {
+  test("admin can list, approve, and reject proposals; member needs sessionId to list", async () => {
     const { app, authService, databaseAdapter, skillProposalService } = createApp();
     const adminSession = await setupFreshInstallSession(app, databaseAdapter, "admin@org.com");
     const orgId = adminSession.orgId!;
     const profiles = await databaseAdapter.listProfilesForOrg(orgId);
     const profileId = profiles[0]!.id;
+    const sessionId = "sess_post_turn_notice";
 
     const staged = await skillProposalService.stageProposal({
       orgId,
       profileId,
       action: "create",
       content: sampleSkillMarkdown,
+      sessionId,
     });
     expect(staged.outcome).toBe("created");
 
@@ -114,6 +116,36 @@ describe("skill proposal routes (v1)", () => {
       }),
     );
     expect(memberListResp.status).toBe(403);
+
+    const otherStaged = await skillProposalService.stageProposal({
+      orgId,
+      profileId,
+      action: "create",
+      content: sampleSkillMarkdown.replace("deploy-notes", "rollback-notes").replace(
+        "Notes about deploy process.",
+        "Notes about rollback.",
+      ),
+      sessionId,
+    });
+    expect(otherStaged.outcome).toBe("created");
+
+    const memberSessionListResp = await app.fetch(
+      new Request(
+        `${BASE}/v1/orgs/${orgId}/skill-proposals?status=pending&sessionId=${encodeURIComponent(sessionId)}`,
+        {
+          headers: memberSession.headers({}, orgId),
+        },
+      ),
+    );
+    expect(memberSessionListResp.status).toBe(200);
+    const memberSessionBody = (await memberSessionListResp.json()) as {
+      proposals: { skillName: string; sessionId: string | null }[];
+      pendingCount: number;
+    };
+    expect(memberSessionBody.pendingCount).toBe(1);
+    expect(memberSessionBody.proposals).toHaveLength(1);
+    expect(memberSessionBody.proposals[0]?.skillName).toBe("rollback-notes");
+    expect(memberSessionBody.proposals[0]?.sessionId).toBe(sessionId);
   });
 
   test("admin can reject a pending proposal", async () => {
