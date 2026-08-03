@@ -4,6 +4,7 @@ import type {
   AgentQuestionnaire,
   AgentTodo,
   ProfileSummary,
+  ThinkingEffort,
 } from "@nakama/core/contract";
 import type { FileUIPart } from "ai";
 import { nanoid } from "nanoid";
@@ -15,6 +16,11 @@ import { useAppContext } from "@/context/use-app-context";
 import { useActiveChatProfile } from "@/context/use-active-chat-profile";
 import { useProfileQuery } from "@/hooks/use-app-queries";
 import { useBranchSessionMutation, useUpdateProfileMutation } from "@/hooks/use-resource-mutations";
+import {
+  buildThinkingSettingsPayload,
+  useSaveThinkingSettings,
+  useThinkingSettings,
+} from "@/hooks/use-thinking-settings";
 import {
   filePartsToDisplayDocuments,
   filePartsToDocumentAttachments,
@@ -50,6 +56,16 @@ import {
   seedStreamingStateForActiveTurn,
 } from "@/lib/chat-stream-resume";
 import { client, formatError } from "@/lib/client";
+import {
+  buildAutoEnableThinkingPayload,
+  DEFAULT_THINKING_EFFORT,
+  formatThinkingEffortSuccessMessage,
+  shouldAutoEnableThinking,
+  shouldBlockThinkingEffortChange,
+  shouldShowThinkingBlocks,
+  shouldShowThinkingEffort,
+} from "@/lib/thinking-settings";
+import { toast } from "@/lib/toast";
 import {
   decodeModelSelection,
   effectiveProfileModelSelection,
@@ -147,6 +163,9 @@ export function useChatPage() {
   const showOfflineHint = health != null && !health.providerConfigured;
   const branchSessionMutation = useBranchSessionMutation();
   const updateProfileMutation = useUpdateProfileMutation();
+  const { data: thinkingSettings, isLoading: thinkingSettingsLoading } = useThinkingSettings();
+  const saveThinkingSettingsMutation = useSaveThinkingSettings();
+  const thinkingAutoEnableRef = useRef(false);
   const activeProfileQuery = useProfileQuery(profileId || null);
 
   const activeProfile = useMemo(
@@ -198,8 +217,15 @@ export function useChatPage() {
     [currentModelSelection, providerModelGroups],
   );
 
-  const showThinking = activeModelSupportsThinking !== false;
   const readOnlySession = isReadOnlySessionChannel(sessionChannel);
+  const showThinking = shouldShowThinkingBlocks(activeModelSupportsThinking);
+  const thinkingEffortVisible = shouldShowThinkingEffort(activeModelSupportsThinking);
+  const thinkingEffort = thinkingSettings?.effort ?? DEFAULT_THINKING_EFFORT;
+  const thinkingEffortDisabled =
+    busy ||
+    thinkingSettingsLoading ||
+    saveThinkingSettingsMutation.isPending ||
+    readOnlySession;
 
   const handleModelChange = useCallback(
     (selection: string) => {
@@ -250,6 +276,8 @@ export function useChatPage() {
 
   const enterDraftChat = useCallback(
     (nextProfileId: string) => {
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
       localStorage.removeItem(sessionStorageKey(nextProfileId));
       skipNextProfileSessionRef.current = true;
       loadedRouteRef.current = null;
@@ -271,6 +299,114 @@ export function useChatPage() {
     },
     [location.pathname, navigate],
   );
+
+  const handleThinkingEffortChange = useCallback(
+    (effort: ThinkingEffort) => {
+      if (!profileId || effort === thinkingEffort) {
+        return;
+      }
+
+      if (
+        shouldBlockThinkingEffortChange(busy) ||
+        saveThinkingSettingsMutation.isPending
+      ) {
+        if (busy) {
+          setError("Wait for the current response to finish.");
+        }
+        return;
+      }
+
+      const hadMessages = messages.length > 0;
+      const startedProfileId = profileId;
+
+      void saveThinkingSettingsMutation
+        .mutateAsync(buildThinkingSettingsPayload(effort))
+        .then(() => {
+          if (profileIdRef.current !== startedProfileId) {
+            return;
+          }
+          if (busyRef.current) {
+            setError("Wait for the current response to finish.");
+            return;
+          }
+          toast(formatThinkingEffortSuccessMessage(effort, hadMessages).message);
+          enterDraftChat(startedProfileId);
+        })
+        .catch((err) => {
+          setError(formatError(err));
+        });
+    },
+    [
+      profileId,
+      thinkingEffort,
+      busy,
+      messages.length,
+      saveThinkingSettingsMutation,
+      enterDraftChat,
+    ],
+  );
+
+  useEffect(() => {
+    if (
+      !shouldAutoEnableThinking(
+        thinkingSettings,
+        activeModelSupportsThinking,
+        busy,
+        thinkingAutoEnableRef.current,
+        {
+          hasProfileId: Boolean(profileId),
+          hasRouteSession: Boolean(routeSession),
+          hasSession: Boolean(session),
+          hasMessages: messages.length > 0,
+        },
+      )
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    thinkingAutoEnableRef.current = true;
+    const startedProfileId = profileId;
+
+    void saveThinkingSettingsMutation
+      .mutateAsync(buildAutoEnableThinkingPayload(thinkingSettings!))
+      .then(() => {
+        if (cancelled) {
+          return;
+        }
+        if (profileIdRef.current !== startedProfileId) {
+          return;
+        }
+        if (busyRef.current || Boolean(routeSession)) {
+          return;
+        }
+        if (activeModelSupportsThinking !== true) {
+          return;
+        }
+        enterDraftChat(startedProfileId);
+      })
+      .catch((err) => {
+        if (cancelled) {
+          return;
+        }
+        thinkingAutoEnableRef.current = false;
+        setError(formatError(err));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    thinkingSettings,
+    activeModelSupportsThinking,
+    busy,
+    profileId,
+    routeSession,
+    session,
+    messages.length,
+    saveThinkingSettingsMutation,
+    enterDraftChat,
+  ]);
 
   const resumeSession = useCallback(
     async (nextProfileId: string, sessionId: string) => {
@@ -769,6 +905,9 @@ export function useChatPage() {
     currentModelSelection,
     activeModelSupportsVision,
     showThinking,
+    thinkingEffortVisible,
+    thinkingEffort,
+    thinkingEffortDisabled,
     readOnlySession,
     isEmptyState,
     composerDisabled,
@@ -776,6 +915,7 @@ export function useChatPage() {
     contextUsage: isEmptyState ? null : contextUsage,
     handleProfileSwitch,
     handleModelChange,
+    handleThinkingEffortChange,
     renderModelLabel,
     handleBranchMessage,
     handleTryAgainMessage,
