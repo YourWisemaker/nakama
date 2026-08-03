@@ -246,6 +246,7 @@ import { ProfileService } from "./profile-service";
 import type { SkillsService } from "./skills-service";
 import type { SkillProposalService } from "./skill-proposal-service";
 import { SessionTitleService } from "./session-title-service";
+import { SkillPostTurnReviewService } from "./skill-post-turn-review-service";
 import { SuperBotSessionState } from "./super-bot-session-state";
 import { resolveProfileStoredTools } from "./tool-resolver";
 import {
@@ -310,6 +311,7 @@ export class AgentService {
   private orgMemoryService: OrgMemoryService | null = null;
   private readonly sessions = new Map<string, StoredSession>();
   private readonly sessionTitleService: SessionTitleService;
+  private skillPostTurnReviewService: SkillPostTurnReviewService;
   private _providerConfigured: boolean;
   private visionSettingsPromise: Promise<void> | null = null;
   private transcriptionSettingsPromise: Promise<void> | null = null;
@@ -324,6 +326,7 @@ export class AgentService {
     this.db = db;
     this.profileService = new ProfileService(db);
     this.sessionTitleService = new SessionTitleService(db, () => this.userConfig);
+    this.skillPostTurnReviewService = new SkillPostTurnReviewService(db, () => this.userConfig);
     this.agentTodoState = new AgentTodoState(db);
     this.agentQuestionnaireState = new AgentQuestionnaireState(db);
     this.questionTools = createAskUserQuestionTools(this.agentQuestionnaireState);
@@ -1463,6 +1466,14 @@ export class AgentService {
 
   scheduleSessionTitleGeneration(sessionId: string): void {
     this.sessionTitleService.scheduleSessionTitleGeneration(sessionId);
+  }
+
+  schedulePostTurnSkillReview(sessionId: string): void {
+    this.skillPostTurnReviewService.schedulePostTurnSkillReview(sessionId);
+  }
+
+  getSkillPostTurnReviewService(): SkillPostTurnReviewService {
+    return this.skillPostTurnReviewService;
   }
 
   async purgeSession(sessionId: string): Promise<boolean> {
