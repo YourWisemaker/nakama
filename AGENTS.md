@@ -7,6 +7,7 @@ Agent platform built to work with your team — not replace them. Multi-tenant m
 - Bun 1.3+: `bun install`, `bun run`, `bun test`
 - Servers: `bun run dev:server` | `dev:web` | `dev:cli`
 - Layout: `apps/{server,web,cli}`, channel workers in `apps/platform/{telegram,whatsapp,discord,automation}`
+- Writing Tests: assert behavior, not prompt/description/error copy.
 
 ## LLM cassette tests (MSW)
 
@@ -113,7 +114,7 @@ Path: `~/.nakama/orgs/{orgId}/profiles/{profileId}/` (`getProfileSoulDir`). Load
 | `save-artifact` | Persist under `artifacts/` |
 | `knowledge_base_search` / `web_search` / `email` | KB, web, mailbox |
 | `search_files` / `ripgrep` | File/content search |
-| `bash` | Super Bot — profile workspace shell |
+| `bash` | Profile workspace shell — assign per profile; Super Bot by default |
 | `sub_agent` | Opt-in same-profile delegate (not repo coding) |
 | `coding-agent` | Codex / Claude Code / OpenCode via `bash` |
 | `agent-browser` | Opt-in browser CLI; needs host install — `docs/website/agent-browser.md` |

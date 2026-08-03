@@ -57,7 +57,7 @@ Nakama includes these builtins:
 | `web_fetch` | Yes | Yes | |
 | `email` | Yes | No | Omitted at runtime when mailbox is unconfigured |
 | `extract_document_text` | Yes | No | Extracts text from a text-based PDF attachment returned by `email` |
-| `bash` | Super Bot only | No | Run shell commands in the profile workspace |
+| `bash` | When assigned | No | Run shell commands in the profile workspace |
 | `sub_agent` | No | No | Opt-in: delegate to a same-profile sub-agent (see below) |
 
 **New custom profiles** receive `read_file`, `write_file`, `edit_file`, `search_files`, `knowledge_base_search`, and `web_fetch` until a platform admin assigns additional tools. Memory writes, archives, and artifact saves use bundled skills with those file tools — see [Skills](/skills#bundled-system-skills). Word documents use `write_docx` (system profiles only by default). Coding-agent workflows use `bash` with the `coding-agent` skill — see [Coding agent](/coding-agent). Interactive browser automation (login walls, forms, clicks) uses `bash` with the opt-in `agent-browser` skill — see [Agent browser](/agent-browser). The `sub_agent` tool is seeded but **not** auto-assigned — platform admins opt in per profile. System profiles (`default`, `super_bot`) get the full seeded builtin set; Super Bot also receives `bash`.
