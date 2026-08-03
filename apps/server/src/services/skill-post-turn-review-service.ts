@@ -4,6 +4,10 @@ import {
   type ChatMessage,
   type UserConfig,
 } from "@nakama/core";
+import {
+  generateSkillPostTurnReview,
+  type SkillPostTurnReviewOutcome,
+} from "@nakama/agent";
 import type { DatabaseAdapter } from "@nakama/db";
 import { createProviderForInstance } from "../providers/create";
 import { resolveProfileProviderSelection } from "./provider-instance-helpers";
@@ -43,7 +47,7 @@ export interface PostTurnReviewRunnerContext {
 
 export type PostTurnReviewRunner = (
   context: PostTurnReviewRunnerContext,
-) => Promise<void>;
+) => Promise<SkillPostTurnReviewOutcome | void>;
 
 export function countToolCallsInTurn(turnMessages: ChatMessage[]): number {
   let count = 0;
@@ -136,10 +140,10 @@ export class SkillPostTurnReviewService {
     private readonly getUserConfig: () => UserConfig | null,
     runner?: PostTurnReviewRunner,
   ) {
-    this.runner = runner ?? (async () => {});
+    this.runner = runner ?? ((context) => this.reviewTurnWithLlm(context));
   }
 
-  /** Test/injection hook — U3 replaces the default no-op with the LLM reviewer. */
+  /** Test/injection hook — U4 wraps this to stage/suggest after the LLM outcome. */
   setRunner(runner: PostTurnReviewRunner): void {
     this.runner = runner;
   }
@@ -147,6 +151,27 @@ export class SkillPostTurnReviewService {
   schedulePostTurnSkillReview(sessionId: string): void {
     void this.runPostTurnSkillReview(sessionId).catch((error) => {
       console.error(`Failed post-turn skill review for ${sessionId}:`, error);
+    });
+  }
+
+  async reviewTurnWithLlm(
+    context: PostTurnReviewRunnerContext,
+  ): Promise<SkillPostTurnReviewOutcome> {
+    const provider = await this.resolveProviderForProfile(context.profileId);
+    if (!provider) {
+      return { action: "noop", reason: "provider_unavailable" };
+    }
+
+    const assigned = await this.db.listSkillsForProfile(context.profileId);
+    const catalog = assigned.map((skill) => ({
+      name: skill.name,
+      description: skill.description,
+    }));
+
+    return generateSkillPostTurnReview({
+      turnMessages: context.turnMessages,
+      catalog,
+      provider,
     });
   }
 

@@ -73,6 +73,15 @@ export {
   normalizeSessionTitle,
 } from "./session-title";
 export {
+  buildSkillPostTurnReviewPrompt,
+  generateSkillPostTurnReview,
+  parseSkillPostTurnReviewResponse,
+} from "./skill-post-turn-review";
+export type {
+  SkillCatalogEntry,
+  SkillPostTurnReviewOutcome,
+} from "./skill-post-turn-review";
+export {
   mergeOrgMemoryWithApprovedBullet,
   mergeOrgMemoryWithApprovedBulletFallback,
 } from "./org-memory-merge";
