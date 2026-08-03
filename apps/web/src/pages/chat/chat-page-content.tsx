@@ -32,6 +32,9 @@ export function ChatPageContent(state: ChatPageState) {
     currentModelSelection,
     activeModelSupportsVision,
     showThinking,
+    thinkingEffortVisible,
+    thinkingEffort,
+    thinkingEffortDisabled,
     readOnlySession,
     isEmptyState,
     composerDisabled,
@@ -39,6 +42,7 @@ export function ChatPageContent(state: ChatPageState) {
     contextUsage,
     handleProfileSwitch,
     handleModelChange,
+    handleThinkingEffortChange,
     renderModelLabel,
     handleBranchMessage,
     handleTryAgainMessage,
@@ -77,6 +81,10 @@ export function ChatPageContent(state: ChatPageState) {
         currentModelSelection={currentModelSelection}
         primarySupportsVision={activeModelSupportsVision}
         onModelChange={handleModelChange}
+        thinkingEffortVisible={thinkingEffortVisible}
+        thinkingEffort={thinkingEffort}
+        thinkingEffortDisabled={thinkingEffortDisabled}
+        onThinkingEffortChange={handleThinkingEffortChange}
         renderModelLabel={renderModelLabel}
         todos={agentTodos}
         questionnaire={agentQuestionnaire}

@@ -3,7 +3,6 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupInput } from "@/components/ui/input-group";
-import { Switch } from "@/components/ui/switch";
 import { createClientId, syncRowKeys } from "@/lib/client-id";
 
 export interface ModelListRow extends CustomModelEntry {}
@@ -12,7 +11,6 @@ interface ModelListEditorProps {
   models: ModelListRow[];
   disabled?: boolean;
   showPricing?: boolean;
-  showThinkingToggle?: boolean;
   onBrowse?: () => void;
   browseLabel?: string;
   onChange: (models: ModelListRow[]) => void;
@@ -26,7 +24,6 @@ export function ModelListEditor({
   models,
   disabled,
   showPricing = true,
-  showThinkingToggle = false,
   onBrowse,
   browseLabel = "Browse models.dev",
   onChange,
@@ -61,9 +58,6 @@ export function ModelListEditor({
                   <th className="px-2 py-2 font-medium">$/1M in</th>
                   <th className="px-2 py-2 font-medium">$/1M out</th>
                 </>
-              ) : null}
-              {showThinkingToggle ? (
-                <th className="px-2 py-2 font-medium">Thinking</th>
               ) : null}
               <th className="px-2 py-2 w-10" aria-label="Actions" />
             </tr>
@@ -140,20 +134,6 @@ export function ModelListEditor({
                     </td>
                   </>
                 ) : null}
-                {showThinkingToggle ? (
-                  <td className="px-2 py-1.5">
-                    <div className="flex justify-center">
-                      <Switch
-                        checked={row.supportsThinking === true}
-                        disabled={disabled}
-                        aria-label={`Enable thinking for ${row.id || row.name || `model ${index + 1}`}`}
-                        onCheckedChange={(checked) =>
-                          updateRow(index, { supportsThinking: checked })
-                        }
-                      />
-                    </div>
-                  </td>
-                ) : null}
                 <td className="px-2 py-1.5 text-right">
                   <Button
                     type="button"
@@ -199,12 +179,6 @@ export function ModelListEditor({
           </Button>
         ) : null}
       </div>
-
-      {showPricing ? (
-        <p className="text-xs text-muted-foreground">
-          Leave pricing blank to track tokens without estimating cost.
-        </p>
-      ) : null}
     </div>
   );
 }

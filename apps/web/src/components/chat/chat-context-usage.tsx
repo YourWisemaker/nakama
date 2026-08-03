@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const RING_SIZE = 18;
-const STROKE_WIDTH = 2.25;
+/** Match BrainIcon / select chevron visual weight in the composer toolbar. */
+const RING_SIZE = 12;
+const STROKE_WIDTH = 1.75;
 
 function progressStrokeClass(ratio: number): string {
   if (ratio >= 0.9) {
@@ -45,7 +46,7 @@ export function ChatContextUsageRing({
           <button
             type="button"
             className={cn(
-              "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "inline-flex h-7 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               className,
             )}
             aria-label={label}
