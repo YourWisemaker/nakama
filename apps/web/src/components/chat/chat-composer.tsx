@@ -23,7 +23,6 @@ import {
   PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputTools,
   usePromptInputAttachments,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
@@ -472,82 +471,83 @@ function ChatComposerFullFooter({
         aria-label="Composer options"
         className={composerToolbarClass}
       >
-        {props.contextUsage ? (
-          <PromptInputTools className="gap-1.5">
+        <div className="flex min-w-0 items-center gap-0.5">
+          {props.contextUsage ? (
             <ChatContextUsageRing usage={props.contextUsage} />
-          </PromptInputTools>
-        ) : null}
+          ) : null}
 
-        {props.providerConfigured ? (
-          <PromptInputSelect
-            value={props.currentModelSelection ?? ""}
-            disabled={
-              !props.providerModelGroups.some((group) => group.models.length > 0)
-            }
-            onValueChange={(value) =>
-              void props.onModelChange(value != null ? String(value) : "")
-            }
-          >
-            <PromptInputSelectTrigger
-              size="sm"
-              className={cn(
-                composerSelectTriggerClass,
-                "max-w-[min(16rem,52vw)] sm:max-w-[min(20rem,60vw)]",
-              )}
-              title={
-                props.currentModelSelection
-                  ? (props.renderModelLabel(props.currentModelSelection) ?? undefined)
-                  : undefined
+          {props.providerConfigured ? (
+            <PromptInputSelect
+              value={props.currentModelSelection ?? ""}
+              disabled={
+                !props.providerModelGroups.some((group) => group.models.length > 0)
+              }
+              onValueChange={(value) =>
+                void props.onModelChange(value != null ? String(value) : "")
               }
             >
-              <PromptInputSelectValue placeholder="Model">
-                {props.renderModelLabel}
-              </PromptInputSelectValue>
-            </PromptInputSelectTrigger>
-            <PromptInputSelectContent
-              align="start"
-              alignItemWithTrigger={false}
-              className="w-max max-w-[min(24rem,92vw)] text-xs"
-            >
-              {props.profileModelId &&
-                !props.providerModelGroups.some((group) =>
-                  group.models.some((model) => model.id === props.profileModelId),
-                ) ? (
-                <PromptInputSelectItem
-                  value={encodeModelSelection("__unknown__", props.profileModelId)}
-                  label={props.profileModelId}
-                >
-                  {props.profileModelId}
-                </PromptInputSelectItem>
-              ) : null}
-              {props.providerModelGroups.map((group) => (
-                <div key={group.providerId}>
-                  <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
-                    {group.providerLabel}
-                  </div>
-                  {group.models.map((model) => {
-                    const providerId = model.providerId ?? group.providerId;
+              <PromptInputSelectTrigger
+                size="sm"
+                className={cn(
+                  composerSelectTriggerClass,
+                  "max-w-[min(16rem,52vw)] sm:max-w-[min(20rem,60vw)]",
+                  props.contextUsage && "pl-1",
+                )}
+                title={
+                  props.currentModelSelection
+                    ? (props.renderModelLabel(props.currentModelSelection) ?? undefined)
+                    : undefined
+                }
+              >
+                <PromptInputSelectValue placeholder="Model">
+                  {props.renderModelLabel}
+                </PromptInputSelectValue>
+              </PromptInputSelectTrigger>
+              <PromptInputSelectContent
+                align="start"
+                alignItemWithTrigger={false}
+                className="w-max max-w-[min(24rem,92vw)] text-xs"
+              >
+                {props.profileModelId &&
+                  !props.providerModelGroups.some((group) =>
+                    group.models.some((model) => model.id === props.profileModelId),
+                  ) ? (
+                  <PromptInputSelectItem
+                    value={encodeModelSelection("__unknown__", props.profileModelId)}
+                    label={props.profileModelId}
+                  >
+                    {props.profileModelId}
+                  </PromptInputSelectItem>
+                ) : null}
+                {props.providerModelGroups.map((group) => (
+                  <div key={group.providerId}>
+                    <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
+                      {group.providerLabel}
+                    </div>
+                    {group.models.map((model) => {
+                      const providerId = model.providerId ?? group.providerId;
 
-                    return (
-                      <PromptInputSelectItem
-                        key={`${providerId}:${model.id}`}
-                        value={`${providerId}::${model.id}`}
-                        label={model.name}
-                      >
-                        {model.name}
-                      </PromptInputSelectItem>
-                    );
-                  })}
-                </div>
-              ))}
-            </PromptInputSelectContent>
-          </PromptInputSelect>
-        ) : (
-          <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-800 dark:text-amber-200">
-            <WifiOffIcon className="size-3.5 shrink-0" aria-hidden />
-            Offline
-          </span>
-        )}
+                      return (
+                        <PromptInputSelectItem
+                          key={`${providerId}:${model.id}`}
+                          value={`${providerId}::${model.id}`}
+                          label={model.name}
+                        >
+                          {model.name}
+                        </PromptInputSelectItem>
+                      );
+                    })}
+                  </div>
+                ))}
+              </PromptInputSelectContent>
+            </PromptInputSelect>
+          ) : (
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-800 dark:text-amber-200">
+              <WifiOffIcon className="size-3.5 shrink-0" aria-hidden />
+              Offline
+            </span>
+          )}
+        </div>
 
         {props.thinkingEffortVisible && props.thinkingEffort && props.onThinkingEffortChange ? (
           <ChatThinkingEffortControl
