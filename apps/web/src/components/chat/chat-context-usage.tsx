@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const RING_SIZE = 18;
-const STROKE_WIDTH = 2.25;
+/** Match BrainIcon / select chevron visual weight in the composer toolbar. */
+const RING_SIZE = 12;
+const STROKE_WIDTH = 1.75;
 
 function progressStrokeClass(ratio: number): string {
   if (ratio >= 0.9) {

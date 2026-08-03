@@ -49,6 +49,7 @@ import {
 import { prepareChatUploadFiles } from "@/lib/compress-image";
 import {
   composerIconButtonClass,
+  composerSelectTriggerClass,
   composerShellClass,
   composerShellCompactClass,
   composerInputGroupClass,
@@ -489,7 +490,10 @@ function ChatComposerFullFooter({
           >
             <PromptInputSelectTrigger
               size="sm"
-              className="h-7 w-auto max-w-[min(16rem,52vw)] rounded-md bg-muted px-2 text-[10px] font-medium leading-none text-foreground hover:bg-muted/80 sm:max-w-[min(20rem,60vw)]"
+              className={cn(
+                composerSelectTriggerClass,
+                "max-w-[min(16rem,52vw)] sm:max-w-[min(20rem,60vw)]",
+              )}
               title={
                 props.currentModelSelection
                   ? (props.renderModelLabel(props.currentModelSelection) ?? undefined)

@@ -117,7 +117,10 @@ export function ProfileConfigIdentitySection({ state }: { state: IdentityState }
                     {profileModelLabel(editModel, providerModelGroups)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false}>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  className="w-max min-w-72 max-w-[min(24rem,92vw)]"
+                >
                   {extractModelId(editModel) && !modelInCatalog ? (
                     <SelectItem
                       value={encodeModelSelection("__unknown__", extractModelId(editModel)!)}

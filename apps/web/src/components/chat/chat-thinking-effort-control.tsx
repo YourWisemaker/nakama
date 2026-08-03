@@ -12,6 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { composerSelectTriggerClass } from "@/lib/chat-stream";
 import {
   THINKING_EFFORT_OPTIONS,
   thinkingEffortLabel,
@@ -57,7 +58,8 @@ export function ChatThinkingEffortControl({
               <PromptInputSelectTrigger
                 size="sm"
                 className={cn(
-                  "h-7 w-auto max-w-[min(10rem,40vw)] rounded-md bg-muted px-2 text-[10px] font-medium leading-none text-foreground hover:bg-muted/80 sm:max-w-[min(12rem,44vw)]",
+                  composerSelectTriggerClass,
+                  "max-w-[min(10rem,40vw)] sm:max-w-[min(12rem,44vw)]",
                 )}
                 aria-label="Thinking effort"
                 title={THINKING_TOOLTIP}

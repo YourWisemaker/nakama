@@ -669,7 +669,12 @@ export function appendOutgoingMessages(
 export const composerIconButtonClass =
   "size-7 shrink-0 rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40";
 
-export const composerToolbarClass = "flex min-w-0 flex-1 flex-wrap items-center gap-1";
+export const composerToolbarClass =
+  "flex min-w-0 flex-1 flex-wrap items-center gap-1.5";
+
+/** Ghost select trigger for composer model / thinking controls (no filled chip look). */
+export const composerSelectTriggerClass =
+  "h-7 w-auto gap-1 rounded-md border-none bg-transparent px-1.5 text-xs font-medium text-muted-foreground shadow-none hover:bg-accent/60 hover:text-foreground aria-expanded:bg-accent/60 aria-expanded:text-foreground dark:bg-transparent dark:hover:bg-accent/60";
 
 const composerInputGroupBase =
   "[&_[data-slot=input-group]]:h-auto [&_[data-slot=input-group]]:flex-col [&_[data-slot=input-group]]:items-stretch [&_[data-slot=input-group]]:gap-0 [&_[data-slot=input-group]]:p-2.5 sm:[&_[data-slot=input-group]]:p-3";
