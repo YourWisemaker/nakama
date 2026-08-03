@@ -81,6 +81,7 @@ interface ProfileRow {
   org_id: string | null;
   is_default: number;
   skills_write_approval: number | null;
+  skills_post_turn_review: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -307,6 +308,7 @@ interface OrganizationRow {
   name: string;
   slug: string;
   skills_write_approval: number;
+  skills_post_turn_review: number;
   created_at: string;
   updated_at: string;
 }
@@ -482,10 +484,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       org_id,
       is_default,
       skills_write_approval,
+      skills_post_turn_review,
       created_at,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       system_prompt = excluded.system_prompt,
@@ -496,6 +499,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       org_id = excluded.org_id,
       is_default = excluded.is_default,
       skills_write_approval = excluded.skills_write_approval,
+      skills_post_turn_review = excluded.skills_post_turn_review,
       updated_at = excluded.updated_at
   `);
   const deleteProfileStmt = db.prepare("DELETE FROM profiles WHERE id = ?");
@@ -1108,27 +1112,28 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     WHERE id = ?
   `);
   const upsertOrganizationStmt = db.prepare(`
-    INSERT INTO organizations (id, name, slug, skills_write_approval, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = excluded.slug,
       skills_write_approval = excluded.skills_write_approval,
+      skills_post_turn_review = excluded.skills_post_turn_review,
       updated_at = excluded.updated_at
   `);
   const listOrganizationsStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
     FROM organizations
     ORDER BY name ASC
   `);
   const getOrganizationBySlugStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
     FROM organizations
     WHERE slug = ?
     LIMIT 1
   `);
   const getOrganizationByIdStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
     FROM organizations
     WHERE id = ?
     LIMIT 1
@@ -1367,6 +1372,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       o.name,
       o.slug,
       o.skills_write_approval,
+      o.skills_post_turn_review,
       o.created_at,
       o.updated_at,
       om.role,
@@ -1476,6 +1482,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.name,
         record.slug,
         record.skillsWriteApproval ? 1 : 0,
+        record.skillsPostTurnReview ? 1 : 0,
         record.createdAt,
         record.updatedAt,
       );
@@ -1556,6 +1563,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
           name: string;
           slug: string;
           skills_write_approval: number;
+          skills_post_turn_review: number;
           created_at: string;
           updated_at: string;
           role: string;
@@ -1568,6 +1576,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
             name: record.name,
             slug: record.slug,
             skillsWriteApproval: record.skills_write_approval !== 0,
+            skillsPostTurnReview: record.skills_post_turn_review !== 0,
             createdAt: record.created_at,
             updatedAt: record.updated_at,
           },
@@ -1954,6 +1963,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.skillsWriteApproval == null
           ? null
           : record.skillsWriteApproval
+            ? 1
+            : 0,
+        record.skillsPostTurnReview == null
+          ? null
+          : record.skillsPostTurnReview
             ? 1
             : 0,
         record.createdAt,
@@ -2581,6 +2595,8 @@ function toProfileRecord(row: ProfileRow): StoredProfileRecord {
     isDefault: row.is_default !== 0,
     skillsWriteApproval:
       row.skills_write_approval == null ? null : row.skills_write_approval !== 0,
+    skillsPostTurnReview:
+      row.skills_post_turn_review == null ? null : row.skills_post_turn_review !== 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -3051,6 +3067,7 @@ function toOrganizationRecord(row: OrganizationRow): StoredOrganizationRecord {
     name: row.name,
     slug: row.slug,
     skillsWriteApproval: row.skills_write_approval !== 0,
+    skillsPostTurnReview: row.skills_post_turn_review !== 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

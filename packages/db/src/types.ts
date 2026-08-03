@@ -46,6 +46,8 @@ export interface StoredProfileRecord {
   isDefault?: boolean;
   /** null = inherit org default; true/false = force gate on/off for this profile */
   skillsWriteApproval?: boolean | null;
+  /** null = inherit org default; true/false = force post-turn review on/off for this profile */
+  skillsPostTurnReview?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -325,6 +327,7 @@ export interface StoredOrganizationRecord {
   name: string;
   slug: string;
   skillsWriteApproval?: boolean;
+  skillsPostTurnReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }

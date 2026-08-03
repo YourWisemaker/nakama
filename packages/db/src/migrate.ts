@@ -18,6 +18,7 @@ export function migrateDatabase(db: Database): void {
   migrateOrgMemoryProposalsTable(db);
   migrateSkillProposalsTable(db);
   migrateSkillsWriteApprovalColumns(db);
+  migrateSkillsPostTurnReviewColumns(db);
   migrateSkillUsageTables(db);
   migrateTenantOrgScope(db);
   migrateProfileOrgColumns(db);
@@ -379,6 +380,24 @@ function migrateSkillsWriteApprovalColumns(db: Database): void {
     .all() as Array<{ name: string }>;
   if (!new Set(profileColumns.map((column) => column.name)).has("skills_write_approval")) {
     db.exec(`ALTER TABLE profiles ADD COLUMN skills_write_approval INTEGER;`);
+  }
+}
+
+function migrateSkillsPostTurnReviewColumns(db: Database): void {
+  const orgColumns = db
+    .prepare("PRAGMA table_info(organizations)")
+    .all() as Array<{ name: string }>;
+  if (!new Set(orgColumns.map((column) => column.name)).has("skills_post_turn_review")) {
+    db.exec(
+      `ALTER TABLE organizations ADD COLUMN skills_post_turn_review INTEGER NOT NULL DEFAULT 0;`,
+    );
+  }
+
+  const profileColumns = db
+    .prepare("PRAGMA table_info(profiles)")
+    .all() as Array<{ name: string }>;
+  if (!new Set(profileColumns.map((column) => column.name)).has("skills_post_turn_review")) {
+    db.exec(`ALTER TABLE profiles ADD COLUMN skills_post_turn_review INTEGER;`);
   }
 }
 

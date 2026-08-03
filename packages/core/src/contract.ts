@@ -286,6 +286,7 @@ export interface OrganizationSummary {
   name: string;
   slug: string;
   skillsWriteApproval?: boolean;
+  skillsPostTurnReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -303,6 +304,7 @@ export interface CreateOrganizationRequest {
 export interface UpdateOrganizationRequest {
   name?: string;
   skillsWriteApproval?: boolean;
+  skillsPostTurnReview?: boolean;
 }
 
 export interface ListOrganizationsResponse {
@@ -1359,6 +1361,8 @@ export interface ProfileSummary {
   isDefault?: boolean;
   /** null = inherit org default; true/false = force gate on/off for this profile */
   skillsWriteApproval?: boolean | null;
+  /** null = inherit org default; true/false = force post-turn review on/off for this profile */
+  skillsPostTurnReview?: boolean | null;
   toolCount: number;
   mcpServerCount: number;
   soulActive: boolean;
@@ -1563,6 +1567,7 @@ export interface UpdateProfileRequest {
   systemPrompt?: string;
   model?: string | null;
   skillsWriteApproval?: boolean | null;
+  skillsPostTurnReview?: boolean | null;
 }
 
 export interface CreateToolRequest {

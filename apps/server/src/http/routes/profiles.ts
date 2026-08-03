@@ -28,11 +28,16 @@ import {
 import type { HonoApp } from "../types";
 import type { ServerOptions } from "../context";
 
-function isSkillsWriteApprovalOnlyUpdate(body: UpdateProfileRequest): boolean {
+const ORG_ADMIN_PROFILE_SETTING_KEYS = new Set([
+  "skillsWriteApproval",
+  "skillsPostTurnReview",
+]);
+
+function isOrgAdminAllowedProfileSettingsUpdate(body: UpdateProfileRequest): boolean {
   const keys = Object.keys(body).filter(
     (key) => body[key as keyof UpdateProfileRequest] !== undefined,
   );
-  return keys.length === 1 && keys[0] === "skillsWriteApproval";
+  return keys.length > 0 && keys.every((key) => ORG_ADMIN_PROFILE_SETTING_KEYS.has(key));
 }
 
 export function registerProfileRoutes(app: HonoApp, options: ServerOptions): void {
@@ -463,7 +468,7 @@ export function registerProfileRoutes(app: HonoApp, options: ServerOptions): voi
 
     if (!auth.isPlatformAdmin) {
       requireOrgAdmin(auth);
-      if (!isSkillsWriteApprovalOnlyUpdate(body)) {
+      if (!isOrgAdminAllowedProfileSettingsUpdate(body)) {
         throw new NakamaApiError("Forbidden", 403);
       }
     }

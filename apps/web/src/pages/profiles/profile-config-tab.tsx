@@ -1,6 +1,7 @@
 import type { ProfilesPageState } from "@/pages/profiles/use-profiles-page";
 import { ProfileConfigAssignmentsSection } from "@/pages/profiles/profile-config-assignments-section";
 import { ProfileConfigIdentitySection } from "@/pages/profiles/profile-config-identity-section";
+import { ProfileSkillsPostTurnReviewField } from "@/components/profiles/ProfileSkillsPostTurnReviewField";
 import { ProfileSkillsWriteApprovalField } from "@/components/profiles/ProfileSkillsWriteApprovalField";
 
 export function ProfileConfigTab({ state }: { state: ProfilesPageState }) {
@@ -16,6 +17,7 @@ export function ProfileConfigTab({ state }: { state: ProfilesPageState }) {
     >
       <ProfileConfigIdentitySection state={state} />
       <ProfileSkillsWriteApprovalField profile={state.detail} disabled={state.busy} />
+      <ProfileSkillsPostTurnReviewField profile={state.detail} disabled={state.busy} />
       <ProfileConfigAssignmentsSection state={state} />
     </div>
   );
