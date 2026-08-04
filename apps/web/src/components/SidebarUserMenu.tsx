@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { LogOutIcon, UserIcon } from "lucide-react";
+import { LogOutIcon, SparklesIcon, UserIcon } from "lucide-react";
 import { THEME_OPTIONS } from "@/components/theme-options";
+import { UserContextEditorDialog } from "@/components/UserContextCard";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +32,7 @@ export function SidebarUserMenu() {
   const { user, logout, refreshSession } = useAuth();
   const { theme, setTheme } = useTheme();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [personalisationOpen, setPersonalisationOpen] = useState(false);
 
   if (!user) {
     return null;
@@ -59,21 +61,43 @@ export function SidebarUserMenu() {
             <span className="inline-flex">
               <DropdownMenu>
                 <DropdownMenuTrigger render={trigger} />
-                <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-56">
-                  <div className="px-1.5 py-1.5">
-                    <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                <DropdownMenuContent
+                  side="right"
+                  align="end"
+                  sideOffset={8}
+                  className="w-64 gap-0 overflow-hidden p-0"
+                >
+                  <div className="space-y-0.5 px-3.5 py-3">
+                    <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
                     <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                   </div>
-                  <div className="my-1 h-px bg-border" />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setProfileOpen(true);
-                    }}
-                  >
-                    <UserIcon className="size-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <div className="flex items-center justify-between gap-2 px-1.5 py-1">
+
+                  <div className="h-px bg-border" />
+
+                  <div className="p-1">
+                    <DropdownMenuItem
+                      className="px-2.5 py-2"
+                      onClick={() => {
+                        setProfileOpen(true);
+                      }}
+                    >
+                      <UserIcon className="size-4 text-muted-foreground" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="px-2.5 py-2"
+                      onClick={() => {
+                        setPersonalisationOpen(true);
+                      }}
+                    >
+                      <SparklesIcon className="size-4 text-muted-foreground" />
+                      Personalisation
+                    </DropdownMenuItem>
+                  </div>
+
+                  <div className="h-px bg-border" />
+
+                  <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
                     <span className="text-sm text-muted-foreground">Theme</span>
                     <div
                       className="flex rounded-md bg-muted/60 p-0.5"
@@ -104,16 +128,21 @@ export function SidebarUserMenu() {
                       })}
                     </div>
                   </div>
-                  <div className="my-1 h-px bg-border" />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      void logout();
-                    }}
-                  >
-                    <LogOutIcon className="size-4" />
-                    Log out
-                  </DropdownMenuItem>
+
+                  <div className="h-px bg-border" />
+
+                  <div className="p-1">
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="px-2.5 py-2"
+                      onClick={() => {
+                        void logout();
+                      }}
+                    >
+                      <LogOutIcon className="size-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </span>
@@ -131,6 +160,12 @@ export function SidebarUserMenu() {
         name={user.name ?? ""}
         phone={user.phone ?? ""}
         onSaved={() => void refreshSession()}
+      />
+
+      <UserContextEditorDialog
+        open={personalisationOpen}
+        onOpenChange={setPersonalisationOpen}
+        ensureExistsOnOpen
       />
     </>
   );

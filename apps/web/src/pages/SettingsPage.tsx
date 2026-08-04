@@ -4,7 +4,6 @@ import { VisionSettingsCard } from "@/components/settings/VisionSettingsCard";
 import { TranscriptionSettingsCard } from "@/components/settings/TranscriptionSettingsCard";
 import { WebPublicUrlSettingsRow } from "@/components/settings/WebPublicUrlSettingsRow";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { UserContextSettings } from "@/components/UserContextCard";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,8 +102,6 @@ export function SettingsPage() {
               </div>
             </div>
           ) : null}
-
-          <UserContextSettings />
         </CardContent>
       </Card>
 
