@@ -68,7 +68,12 @@ interface ChatMessageListProps {
   contentClassName?: string;
 }
 
-export function ChatMessageList({
+export function ChatMessageList(props: ChatMessageListProps) {
+  const sessionAnchor = props.messages[0]?.id ?? "empty";
+  return <ChatMessageListSession key={sessionAnchor} {...props} />;
+}
+
+function ChatMessageListSession({
   messages,
   profileId,
   showThinking = true,
@@ -89,14 +94,6 @@ export function ChatMessageList({
   const stickIntentRef = useRef(true);
   const lastListHeightRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const sessionAnchor = messages[0]?.id ?? "empty";
-
-  useEffect(() => {
-    isAtBottomRef.current = true;
-    stickIntentRef.current = true;
-    lastListHeightRef.current = 0;
-    setIsAtBottom(true);
-  }, [sessionAnchor]);
 
   const showAwaitingPlaceholder =
     streamActive && isAwaitingModelResponse(messages);
@@ -223,7 +220,6 @@ export function ChatMessageList({
     <ConversationStickinessProvider value={stickiness}>
       <Conversation className={cn("min-h-0 flex-1", className)}>
         <Virtuoso
-          key={sessionAnchor}
           ref={virtuosoRef}
           className={cn("h-full no-scrollbar", contentClassName ?? "px-4 py-4")}
           data={turns}
