@@ -181,9 +181,8 @@ export function SkillsPostTurnReviewOrgCard() {
           <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-medium text-foreground">Post-turn skill review</p>
             <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
-              After complex web or CLI chats, optionally suggest or stage skill updates. Separate from
-              write approval: review off does nothing; review on + approval off lets chat users Apply
-              suggestions; review on + approval on stages proposals for admin review.
+              Suggest skill updates after complex chats. Apply directly, or stage for admin review when
+              write approval is on.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 pt-0.5">
