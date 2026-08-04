@@ -169,7 +169,7 @@ export interface StoredWorkspaceSettingsRecord {
   orgId?: string | null;
 }
 
-export type StoredCodingAgentHarnessKind = "codex" | "claude_code" | "opencode";
+export type StoredCodingAgentHarnessKind = "codex" | "claude_code" | "opencode" | "pi";
 
 export interface StoredCodingAgentHarnessProbeCache {
   checkedAt: string;
