@@ -4,12 +4,12 @@ import {
   FileTextIcon,
   FilmIcon,
   ImageIcon,
+  MoreHorizontalIcon,
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -27,7 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { ArtifactShareControls } from "@/components/chat/artifact-share-controls";
+import { ArtifactAttachmentPreview } from "@/components/chat/artifact-attachment-preview";
+import {
+  ArtifactShareMenuItem,
+  ArtifactSharePublishDialogFromState,
+} from "@/components/chat/artifact-share-controls";
+import { useArtifactShareControls } from "@/components/chat/use-artifact-share-controls";
 import {
   ARTIFACT_TYPE_FILTER_LABELS,
   artifactMatchesTypeFilter,
@@ -38,12 +49,21 @@ import {
 import { useArtifactsQuery, useDeleteArtifactMutation } from "@/hooks/use-resource-mutations";
 import { formatError } from "@/lib/client";
 import { client } from "@/lib/client";
+import type { ChatArtifactRef } from "@/lib/chat-artifacts";
 import { formatBytes } from "@/lib/knowledge-base-files";
-import { cn } from "@/lib/utils";
 
 const sectionClass = "rounded-md border border-border bg-card";
 const EMPTY_ARTIFACTS: ArtifactFile[] = [];
 
+function toChatArtifactRef(artifact: ArtifactFile): ChatArtifactRef {
+  return {
+    filename: artifact.filename,
+    path: artifact.path || artifact.filename,
+    mimeType: artifact.mimeType,
+    sizeBytes: artifact.sizeBytes,
+    savedAt: artifact.updatedAt,
+  };
+}
 const artifactTimestampFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
@@ -80,6 +100,69 @@ function ArtifactIcon({ mimeType, filename }: { mimeType: string; filename: stri
   }
 
   return <FileTextIcon className="mt-0.5 size-4 text-muted-foreground" aria-hidden />;
+}
+
+function ArtifactRowMenu({
+  profileId,
+  artifact,
+  deletePending,
+  onDelete,
+}: {
+  profileId: string;
+  artifact: ArtifactFile;
+  deletePending: boolean;
+  onDelete: () => void;
+}) {
+  const artifactPath = artifact.path || artifact.filename;
+  const share = useArtifactShareControls({ profileId, artifactPath });
+  const downloadUrl = getArtifactDownloadUrl(profileId, artifactPath);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Artifact actions"
+            />
+          }
+        >
+          <MoreHorizontalIcon className="size-4" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <ArtifactShareMenuItem share={share} />
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onClick={() => {
+              const link = document.createElement("a");
+              link.href = downloadUrl;
+              link.download = artifact.filename;
+              link.rel = "noopener";
+              document.body.append(link);
+              link.click();
+              link.remove();
+            }}
+          >
+            <FileDownIcon aria-hidden />
+            Download
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            className="cursor-pointer"
+            disabled={deletePending}
+            onClick={onDelete}
+          >
+            <Trash2Icon aria-hidden />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ArtifactSharePublishDialogFromState share={share} artifactPath={artifactPath} />
+    </>
+  );
 }
 
 export function ArtifactsTab({ profileId }: { profileId: string | null }) {
@@ -190,7 +273,6 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
                   }}
                 >
                   <SelectTrigger
-                    size="sm"
                     className="h-8 w-full shrink-0 border-border/60 bg-muted/20 shadow-none sm:w-40 dark:bg-muted/15"
                     aria-label="Filter by file type"
                   >
@@ -242,27 +324,18 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ArtifactShareControls
+                    <ArtifactAttachmentPreview
+                      id={`artifacts-tab:${artifact.path || artifact.filename}`}
                       profileId={profileId}
-                      artifactPath={artifact.filename}
-                      compact
+                      artifact={toChatArtifactRef(artifact)}
+                      variant="icon"
                     />
-                    <a
-                      href={getArtifactDownloadUrl(profileId, artifact.filename)}
-                      className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                    >
-                      <FileDownIcon className="mr-2 size-4" aria-hidden />
-                      Download
-                    </a>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setDeleteTarget(artifact)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2Icon className="size-4" aria-hidden />
-                    </Button>
+                    <ArtifactRowMenu
+                      profileId={profileId}
+                      artifact={artifact}
+                      deletePending={deleteMutation.isPending}
+                      onDelete={() => setDeleteTarget(artifact)}
+                    />
                   </div>
                 </li>
               ))}

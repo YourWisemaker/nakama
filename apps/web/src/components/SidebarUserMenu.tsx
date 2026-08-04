@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { LogOutIcon, UserIcon } from "lucide-react";
+import { THEME_OPTIONS } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,10 +23,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/context/use-auth";
+import { useTheme } from "@/context/use-theme";
 import { client, formatError } from "@/lib/client";
+import { cn } from "@/lib/utils";
 
 export function SidebarUserMenu() {
   const { user, logout, refreshSession } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [profileOpen, setProfileOpen] = useState(false);
 
   if (!user) {
@@ -69,6 +73,38 @@ export function SidebarUserMenu() {
                     <UserIcon className="size-4" />
                     Profile
                   </DropdownMenuItem>
+                  <div className="flex items-center justify-between gap-2 px-1.5 py-1">
+                    <span className="text-sm text-muted-foreground">Theme</span>
+                    <div
+                      className="flex rounded-md bg-muted/60 p-0.5"
+                      role="group"
+                      aria-label="Color theme"
+                    >
+                      {THEME_OPTIONS.map((option) => {
+                        const Icon = option.icon;
+                        const selected = theme === option.id;
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            aria-label={option.label}
+                            aria-pressed={selected}
+                            className={cn(
+                              "rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground",
+                              selected && "bg-background text-foreground shadow-sm",
+                            )}
+                            onClick={() => {
+                              setTheme(option.id);
+                            }}
+                          >
+                            <Icon className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="my-1 h-px bg-border" />
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={() => {

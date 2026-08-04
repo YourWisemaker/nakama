@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { ProfileAdminPlusButton } from "@/components/ProfileAdminPlusButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { ChatAttachmentPanelProvider } from "@/context/chat-attachment-panel-context";
 import { useAuth } from "@/context/use-auth";
 import { useAppNavigation } from "@/hooks/use-app-navigation";
 import { useSkillProposals } from "@/hooks/use-skill-proposals";
@@ -83,7 +84,7 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
           </p>
         ) : null}
 
-        <section className={cn(sectionClass, "overflow-hidden")}>
+        <section className={cn(sectionClass, "flex min-h-[calc(100svh-7rem)] flex-col overflow-hidden")}>
           <div className="flex flex-col gap-3 border-b border-border p-4 lg:hidden">
             <div className="flex flex-wrap items-center gap-3">
               <Select
@@ -249,43 +250,49 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                       </Button>
                     ) : null}
                   </div>
-                  <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-                    {detailTab === "profile" ? (
+                  {detailTab === "profile" ? (
+                    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
                       <ProfileConfigTab state={state} />
-                    ) : detailTab === "proposals" && isOrgAdmin && activeOrg && selectedId ? (
-                      <div
-                        id="profile-detail-panel-proposals"
-                        role="tabpanel"
-                        aria-labelledby="profile-detail-tab-proposals"
-                      >
-                        <SkillProposalsPanel orgId={activeOrg.id} profileId={selectedId} />
-                      </div>
-                    ) : detailTab === "prompt" ? (
-                      <div
-                        id="profile-detail-panel-prompt"
-                        role="tabpanel"
-                        aria-labelledby="profile-detail-tab-prompt"
-                      >
-                        <SoulTab profileId={selectedId} />
-                      </div>
-                    ) : detailTab === "knowledge" ? (
-                      <div
-                        id="profile-detail-panel-knowledge"
-                        role="tabpanel"
-                        aria-labelledby="profile-detail-tab-knowledge"
-                      >
-                        <KnowledgeTab profileId={selectedId} />
-                      </div>
-                    ) : (
+                    </div>
+                  ) : detailTab === "proposals" && isOrgAdmin && activeOrg && selectedId ? (
+                    <div
+                      id="profile-detail-panel-proposals"
+                      role="tabpanel"
+                      aria-labelledby="profile-detail-tab-proposals"
+                      className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5"
+                    >
+                      <SkillProposalsPanel orgId={activeOrg.id} profileId={selectedId} />
+                    </div>
+                  ) : detailTab === "prompt" ? (
+                    <div
+                      id="profile-detail-panel-prompt"
+                      role="tabpanel"
+                      aria-labelledby="profile-detail-tab-prompt"
+                      className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5"
+                    >
+                      <SoulTab profileId={selectedId} />
+                    </div>
+                  ) : detailTab === "knowledge" ? (
+                    <div
+                      id="profile-detail-panel-knowledge"
+                      role="tabpanel"
+                      aria-labelledby="profile-detail-tab-knowledge"
+                      className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5"
+                    >
+                      <KnowledgeTab profileId={selectedId} />
+                    </div>
+                  ) : (
+                    <ChatAttachmentPanelProvider presentation="overlay">
                       <div
                         id="profile-detail-panel-artifacts"
                         role="tabpanel"
                         aria-labelledby="profile-detail-tab-artifacts"
+                        className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5"
                       >
                         <ArtifactsTab profileId={selectedId} />
                       </div>
-                    )}
-                  </div>
+                    </ChatAttachmentPanelProvider>
+                  )}
                 </>
               )}
             </div>

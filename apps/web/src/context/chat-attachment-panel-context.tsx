@@ -12,10 +12,18 @@ import {
   ChatAttachmentPanelContext,
   type ChatAttachmentPanelConfig,
 } from "@/context/chat-attachment-panel-context-shared";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_PANEL_WIDTH = 448;
 
-export function ChatAttachmentPanelProvider({ children }: { children: ReactNode }) {
+export function ChatAttachmentPanelProvider({
+  children,
+  presentation = "push",
+}: {
+  children: ReactNode;
+  /** `push` shares row space (chat). `overlay` slides over content from the right. */
+  presentation?: "push" | "overlay";
+}) {
   const [config, setConfig] = useState<ChatAttachmentPanelConfig | null>(null);
   const [width, setWidth] = useState(DEFAULT_PANEL_WIDTH);
   const configRef = useRef<ChatAttachmentPanelConfig | null>(config);
@@ -77,24 +85,54 @@ export function ChatAttachmentPanelProvider({ children }: { children: ReactNode 
     [config, show, update, hide],
   );
 
+  const overlay = presentation === "overlay";
+  const fullscreen = config?.fullscreen ?? false;
+
   return (
     <ChatAttachmentPanelContext.Provider value={value}>
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        {children}
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-hidden",
+          overlay ? "relative" : "flex",
+        )}
+      >
+        {overlay ? (
+          <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden">
+            {children}
+          </div>
+        ) : (
+          children
+        )}
         {config ? (
-          <AttachmentDetailPanel
-            title={config.title}
-            subtitle={config.subtitle}
-            headerActions={config.headerActions}
-            bodyClassName={config.bodyClassName}
-            resizable={config.resizable ?? !config.fullscreen}
-            fullscreen={config.fullscreen ?? false}
-            width={width}
-            onWidthChange={setWidth}
-            onClose={handlePanelClose}
-          >
-            {config.content}
-          </AttachmentDetailPanel>
+          <>
+            {overlay && !fullscreen ? (
+              <button
+                type="button"
+                aria-label="Close artifact preview"
+                className="absolute inset-0 z-20 bg-background/50 animate-in fade-in-0 duration-200"
+                onClick={handlePanelClose}
+              />
+            ) : null}
+            <AttachmentDetailPanel
+              title={config.title}
+              subtitle={config.subtitle}
+              headerActions={config.headerActions}
+              bodyClassName={config.bodyClassName}
+              resizable={config.resizable ?? !fullscreen}
+              fullscreen={fullscreen}
+              width={width}
+              onWidthChange={setWidth}
+              onClose={handlePanelClose}
+              className={cn(
+                overlay &&
+                  (fullscreen
+                    ? "absolute inset-0 z-30 overflow-hidden"
+                    : "absolute inset-y-0 right-0 z-30 h-full max-h-full overflow-hidden shadow-xl animate-in slide-in-from-right duration-200"),
+              )}
+            >
+              {config.content}
+            </AttachmentDetailPanel>
+          </>
         ) : null}
       </div>
     </ChatAttachmentPanelContext.Provider>
