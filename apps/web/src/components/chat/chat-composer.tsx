@@ -231,7 +231,7 @@ export function ChatComposer(props: ChatComposerProps) {
               <PromptInputFooter
                 className={cn(
                   "w-full border-0 px-0 py-0",
-                  "flex-wrap items-center gap-1.5 pt-1.5",
+                  "flex-nowrap items-center gap-1.5 pt-1.5",
                   footerClassName,
                 )}
               >
@@ -290,7 +290,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 "w-full border-0 px-0 py-0",
                 isMinimal
                   ? "justify-end pt-1.5"
-                  : "flex-wrap items-center gap-1.5 pt-1.5",
+                  : "flex-nowrap items-center gap-1.5 pt-1.5",
                 footerClassName,
               )}
             >
@@ -471,12 +471,12 @@ function ChatComposerFullFooter({
         aria-label="Composer options"
         className={composerToolbarClass}
       >
-        <div className="flex min-w-0 items-center gap-0.5">
-          {props.contextUsage ? (
-            <ChatContextUsageRing usage={props.contextUsage} />
-          ) : null}
+        {props.contextUsage ? (
+          <ChatContextUsageRing usage={props.contextUsage} />
+        ) : null}
 
-          {props.providerConfigured ? (
+        {props.providerConfigured ? (
+          <div className="min-w-[4.5rem] shrink overflow-hidden">
             <PromptInputSelect
               value={props.currentModelSelection ?? ""}
               disabled={
@@ -490,7 +490,7 @@ function ChatComposerFullFooter({
                 size="sm"
                 className={cn(
                   composerSelectTriggerClass,
-                  "max-w-[min(16rem,52vw)] sm:max-w-[min(20rem,60vw)]",
+                  "max-w-full justify-start overflow-hidden",
                   props.contextUsage && "pl-1",
                 )}
                 title={
@@ -541,13 +541,13 @@ function ChatComposerFullFooter({
                 ))}
               </PromptInputSelectContent>
             </PromptInputSelect>
-          ) : (
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-800 dark:text-amber-200">
-              <WifiOffIcon className="size-3.5 shrink-0" aria-hidden />
-              Offline
-            </span>
-          )}
-        </div>
+          </div>
+        ) : (
+          <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-800 dark:text-amber-200">
+            <WifiOffIcon className="size-3.5 shrink-0" aria-hidden />
+            Offline
+          </span>
+        )}
 
         {props.thinkingEffortVisible && props.thinkingEffort && props.onThinkingEffortChange ? (
           <ChatThinkingEffortControl
