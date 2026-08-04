@@ -106,7 +106,7 @@ function OrgProfilePostTurnReviewField({
   }
 
   return (
-    <div className="border-t border-border px-4 py-3">
+    <div className="px-4 py-3">
       <p className="mb-2 text-xs font-medium text-muted-foreground">Per-profile override</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Select
