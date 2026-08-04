@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatMessage } from "@nakama/core";
+import type { ChatMessage, UserConfig } from "@nakama/core";
 import { createInMemoryDatabaseAdapter } from "@nakama/db";
 import {
   evaluatePostTurnReviewTurnEligibility,
@@ -263,5 +263,38 @@ describe("SkillPostTurnReviewService", () => {
     release();
     expect(await first).toBe("ran");
     expect(ran).toBe(1);
+  });
+
+  test("resolveProviderForProfile passes the model string to createProvider", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const now = new Date().toISOString();
+    await db.upsertProfile({
+      id: "profile_1",
+      name: "Bot",
+      systemPrompt: "",
+      model: "openai-1::gpt-5.4",
+      isSuper: false,
+      orgId: "org_1",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const userConfig: UserConfig = {
+      defaultProviderId: "openai-1",
+      providers: [
+        {
+          id: "openai-1",
+          type: "openai",
+          label: "OpenAI",
+          apiKey: "sk-test",
+          createdAt: now,
+        },
+      ],
+    };
+
+    const service = new SkillPostTurnReviewService(db, () => userConfig);
+    const provider = await service.resolveProviderForProfile("profile_1");
+    expect(provider).not.toBeNull();
+    expect(provider?.name).toBe("openai");
   });
 });

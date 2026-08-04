@@ -57,21 +57,6 @@ export function shouldAutoEnableThinking(
   return activeModelSupportsThinking === true;
 }
 
-export function formatThinkingEffortSuccessMessage(
-  effort: ThinkingEffort,
-  hadMessages: boolean,
-): { effort: ThinkingEffort; clearedHistory: boolean; message: string } {
-  const label = thinkingEffortLabel(effort);
-  const clearedHistory = hadMessages;
-  return {
-    effort,
-    clearedHistory,
-    message: clearedHistory
-      ? `Thinking effort set to ${label}. Chat history cleared.`
-      : `Thinking effort set to ${label}.`,
-  };
-}
-
 export function shouldBlockThinkingEffortChange(busy: boolean): boolean {
   return busy;
 }

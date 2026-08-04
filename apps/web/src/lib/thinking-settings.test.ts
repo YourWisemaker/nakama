@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildAutoEnableThinkingPayload,
-  formatThinkingEffortSuccessMessage,
   shouldAutoEnableThinking,
   shouldBlockThinkingEffortChange,
   shouldShowThinkingBlocks,
@@ -52,18 +51,6 @@ describe("thinking-settings helpers", () => {
     expect(
       shouldAutoEnableThinking(disabled, true, false, false, { hasProfileId: false }),
     ).toBe(false);
-  });
-
-  test("formatThinkingEffortSuccessMessage flags cleared history without asserting copy", () => {
-    expect(formatThinkingEffortSuccessMessage("high", true)).toMatchObject({
-      effort: "high",
-      clearedHistory: true,
-    });
-    expect(formatThinkingEffortSuccessMessage("low", false)).toMatchObject({
-      effort: "low",
-      clearedHistory: false,
-    });
-    expect(formatThinkingEffortSuccessMessage("high", true).message.length).toBeGreaterThan(0);
   });
 
   test("shouldBlockThinkingEffortChange blocks while busy", () => {

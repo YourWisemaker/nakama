@@ -260,8 +260,6 @@ export class SkillPostTurnReviewService {
       return null;
     }
 
-    return createProviderForInstance(selection.instance, {
-      model: selection.model,
-    });
+    return createProviderForInstance(selection.instance, selection.model);
   }
 }

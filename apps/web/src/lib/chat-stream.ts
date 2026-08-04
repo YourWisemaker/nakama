@@ -670,11 +670,11 @@ export const composerIconButtonClass =
   "size-7 shrink-0 rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40";
 
 export const composerToolbarClass =
-  "flex min-w-0 flex-1 flex-wrap items-center gap-1.5";
+  "flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden @[22rem]/composer:gap-1.5";
 
 /** Ghost select trigger for composer model / thinking controls (no filled chip look). */
 export const composerSelectTriggerClass =
-  "h-7 w-auto gap-1 rounded-md border-none bg-transparent px-1.5 text-xs font-medium text-muted-foreground shadow-none hover:bg-accent/60 hover:text-foreground aria-expanded:bg-accent/60 aria-expanded:text-foreground dark:bg-transparent dark:hover:bg-accent/60";
+  "h-7 w-auto max-w-full min-w-0 gap-1 rounded-md border-none bg-transparent px-1.5 text-xs font-medium text-muted-foreground shadow-none hover:bg-accent/60 hover:text-foreground aria-expanded:bg-accent/60 aria-expanded:text-foreground dark:bg-transparent dark:hover:bg-accent/60 *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate";
 
 const composerInputGroupBase =
   "[&_[data-slot=input-group]]:h-auto [&_[data-slot=input-group]]:flex-col [&_[data-slot=input-group]]:items-stretch [&_[data-slot=input-group]]:gap-0 [&_[data-slot=input-group]]:p-2.5 sm:[&_[data-slot=input-group]]:p-3";
@@ -683,7 +683,8 @@ const composerFocusRing =
   "focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-ring/25";
 
 /** Chat composer InputGroup: always solid. Overrides InputGroup's dark:bg-input/30 and has-disabled:opacity-50. */
-export const composerInputGroupClass = "chat-composer-input overflow-visible";
+export const composerInputGroupClass =
+  "chat-composer-input @container/composer overflow-visible";
 
 export const composerDockClass = cn(
   "flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-[box-shadow,border-color]",

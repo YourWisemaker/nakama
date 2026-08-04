@@ -19,7 +19,7 @@ import {
 } from "@/lib/thinking-settings";
 import { cn } from "@/lib/utils";
 
-const THINKING_TOOLTIP = "Reasoning depth. Changing this starts a new chat.";
+const THINKING_TOOLTIP = "Reasoning depth for the next replies.";
 
 export interface ChatThinkingEffortControlProps {
   visible: boolean;
@@ -57,18 +57,15 @@ export function ChatThinkingEffortControl({
             >
               <PromptInputSelectTrigger
                 size="sm"
-                className={cn(
-                  composerSelectTriggerClass,
-                  "max-w-[min(10rem,40vw)] sm:max-w-[min(12rem,44vw)]",
-                )}
+                className={cn(composerSelectTriggerClass, "shrink-0")}
                 aria-label="Thinking effort"
                 title={THINKING_TOOLTIP}
               >
                 <PromptInputSelectValue placeholder="Thinking">
                   <span className="inline-flex items-center gap-1">
                     <BrainIcon className="size-3 shrink-0 opacity-70" aria-hidden />
-                    <span className="sm:hidden">{shortLabel}</span>
-                    <span className="hidden sm:inline">{fullLabel}</span>
+                    <span className="@[22rem]/composer:hidden">{shortLabel}</span>
+                    <span className="hidden @[22rem]/composer:inline">{fullLabel}</span>
                   </span>
                 </PromptInputSelectValue>
               </PromptInputSelectTrigger>
