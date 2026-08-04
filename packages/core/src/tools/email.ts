@@ -37,43 +37,35 @@ const limitSchema = z.preprocess(
   z.number().int().positive().max(100),
 );
 
-const emailListInputSchema = z
-  .object({
-    action: z.literal("list"),
-    folder: folderSchema,
-    limit: limitSchema,
-  })
-  .strict();
+const emailListInputSchema = z.object({
+  action: z.literal("list"),
+  folder: folderSchema,
+  limit: limitSchema,
+});
 
-const emailReadInputSchema = z
-  .object({
-    action: z.literal("read"),
-    folder: folderSchema,
-    uid: z
-      .number({ error: "uid is required." })
-      .int()
-      .positive({ error: "uid must be a positive integer." }),
-  })
-  .strict();
+const emailReadInputSchema = z.object({
+  action: z.literal("read"),
+  folder: folderSchema,
+  uid: z
+    .number({ error: "uid is required." })
+    .int()
+    .positive({ error: "uid must be a positive integer." }),
+});
 
-const emailSearchInputSchema = z
-  .object({
-    action: z.literal("search"),
-    folder: folderSchema,
-    query: z.string({ error: "query is required." }).trim().min(1),
-    limit: limitSchema,
-  })
-  .strict();
+const emailSearchInputSchema = z.object({
+  action: z.literal("search"),
+  folder: folderSchema,
+  query: z.string({ error: "query is required." }).trim().min(1),
+  limit: limitSchema,
+});
 
-const emailSendInputSchema = z
-  .object({
-    action: z.literal("send"),
-    to: z.string({ error: "to is required." }).trim().min(1),
-    subject: z.string({ error: "subject is required." }).trim().min(1),
-    text: z.string({ error: "text is required." }).trim().min(1),
-    html: z.string().trim().min(1).optional(),
-  })
-  .strict();
+const emailSendInputSchema = z.object({
+  action: z.literal("send"),
+  to: z.string({ error: "to is required." }).trim().min(1),
+  subject: z.string({ error: "subject is required." }).trim().min(1),
+  text: z.string({ error: "text is required." }).trim().min(1),
+  html: z.string().trim().min(1).optional(),
+});
 
 export const emailInputSchema = z.discriminatedUnion("action", [
   emailListInputSchema,

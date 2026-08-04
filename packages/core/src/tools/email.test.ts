@@ -49,6 +49,30 @@ describe("email tool", () => {
     }
   });
 
+  test("strips cross-action fields advertised by the flat LLM schema", async () => {
+    const sender = createFakeMailSender();
+
+    const result = await runEmailTool(
+      {
+        action: "send",
+        to: "recipient@example.com",
+        subject: "Hello",
+        text: "Body",
+        folder: "INBOX",
+        limit: 20,
+        uid: 99,
+        query: "noise",
+      },
+      {
+        loadConfig: async () => completeConfig,
+        createSender: () => sender,
+      },
+    );
+
+    expect("sent" in result && result.sent?.messageId).toBe("fake-message-id");
+    expect(sender.sent).toHaveLength(1);
+  });
+
   test("returns configuration error when mailbox is incomplete", async () => {
     const reader = createFakeMailReader();
     const sender = createFakeMailSender();
