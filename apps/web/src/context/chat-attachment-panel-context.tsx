@@ -124,7 +124,7 @@ export function ChatAttachmentPanelProvider({
               <button
                 type="button"
                 aria-label="Close artifact preview"
-                className="absolute inset-0 z-20 bg-background/50 animate-in fade-in-0 duration-200"
+                className="absolute inset-0 z-20 bg-background/50 animate-in fade-in-0 duration-200 transition-none"
                 onClick={handlePanelClose}
               />
             ) : null}
@@ -141,7 +141,9 @@ export function ChatAttachmentPanelProvider({
               className={cn(
                 overlay &&
                   "absolute inset-y-0 right-0 z-30 h-full max-h-full overflow-hidden shadow-xl",
-                overlay && enterSlide && "animate-in slide-in-from-right duration-200",
+                overlay &&
+                  enterSlide &&
+                  "animate-in slide-in-from-right duration-200 transition-none",
               )}
             >
               {config.content}

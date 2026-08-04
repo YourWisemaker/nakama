@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LogOutIcon, UserIcon } from "lucide-react";
-import { THEME_OPTIONS } from "@/components/ThemeToggle";
+import { THEME_OPTIONS } from "@/components/theme-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
