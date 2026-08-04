@@ -60,7 +60,7 @@ describe("turnKey", () => {
     expect(turnKey(turn)).toBe("u1");
   });
 
-  test("joins assistant member ids and changes when a tool appends", () => {
+  test("keeps assistant key stable when a tool appends", () => {
     const base = groupMessagesIntoTurns([
       item({ id: "a1", role: "assistant", content: "x" }),
       item({ id: "t1", role: "tool", tool: "bash", toolStatus: "done" }),
@@ -71,7 +71,7 @@ describe("turnKey", () => {
       item({ id: "t2", role: "tool", tool: "bash", toolStatus: "done" }),
     ])[0]!;
 
-    expect(turnKey(base)).toBe("a1:t1");
-    expect(turnKey(withExtra)).toBe("a1:t1:t2");
+    expect(turnKey(base)).toBe("assistant:a1");
+    expect(turnKey(withExtra)).toBe("assistant:a1");
   });
 });

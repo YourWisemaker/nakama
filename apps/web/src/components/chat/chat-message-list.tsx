@@ -86,8 +86,17 @@ export function ChatMessageList({
   const turns = useMemo(() => groupMessagesIntoTurns(messages), [messages]);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const isAtBottomRef = useRef(true);
+  const stickIntentRef = useRef(true);
+  const lastListHeightRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const sessionAnchor = messages[0]?.id ?? "empty";
+
+  useEffect(() => {
+    isAtBottomRef.current = true;
+    stickIntentRef.current = true;
+    lastListHeightRef.current = 0;
+    setIsAtBottom(true);
+  }, [sessionAnchor]);
 
   const showAwaitingPlaceholder =
     streamActive && isAwaitingModelResponse(messages);
@@ -96,6 +105,9 @@ export function ChatMessageList({
     : null;
 
   const scrollToLatest = useCallback(() => {
+    stickIntentRef.current = true;
+    isAtBottomRef.current = true;
+    setIsAtBottom(true);
     virtuosoRef.current?.scrollToIndex({
       index: "LAST",
       align: "end",
@@ -114,25 +126,32 @@ export function ChatMessageList({
   const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
     isAtBottomRef.current = atBottom;
     setIsAtBottom(atBottom);
+    stickIntentRef.current = atBottom;
   }, []);
 
   const handleFollowOutput = useCallback(
-    (atBottom: boolean) => followOutputBehavior(atBottom),
+    (_atBottom: boolean) => followOutputBehavior(stickIntentRef.current),
     [],
   );
 
-  const handleTotalListHeightChanged = useCallback((_height: number) => {
-    if (shouldAutoscrollOnHeightGrowth(isAtBottomRef.current)) {
-      virtuosoRef.current?.autoscrollToBottom();
+  const handleTotalListHeightChanged = useCallback((height: number) => {
+    const previous = lastListHeightRef.current;
+    lastListHeightRef.current = height;
+    if (
+      height > previous &&
+      shouldAutoscrollOnHeightGrowth(stickIntentRef.current)
+    ) {
+      virtuosoRef.current?.scrollToIndex({
+        index: "LAST",
+        align: "end",
+        behavior: "auto",
+      });
     }
   }, []);
 
   const renderTurn = useCallback(
     (turnIndex: number, turn: MessageTurn) => {
       const itemClassName = cn(
-        "px-4",
-        contentClassName,
-        turnIndex === 0 ? "pt-4" : null,
         turnIndex === turns.length - 1 ? "pb-4" : "pb-6",
       );
 
@@ -168,7 +187,6 @@ export function ChatMessageList({
       actionsDisabled,
       awaitingLabel,
       branchingMessageId,
-      contentClassName,
       modelLabel,
       onBranchMessage,
       onRetryMessage,
@@ -207,15 +225,15 @@ export function ChatMessageList({
         <Virtuoso
           key={sessionAnchor}
           ref={virtuosoRef}
-          className="h-full no-scrollbar"
+          className={cn("h-full no-scrollbar", contentClassName ?? "px-4 py-4")}
           data={turns}
           computeItemKey={(_, turn) => turnKey(turn)}
           itemContent={renderTurn}
           alignToBottom
-          initialTopMostItemIndex={turns.length - 1}
+          initialTopMostItemIndex={{ index: "LAST", align: "end" }}
           followOutput={handleFollowOutput}
           atBottomStateChange={handleAtBottomStateChange}
-          atBottomThreshold={24}
+          atBottomThreshold={80}
           increaseViewportBy={{ top: 200, bottom: 200 }}
           totalListHeightChanged={handleTotalListHeightChanged}
         />

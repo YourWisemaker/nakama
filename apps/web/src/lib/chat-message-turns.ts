@@ -37,5 +37,7 @@ export function turnKey(turn: MessageTurn): string {
     return turn.message.id;
   }
 
-  return turn.messages.map(({ message }) => message.id).join(":");
+  // Stable for the life of the turn so tool/assistant appends do not remount Virtuoso rows.
+  const first = turn.messages[0]?.message.id;
+  return first ? `assistant:${first}` : "assistant:empty";
 }
