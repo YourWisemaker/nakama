@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const DEFAULT_PANEL_WIDTH = 448;
+const ENTER_SLIDE_MS = 200;
 
 export function ChatAttachmentPanelProvider({
   children,
@@ -26,11 +27,25 @@ export function ChatAttachmentPanelProvider({
 }) {
   const [config, setConfig] = useState<ChatAttachmentPanelConfig | null>(null);
   const [width, setWidth] = useState(DEFAULT_PANEL_WIDTH);
+  const [enterSlide, setEnterSlide] = useState(false);
   const configRef = useRef<ChatAttachmentPanelConfig | null>(config);
 
   useEffect(() => {
     configRef.current = config;
   }, [config]);
+
+  const openId = config?.id ?? null;
+
+  useEffect(() => {
+    if (!openId || presentation !== "overlay") {
+      setEnterSlide(false);
+      return;
+    }
+
+    setEnterSlide(true);
+    const timeout = window.setTimeout(() => setEnterSlide(false), ENTER_SLIDE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [openId, presentation]);
 
   const hide = useCallback((id?: string) => {
     setConfig((current) => {
@@ -125,9 +140,8 @@ export function ChatAttachmentPanelProvider({
               onClose={handlePanelClose}
               className={cn(
                 overlay &&
-                  (fullscreen
-                    ? "absolute inset-0 z-30 overflow-hidden"
-                    : "absolute inset-y-0 right-0 z-30 h-full max-h-full overflow-hidden shadow-xl animate-in slide-in-from-right duration-200"),
+                  "absolute inset-y-0 right-0 z-30 h-full max-h-full overflow-hidden shadow-xl",
+                overlay && enterSlide && "animate-in slide-in-from-right duration-200",
               )}
             >
               {config.content}

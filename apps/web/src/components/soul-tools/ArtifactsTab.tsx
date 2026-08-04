@@ -241,7 +241,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
               <div>
                 <h2 className="text-sm font-semibold text-foreground">Artifacts</h2>
                 <p className="text-xs text-muted-foreground">
-                  Persistent files saved by the agent under `artifacts/`.
+                  Files your agent created and saved for you.
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>

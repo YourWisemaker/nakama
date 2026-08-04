@@ -86,7 +86,9 @@ Active `MEMORY.md` has a **4096-byte** soft limit. Default and super-bot profile
 
 ## Artifact saves
 
-Persistent outputs (reports, summaries, generated text, Word documents) are not a separate builtin. Agents use `write_file` or `write_docx` with the `save-artifact` bundled skill under `artifacts/`. The skill also documents writing a `{filename}.nakama-meta.json` sidecar so the dashboard Artifacts tab shows MIME types and timestamps.
+Artifacts are files your agent creates and saves for you — reports, summaries, generated text, Word documents, and other outputs you can preview or download later from the dashboard Artifacts tab or from web chat.
+
+They are not a separate builtin. Agents use `write_file` or `write_docx` with the `save-artifact` bundled skill under `artifacts/`. The skill also documents writing a `{filename}.nakama-meta.json` sidecar so the Artifacts tab shows MIME types and timestamps.
 
 On web chat, `write_file` and `write_docx` saves under `artifacts/` appear as attachment chips on the assistant message. Click a chip to open a resizable preview panel with copy, download, and fullscreen:
 
@@ -393,7 +395,7 @@ File tools (`read_file`, `write_file`, `edit_file`, `delete_file`) are scoped to
 - **Profile workspace:** `~/.nakama/orgs/{orgId}/profiles/{profileId}/` (soul files, knowledge base, `artifacts/`, etc.)
 - **Custom tools directory:** `~/.nakama/tools/` (follows `NAKAMA_CONFIG_DIR` if set)
 
-Agents save persistent outputs under `artifacts/` via the `save-artifact` bundled skill and `write_file`, not a dedicated builtin.
+Agents save artifact files under `artifacts/` via the `save-artifact` bundled skill and `write_file`, not a dedicated builtin.
 
 Path guards enforce:
 
