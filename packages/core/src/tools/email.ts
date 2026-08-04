@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolContext, ToolDefinition } from "../contract";
+import type { JsonSchema, ToolContext, ToolDefinition } from "../contract";
 import {
   emailConfigToMailboxConfig,
   isEmailConfigComplete,
@@ -15,7 +15,7 @@ import {
   createAttachmentReference,
   getMailboxIdentity,
 } from "../mail/attachment-reference";
-import { jsonSchemaFromZod, parseToolInput } from "./schema";
+import { parseToolInput } from "./schema";
 
 const EMAIL_ADDRESS_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -85,8 +85,57 @@ export const emailInputSchema = z.discriminatedUnion("action", [
 export type EmailAction = z.infer<typeof emailInputSchema>["action"];
 export type EmailToolInput = z.infer<typeof emailInputSchema>;
 
-export function emailParameters() {
-  return jsonSchemaFromZod(emailInputSchema);
+/**
+ * OpenAI (and several OpenAI-compatible providers) require tool `parameters`
+ * to be a JSON Schema with top-level `type: "object"`. Zod's discriminated
+ * union emits `oneOf`/`anyOf` without that key, which providers reject with
+ * 400 invalid_function_parameters — blocking all chat when email is enabled.
+ * Keep `emailInputSchema` for runtime parsing; expose a flat object schema to LLMs.
+ */
+export function emailParameters(): JsonSchema {
+  return {
+    type: "object",
+    properties: {
+      action: {
+        type: "string",
+        enum: ["list", "read", "search", "send"],
+      },
+      folder: {
+        type: "string",
+        description: "Mail folder. Defaults to INBOX.",
+      },
+      limit: {
+        type: "integer",
+        description: "Max messages to return (1-100). Defaults to 20.",
+      },
+      uid: {
+        type: "integer",
+        description: "Message UID. Required for action=read.",
+      },
+      query: {
+        type: "string",
+        description: "Search query. Required for action=search.",
+      },
+      to: {
+        type: "string",
+        description: "Recipient address. Required for action=send.",
+      },
+      subject: {
+        type: "string",
+        description: "Subject. Required for action=send.",
+      },
+      text: {
+        type: "string",
+        description: "Plain-text body. Required for action=send.",
+      },
+      html: {
+        type: "string",
+        description: "Optional HTML body for action=send.",
+      },
+    },
+    required: ["action"],
+    additionalProperties: false,
+  };
 }
 
 export interface EmailToolSuccess {
