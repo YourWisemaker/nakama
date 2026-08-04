@@ -59,13 +59,11 @@ import { client, formatError } from "@/lib/client";
 import {
   buildAutoEnableThinkingPayload,
   DEFAULT_THINKING_EFFORT,
-  formatThinkingEffortSuccessMessage,
   shouldAutoEnableThinking,
   shouldBlockThinkingEffortChange,
   shouldShowThinkingBlocks,
   shouldShowThinkingEffort,
 } from "@/lib/thinking-settings";
-import { toast } from "@/lib/toast";
 import {
   decodeModelSelection,
   effectiveProfileModelSelection,
@@ -317,16 +315,8 @@ export function useChatPage() {
         return;
       }
 
-      const startedProfileId = profileId;
-
       void saveThinkingSettingsMutation
         .mutateAsync(buildThinkingSettingsPayload(effort))
-        .then(() => {
-          if (profileIdRef.current !== startedProfileId) {
-            return;
-          }
-          toast(formatThinkingEffortSuccessMessage(effort).message);
-        })
         .catch((err) => {
           setError(formatError(err));
         });

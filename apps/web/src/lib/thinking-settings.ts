@@ -57,16 +57,6 @@ export function shouldAutoEnableThinking(
   return activeModelSupportsThinking === true;
 }
 
-export function formatThinkingEffortSuccessMessage(
-  effort: ThinkingEffort,
-): { effort: ThinkingEffort; message: string } {
-  const label = thinkingEffortLabel(effort);
-  return {
-    effort,
-    message: `Thinking effort set to ${label}.`,
-  };
-}
-
 export function shouldBlockThinkingEffortChange(busy: boolean): boolean {
   return busy;
 }

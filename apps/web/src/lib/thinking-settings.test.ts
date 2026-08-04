@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildAutoEnableThinkingPayload,
-  formatThinkingEffortSuccessMessage,
   shouldAutoEnableThinking,
   shouldBlockThinkingEffortChange,
   shouldShowThinkingBlocks,
@@ -52,16 +51,6 @@ describe("thinking-settings helpers", () => {
     expect(
       shouldAutoEnableThinking(disabled, true, false, false, { hasProfileId: false }),
     ).toBe(false);
-  });
-
-  test("formatThinkingEffortSuccessMessage keeps the current chat", () => {
-    expect(formatThinkingEffortSuccessMessage("high")).toMatchObject({
-      effort: "high",
-    });
-    expect(formatThinkingEffortSuccessMessage("low")).toMatchObject({
-      effort: "low",
-    });
-    expect(formatThinkingEffortSuccessMessage("high").message.length).toBeGreaterThan(0);
   });
 
   test("shouldBlockThinkingEffortChange blocks while busy", () => {
