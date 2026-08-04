@@ -75,6 +75,19 @@ describe("profile skillsWriteApproval auth", () => {
     const okBody = (await okResp.json()) as { profile: { skillsWriteApproval: boolean | null } };
     expect(okBody.profile.skillsWriteApproval).toBe(true);
 
+    const reviewResp = await app.fetch(
+      new Request(`${BASE}/v1/profiles/${profileId}`, {
+        method: "PUT",
+        headers: orgAdminSession.headers({ "X-CSRF-Token": orgAdminSession.csrfToken }, orgId),
+        body: JSON.stringify({ skillsPostTurnReview: true }),
+      }),
+    );
+    expect(reviewResp.status).toBe(200);
+    const reviewBody = (await reviewResp.json()) as {
+      profile: { skillsPostTurnReview: boolean | null };
+    };
+    expect(reviewBody.profile.skillsPostTurnReview).toBe(true);
+
     const forbiddenResp = await app.fetch(
       new Request(`${BASE}/v1/profiles/${profileId}`, {
         method: "PUT",

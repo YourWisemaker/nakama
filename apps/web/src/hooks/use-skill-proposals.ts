@@ -7,18 +7,24 @@ export function useSkillProposals(
   options: {
     status?: "pending" | "approved" | "rejected";
     profileId?: string;
-    refetchInterval?: number;
+    sessionId?: string;
+    enabled?: boolean;
+    refetchInterval?: number | false;
   } = {},
 ) {
   const status = options.status ?? "pending";
   return useQuery({
-    queryKey: queryKeys.skillProposals(orgId ?? "", status, options.profileId),
+    queryKey: [
+      ...queryKeys.skillProposals(orgId ?? "", status, options.profileId),
+      options.sessionId ?? "all",
+    ],
     queryFn: () =>
       client.listSkillProposals(orgId ?? "", {
         status,
         profileId: options.profileId,
+        sessionId: options.sessionId,
       }),
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options.enabled ?? true),
     refetchInterval: options.refetchInterval,
   });
 }

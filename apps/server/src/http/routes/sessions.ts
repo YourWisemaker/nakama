@@ -351,8 +351,11 @@ export function registerSessionRoutes(app: HonoApp, options: ServerOptions): voi
     }
 
     if (wantsStream) {
-      return streamMessage(sessionId, session, input, () => {
+      return streamMessage(sessionId, session, input, (terminal) => {
         agent.scheduleSessionTitleGeneration(sessionId);
+        if (terminal.type === "done") {
+          agent.schedulePostTurnSkillReview(sessionId);
+        }
       });
     }
 
@@ -365,6 +368,7 @@ export function registerSessionRoutes(app: HonoApp, options: ServerOptions): voi
         ...(contextUsage ? { contextUsage } : {}),
       });
       agent.scheduleSessionTitleGeneration(sessionId);
+      agent.schedulePostTurnSkillReview(sessionId);
       return json<SendMessageResponse>({
         reply,
         ...(contextUsage ? { contextUsage } : {}),

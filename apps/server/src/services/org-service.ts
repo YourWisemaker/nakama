@@ -72,6 +72,10 @@ export class OrgService {
         request.skillsWriteApproval !== undefined
           ? request.skillsWriteApproval
           : org.skillsWriteApproval ?? false,
+      skillsPostTurnReview:
+        request.skillsPostTurnReview !== undefined
+          ? request.skillsPostTurnReview
+          : org.skillsPostTurnReview ?? false,
       updatedAt: now,
     };
 
@@ -747,6 +751,7 @@ function toOrganizationSummary(record: StoredOrganizationRecord): OrganizationSu
     name: record.name,
     slug: record.slug,
     skillsWriteApproval: record.skillsWriteApproval ?? false,
+    skillsPostTurnReview: record.skillsPostTurnReview ?? false,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };

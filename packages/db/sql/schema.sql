@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   org_id TEXT,
   is_default INTEGER DEFAULT 0 NOT NULL,
   skills_write_approval INTEGER,
+  skills_post_turn_review INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
@@ -255,6 +256,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
   skills_write_approval INTEGER NOT NULL DEFAULT 0,
+  skills_post_turn_review INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -326,6 +328,29 @@ CREATE TABLE IF NOT EXISTS skill_proposals (
 
 CREATE INDEX IF NOT EXISTS skill_proposals_org_status ON skill_proposals (org_id, status);
 CREATE INDEX IF NOT EXISTS skill_proposals_org_profile_status ON skill_proposals (org_id, profile_id, status);
+
+CREATE TABLE IF NOT EXISTS skill_suggestions (
+  id TEXT PRIMARY KEY NOT NULL,
+  org_id TEXT NOT NULL,
+  profile_id TEXT NOT NULL,
+  session_id TEXT,
+  proposed_by_user_id TEXT,
+  action TEXT NOT NULL,
+  skill_name TEXT NOT NULL,
+  content TEXT,
+  patch_old_string TEXT,
+  patch_new_string TEXT,
+  status TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'post_turn_review',
+  warnings TEXT,
+  created_at TEXT NOT NULL,
+  applied_at TEXT,
+  FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS skill_suggestions_org_status ON skill_suggestions (org_id, status);
+CREATE INDEX IF NOT EXISTS skill_suggestions_org_session ON skill_suggestions (org_id, session_id);
+CREATE INDEX IF NOT EXISTS skill_suggestions_org_profile_status ON skill_suggestions (org_id, profile_id, status);
 
 CREATE TABLE IF NOT EXISTS profile_skill_usage (
   org_id TEXT NOT NULL,

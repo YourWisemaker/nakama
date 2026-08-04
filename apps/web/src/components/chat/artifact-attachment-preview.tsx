@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileTextIcon, FilmIcon, ImageIcon } from "lucide-react";
+import { EyeIcon, FileTextIcon, FilmIcon, ImageIcon } from "lucide-react";
 import { ArtifactAttachmentPanelActions } from "@/components/chat/artifact-attachment-panel-actions";
 import {
   ArtifactShareMenuItem,
@@ -16,6 +16,12 @@ import {
   artifactPanelSubtitle,
 } from "@/components/chat/artifact-attachment-panel-body.shared";
 import { useArtifactPreviewContent } from "@/components/chat/use-artifact-preview-content";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useChatAttachmentPanel } from "@/context/use-chat-attachment-panel";
 import {
   artifactCodeLanguage,
@@ -40,6 +46,8 @@ interface ArtifactAttachmentPreviewProps {
   id: string;
   artifact: ChatArtifactRef;
   className?: string;
+  /** `chip` is the chat attachment chip; `icon` is an icon-only view button. */
+  variant?: "chip" | "icon";
 }
 
 function ArtifactAttachmentPreviewPanelBody({
@@ -123,6 +131,7 @@ export function ArtifactAttachmentPreview({
   id,
   artifact,
   className,
+  variant = "chip",
 }: ArtifactAttachmentPreviewProps) {
   const { show, update, activeId } = useChatAttachmentPanel();
   const share = useArtifactShareControls({ profileId, artifactPath: artifact.path });
@@ -301,6 +310,31 @@ export function ArtifactAttachmentPreview({
         setCopied(false);
       },
     });
+  }
+
+  if (variant === "icon") {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="View"
+              title="View"
+              className={className}
+              onClick={openPanel}
+            >
+              <EyeIcon className="size-3.5" aria-hidden />
+            </Button>
+          }
+        />
+        <TooltipContent side="top" sideOffset={8}>
+          View
+        </TooltipContent>
+      </Tooltip>
+    );
   }
 
   return (

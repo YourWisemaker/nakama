@@ -111,12 +111,3 @@ export function useNotifications(): {
 
   return { items, automationItems, orgMemoryItems, skillProposalItems, totalCount, isLoading };
 }
-
-/** @deprecated Use useNotifications */
-export const useSidebarNotifications = useNotifications;
-
-/** @deprecated Use NotificationItem */
-export type SidebarNotificationItem = NotificationItem;
-
-/** @deprecated Use NotificationKind */
-export type SidebarNotificationKind = NotificationKind;

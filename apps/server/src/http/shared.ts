@@ -533,7 +533,7 @@ export function streamMessage(
   sessionId: string,
   session: AgentChatSession,
   input: SendMessageInput,
-  onComplete?: () => void,
+  onComplete?: (terminal: StreamEvent) => void,
 ): Response {
   const encoder = new TextEncoder();
   const keepaliveIntervalMs = 4_000;
@@ -582,7 +582,7 @@ export function streamMessage(
 
         sessionTurnRegistry.endTurn(sessionId, terminal);
         controller.close();
-        onComplete?.();
+        onComplete?.(terminal);
       }
     },
   });

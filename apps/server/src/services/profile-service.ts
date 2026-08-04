@@ -155,6 +155,10 @@ export class ProfileService {
         request.skillsWriteApproval === undefined
           ? profile.skillsWriteApproval
           : request.skillsWriteApproval,
+      skillsPostTurnReview:
+        request.skillsPostTurnReview === undefined
+          ? profile.skillsPostTurnReview
+          : request.skillsPostTurnReview,
       updatedAt: now,
     });
 
@@ -534,6 +538,7 @@ export class ProfileService {
       isSuper: profile.isSuper,
       isDefault: profile.isDefault ?? false,
       skillsWriteApproval: profile.skillsWriteApproval ?? null,
+      skillsPostTurnReview: profile.skillsPostTurnReview ?? null,
       toolCount: tools.length,
       mcpServerCount: mcpServers.length,
       soulActive: soulStack !== null,

@@ -54,6 +54,7 @@ describe("platform org routes", () => {
         name: "Acme Corp",
         slug: "acme-corp",
         skillsWriteApproval: false,
+        skillsPostTurnReview: false,
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       },

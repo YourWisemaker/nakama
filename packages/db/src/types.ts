@@ -46,6 +46,8 @@ export interface StoredProfileRecord {
   isDefault?: boolean;
   /** null = inherit org default; true/false = force gate on/off for this profile */
   skillsWriteApproval?: boolean | null;
+  /** null = inherit org default; true/false = force post-turn review on/off for this profile */
+  skillsPostTurnReview?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -325,6 +327,7 @@ export interface StoredOrganizationRecord {
   name: string;
   slug: string;
   skillsWriteApproval?: boolean;
+  skillsPostTurnReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -390,6 +393,28 @@ export interface StoredSkillProposal {
   reviewerUserId: string | null;
   reviewedAt: string | null;
   createdAt: string;
+}
+
+export type SkillSuggestionStatus = "pending" | "applied";
+export type SkillSuggestionAction = "create" | "patch";
+export type SkillSuggestionSource = "post_turn_review";
+
+export interface StoredSkillSuggestion {
+  id: string;
+  orgId: string;
+  profileId: string;
+  sessionId: string | null;
+  proposedByUserId: string | null;
+  action: SkillSuggestionAction;
+  skillName: string;
+  content: string | null;
+  patchOldString: string | null;
+  patchNewString: string | null;
+  status: SkillSuggestionStatus;
+  source: SkillSuggestionSource;
+  warnings: string[] | null;
+  createdAt: string;
+  appliedAt: string | null;
 }
 
 export interface StoredArtifactShareRecord {
@@ -491,7 +516,7 @@ export interface DatabaseAdapter {
   createSkillProposal(record: StoredSkillProposal): Promise<void>;
   listSkillProposals(
     orgId: string,
-    options?: { status?: SkillProposalStatus; profileId?: string },
+    options?: { status?: SkillProposalStatus; profileId?: string; sessionId?: string },
   ): Promise<StoredSkillProposal[]>;
   getSkillProposal(orgId: string, id: string): Promise<StoredSkillProposal | null>;
   getPendingSkillProposalForCreate(
@@ -521,6 +546,14 @@ export interface DatabaseAdapter {
     },
   ): Promise<boolean>;
   countPendingSkillProposals(orgId: string, profileId?: string): Promise<number>;
+
+  createSkillSuggestion(record: StoredSkillSuggestion): Promise<void>;
+  listSkillSuggestions(
+    orgId: string,
+    options?: { sessionId?: string; status?: SkillSuggestionStatus; profileId?: string },
+  ): Promise<StoredSkillSuggestion[]>;
+  getSkillSuggestion(orgId: string, id: string): Promise<StoredSkillSuggestion | null>;
+  markSkillSuggestionApplied(orgId: string, id: string, appliedAt: string): Promise<boolean>;
 
   createArtifactShare(record: StoredArtifactShareRecord): Promise<void>;
   updateArtifactShareSnapshot(

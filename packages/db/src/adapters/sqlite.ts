@@ -22,6 +22,8 @@ import type {
   StoredSkillProposal,
   SkillProposalStatus,
   SkillProposalAction,
+  StoredSkillSuggestion,
+  SkillSuggestionStatus,
   StoredArtifactShareRecord,
   StoredOrganizationRecord,
   StoredUserOrganizationRecord,
@@ -81,6 +83,7 @@ interface ProfileRow {
   org_id: string | null;
   is_default: number;
   skills_write_approval: number | null;
+  skills_post_turn_review: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -307,6 +310,7 @@ interface OrganizationRow {
   name: string;
   slug: string;
   skills_write_approval: number;
+  skills_post_turn_review: number;
   created_at: string;
   updated_at: string;
 }
@@ -353,6 +357,24 @@ interface SkillProposalRow {
   reviewer_user_id: string | null;
   reviewed_at: string | null;
   created_at: string;
+}
+
+interface SkillSuggestionRow {
+  id: string;
+  org_id: string;
+  profile_id: string;
+  session_id: string | null;
+  proposed_by_user_id: string | null;
+  action: string;
+  skill_name: string;
+  content: string | null;
+  patch_old_string: string | null;
+  patch_new_string: string | null;
+  status: string;
+  source: string;
+  warnings: string | null;
+  created_at: string;
+  applied_at: string | null;
 }
 
 interface ArtifactShareRow {
@@ -482,10 +504,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       org_id,
       is_default,
       skills_write_approval,
+      skills_post_turn_review,
       created_at,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       system_prompt = excluded.system_prompt,
@@ -496,6 +519,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       org_id = excluded.org_id,
       is_default = excluded.is_default,
       skills_write_approval = excluded.skills_write_approval,
+      skills_post_turn_review = excluded.skills_post_turn_review,
       updated_at = excluded.updated_at
   `);
   const deleteProfileStmt = db.prepare("DELETE FROM profiles WHERE id = ?");
@@ -1108,27 +1132,28 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     WHERE id = ?
   `);
   const upsertOrganizationStmt = db.prepare(`
-    INSERT INTO organizations (id, name, slug, skills_write_approval, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = excluded.slug,
       skills_write_approval = excluded.skills_write_approval,
+      skills_post_turn_review = excluded.skills_post_turn_review,
       updated_at = excluded.updated_at
   `);
   const listOrganizationsStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
     FROM organizations
     ORDER BY name ASC
   `);
   const getOrganizationBySlugStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
     FROM organizations
     WHERE slug = ?
     LIMIT 1
   `);
   const getOrganizationByIdStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
     FROM organizations
     WHERE id = ?
     LIMIT 1
@@ -1303,6 +1328,27 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND status = 'pending'
   `);
+  const createSkillSuggestionStmt = db.prepare(`
+    INSERT INTO skill_suggestions (
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, source, warnings, created_at, applied_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const getSkillSuggestionStmt = db.prepare(`
+    SELECT
+      id, org_id, profile_id, session_id, proposed_by_user_id,
+      action, skill_name, content, patch_old_string, patch_new_string,
+      status, source, warnings, created_at, applied_at
+    FROM skill_suggestions
+    WHERE org_id = ? AND id = ?
+    LIMIT 1
+  `);
+  const markSkillSuggestionAppliedStmt = db.prepare(`
+    UPDATE skill_suggestions
+    SET status = 'applied', applied_at = ?
+    WHERE org_id = ? AND id = ?
+  `);
   const createArtifactShareStmt = db.prepare(`
     INSERT INTO artifact_shares (
       id, org_id, profile_id, source_path, filename, mime_type, size_bytes,
@@ -1367,6 +1413,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       o.name,
       o.slug,
       o.skills_write_approval,
+      o.skills_post_turn_review,
       o.created_at,
       o.updated_at,
       om.role,
@@ -1476,6 +1523,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.name,
         record.slug,
         record.skillsWriteApproval ? 1 : 0,
+        record.skillsPostTurnReview ? 1 : 0,
         record.createdAt,
         record.updatedAt,
       );
@@ -1556,6 +1604,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
           name: string;
           slug: string;
           skills_write_approval: number;
+          skills_post_turn_review: number;
           created_at: string;
           updated_at: string;
           role: string;
@@ -1568,6 +1617,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
             name: record.name,
             slug: record.slug,
             skillsWriteApproval: record.skills_write_approval !== 0,
+            skillsPostTurnReview: record.skills_post_turn_review !== 0,
             createdAt: record.created_at,
             updatedAt: record.updated_at,
           },
@@ -1685,7 +1735,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     },
 
     async listSkillProposals(orgId, options = {}) {
-      const { status, profileId } = options;
+      const { status, profileId, sessionId } = options;
       let rows: SkillProposalRow[];
       if (status && profileId) {
         rows = listSkillProposalsByStatusAndProfileStmt.all(
@@ -1700,7 +1750,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       } else {
         rows = listAllSkillProposalsStmt.all(orgId) as SkillProposalRow[];
       }
-      return rows.map(toSkillProposalRecord);
+      const records = rows.map(toSkillProposalRecord);
+      if (!sessionId) {
+        return records;
+      }
+      return records.filter((proposal) => proposal.sessionId === sessionId);
     },
 
     async getSkillProposal(orgId, id) {
@@ -1751,6 +1805,67 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         orgId,
         id,
       );
+      return result.changes > 0;
+    },
+
+    async createSkillSuggestion(record) {
+      createSkillSuggestionStmt.run(
+        record.id,
+        record.orgId,
+        record.profileId,
+        record.sessionId,
+        record.proposedByUserId,
+        record.action,
+        record.skillName,
+        record.content,
+        record.patchOldString,
+        record.patchNewString,
+        record.status,
+        record.source,
+        record.warnings ? JSON.stringify(record.warnings) : null,
+        record.createdAt,
+        record.appliedAt,
+      );
+    },
+
+    async listSkillSuggestions(orgId, options = {}) {
+      const { sessionId, status, profileId } = options;
+      const conditions = ["org_id = ?"];
+      const params: string[] = [orgId];
+
+      if (sessionId) {
+        conditions.push("session_id = ?");
+        params.push(sessionId);
+      }
+      if (status) {
+        conditions.push("status = ?");
+        params.push(status);
+      }
+      if (profileId) {
+        conditions.push("profile_id = ?");
+        params.push(profileId);
+      }
+
+      const sql = `
+        SELECT
+          id, org_id, profile_id, session_id, proposed_by_user_id,
+          action, skill_name, content, patch_old_string, patch_new_string,
+          status, source, warnings, created_at, applied_at
+        FROM skill_suggestions
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY created_at DESC
+      `;
+      const rows = db.query(sql).all(...params) as SkillSuggestionRow[];
+      return rows.map(toSkillSuggestionRecord);
+    },
+
+    async getSkillSuggestion(orgId, id) {
+      const row = getSkillSuggestionStmt.get(orgId, id) as SkillSuggestionRow | null;
+      return row ? toSkillSuggestionRecord(row) : null;
+    },
+
+    async markSkillSuggestionApplied(orgId, id, appliedAt) {
+      const result = markSkillSuggestionAppliedStmt.run(appliedAt, orgId, id);
       return result.changes > 0;
     },
 
@@ -1954,6 +2069,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.skillsWriteApproval == null
           ? null
           : record.skillsWriteApproval
+            ? 1
+            : 0,
+        record.skillsPostTurnReview == null
+          ? null
+          : record.skillsPostTurnReview
             ? 1
             : 0,
         record.createdAt,
@@ -2581,6 +2701,8 @@ function toProfileRecord(row: ProfileRow): StoredProfileRecord {
     isDefault: row.is_default !== 0,
     skillsWriteApproval:
       row.skills_write_approval == null ? null : row.skills_write_approval !== 0,
+    skillsPostTurnReview:
+      row.skills_post_turn_review == null ? null : row.skills_post_turn_review !== 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -3051,6 +3173,7 @@ function toOrganizationRecord(row: OrganizationRow): StoredOrganizationRecord {
     name: row.name,
     slug: row.slug,
     skillsWriteApproval: row.skills_write_approval !== 0,
+    skillsPostTurnReview: row.skills_post_turn_review !== 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -3103,6 +3226,26 @@ function toSkillProposalRecord(row: SkillProposalRow): StoredSkillProposal {
     reviewerUserId: row.reviewer_user_id,
     reviewedAt: row.reviewed_at,
     createdAt: row.created_at,
+  };
+}
+
+function toSkillSuggestionRecord(row: SkillSuggestionRow): StoredSkillSuggestion {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    profileId: row.profile_id,
+    sessionId: row.session_id,
+    proposedByUserId: row.proposed_by_user_id,
+    action: row.action as StoredSkillSuggestion["action"],
+    skillName: row.skill_name,
+    content: row.content,
+    patchOldString: row.patch_old_string,
+    patchNewString: row.patch_new_string,
+    status: row.status as StoredSkillSuggestion["status"],
+    source: row.source as StoredSkillSuggestion["source"],
+    warnings: row.warnings ? (JSON.parse(row.warnings) as string[]) : null,
+    createdAt: row.created_at,
+    appliedAt: row.applied_at,
   };
 }
 
