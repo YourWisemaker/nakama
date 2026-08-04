@@ -38,6 +38,7 @@
     "./whatsapp-config": "./src/whatsapp-config.ts",
     "./whatsapp-worker": "./src/whatsapp-worker.ts",
     "./skills/bundled-names": "./src/skills/bundled-names.ts",
+    "./skills/post-turn-review": "./src/skills/post-turn-review.ts",
     "./skills/write": "./src/skills/write.ts",
     "./soul/org-memory": "./src/soul/org-memory.ts",
     "./tools/protected": "./src/tools/protected.ts",
