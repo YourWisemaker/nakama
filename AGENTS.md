@@ -165,3 +165,9 @@ Always build context with `buildToolExecutionContext()` (`packages/core/src/tool
 - `packages/client` — API client
 
 Server: Hono in `apps/server/src/http/app.ts`. Middleware: auth → org → routes (`routes/*`). OpenAPI from `openapi.ts` (`/openapi.json`). Platform-admin-only: profile/tool/MCP/skill mutations (org admins use provisioned profiles or Super Bot `create-profile`). Org-admin: `/v1/orgs/{orgId}/…` members. Viewers blocked by `requireNotViewer` on worker control and agent invoke.
+
+## Developing 
+
+Remember this when working on react code:
+
+- UI descriptions: Do not add subtitles, helper text, or descriptive copy beneath headings, labels, cards, or settings by default. Prefer one concise, self-explanatory heading or label. Only add supporting copy when the user explicitly asks for it or when it is necessary to prevent misunderstanding or error, and never use it to restate the heading.
