@@ -1099,7 +1099,7 @@ export interface SendEmailTestResponse {
   messageId: string;
 }
 
-export type CodingHarnessKind = "codex" | "claude_code" | "opencode";
+export type CodingHarnessKind = "codex" | "claude_code" | "opencode" | "pi";
 
 export interface CodingAgentProviderPassthroughSummary {
   active: boolean;
