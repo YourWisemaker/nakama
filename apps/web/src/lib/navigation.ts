@@ -206,10 +206,6 @@ export function toolPlaygroundBackTarget(searchParams: URLSearchParams): {
   return { href: toolsTabPath(), label: "Tools" };
 }
 
-export function profileProposalsPath(profileId: string): string {
-  return orgSkillProposalsPath(profileId);
-}
-
 export function orgSkillProposalsPath(profileId?: string): string {
   const params = new URLSearchParams({
     tab: "organization",

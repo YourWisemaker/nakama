@@ -29,7 +29,6 @@ export function usePostTurnSkillReviewOverlay({
   readOnlySession,
 }: UsePostTurnSkillReviewOverlayArgs) {
   const { activeOrg } = useAuth();
-  const [pollUntil, setPollUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [applyStateById, setApplyStateById] = useState<Record<string, SuggestionApplyState>>({});
   const [applyErrorById, setApplyErrorById] = useState<Record<string, string | undefined>>({});
@@ -47,12 +46,10 @@ export function usePostTurnSkillReviewOverlay({
     !readOnlySession &&
     activeOrg?.role !== "viewer";
 
-  useEffect(() => {
-    if (!lastSuccessfulTurnAt || !canPoll) {
-      return;
-    }
-    setPollUntil(lastSuccessfulTurnAt + POST_TURN_POLL_WINDOW_MS);
-  }, [lastSuccessfulTurnAt, canPoll]);
+  const pollUntil =
+    lastSuccessfulTurnAt != null && canPoll
+      ? lastSuccessfulTurnAt + POST_TURN_POLL_WINDOW_MS
+      : null;
 
   const polling = pollUntil != null && now < pollUntil;
 
