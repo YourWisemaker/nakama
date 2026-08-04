@@ -317,7 +317,6 @@ export function useChatPage() {
         return;
       }
 
-      const hadMessages = messages.length > 0;
       const startedProfileId = profileId;
 
       void saveThinkingSettingsMutation
@@ -326,25 +325,13 @@ export function useChatPage() {
           if (profileIdRef.current !== startedProfileId) {
             return;
           }
-          if (busyRef.current) {
-            setError("Wait for the current response to finish.");
-            return;
-          }
-          toast(formatThinkingEffortSuccessMessage(effort, hadMessages).message);
-          enterDraftChat(startedProfileId);
+          toast(formatThinkingEffortSuccessMessage(effort).message);
         })
         .catch((err) => {
           setError(formatError(err));
         });
     },
-    [
-      profileId,
-      thinkingEffort,
-      busy,
-      messages.length,
-      saveThinkingSettingsMutation,
-      enterDraftChat,
-    ],
+    [profileId, thinkingEffort, busy, saveThinkingSettingsMutation],
   );
 
   useEffect(() => {

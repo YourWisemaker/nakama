@@ -59,16 +59,11 @@ export function shouldAutoEnableThinking(
 
 export function formatThinkingEffortSuccessMessage(
   effort: ThinkingEffort,
-  hadMessages: boolean,
-): { effort: ThinkingEffort; clearedHistory: boolean; message: string } {
+): { effort: ThinkingEffort; message: string } {
   const label = thinkingEffortLabel(effort);
-  const clearedHistory = hadMessages;
   return {
     effort,
-    clearedHistory,
-    message: clearedHistory
-      ? `Thinking effort set to ${label}. Chat history cleared.`
-      : `Thinking effort set to ${label}.`,
+    message: `Thinking effort set to ${label}.`,
   };
 }
 

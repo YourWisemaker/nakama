@@ -19,7 +19,7 @@ import {
 } from "@/lib/thinking-settings";
 import { cn } from "@/lib/utils";
 
-const THINKING_TOOLTIP = "Reasoning depth. Changing this starts a new chat.";
+const THINKING_TOOLTIP = "Reasoning depth for the next replies.";
 
 export interface ChatThinkingEffortControlProps {
   visible: boolean;

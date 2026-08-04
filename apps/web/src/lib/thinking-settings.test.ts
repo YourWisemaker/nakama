@@ -54,16 +54,14 @@ describe("thinking-settings helpers", () => {
     ).toBe(false);
   });
 
-  test("formatThinkingEffortSuccessMessage flags cleared history without asserting copy", () => {
-    expect(formatThinkingEffortSuccessMessage("high", true)).toMatchObject({
+  test("formatThinkingEffortSuccessMessage keeps the current chat", () => {
+    expect(formatThinkingEffortSuccessMessage("high")).toMatchObject({
       effort: "high",
-      clearedHistory: true,
     });
-    expect(formatThinkingEffortSuccessMessage("low", false)).toMatchObject({
+    expect(formatThinkingEffortSuccessMessage("low")).toMatchObject({
       effort: "low",
-      clearedHistory: false,
     });
-    expect(formatThinkingEffortSuccessMessage("high", true).message.length).toBeGreaterThan(0);
+    expect(formatThinkingEffortSuccessMessage("high").message.length).toBeGreaterThan(0);
   });
 
   test("shouldBlockThinkingEffortChange blocks while busy", () => {
