@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -7,6 +7,7 @@ import {
   MoreHorizontalIcon,
   RotateCcwIcon,
 } from "lucide-react";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import {
   AssistantTurnSegmentView,
 } from "@/components/chat/assistant-tool-group";
@@ -15,6 +16,7 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
+  ConversationStickinessProvider,
 } from "@/components/ai-elements/conversation";
 import {
   Message,
@@ -31,12 +33,22 @@ import {
   awaitingModelLabel,
   isAwaitingModelResponse,
 } from "@/lib/chat-stream";
+import {
+  followOutputBehavior,
+  shouldAutoscrollOnHeightGrowth,
+} from "@/lib/chat-list-stickiness";
 import { formatElapsedSeconds, useElapsedSeconds } from "@/lib/elapsed-time";
 import { isPastedTextDocument } from "@/lib/pasted-text";
 import { TextAttachmentPreview } from "@/components/chat/text-attachment-preview";
 import { ImageAttachmentPreview } from "@/components/chat/image-attachment-preview";
 import { ArtifactAttachmentPreview } from "@/components/chat/artifact-attachment-preview";
 import { extractTurnArtifacts } from "@/lib/chat-artifacts";
+import {
+  groupMessagesIntoTurns,
+  turnKey,
+  type IndexedMessage,
+  type MessageTurn,
+} from "@/lib/chat-message-turns";
 import { cn } from "@/lib/utils";
 
 interface ChatMessageListProps {
@@ -56,12 +68,6 @@ interface ChatMessageListProps {
   contentClassName?: string;
 }
 
-type IndexedMessage = { message: ChatListItem; index: number };
-
-type MessageTurn =
-  | { kind: "user"; message: ChatListItem; index: number }
-  | { kind: "assistant"; messages: IndexedMessage[] };
-
 export function ChatMessageList({
   messages,
   profileId,
@@ -77,69 +83,146 @@ export function ChatMessageList({
   className,
   contentClassName,
 }: ChatMessageListProps) {
-  const turns = groupMessagesIntoTurns(messages);
+  const turns = useMemo(() => groupMessagesIntoTurns(messages), [messages]);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const isAtBottomRef = useRef(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const sessionAnchor = messages[0]?.id ?? "empty";
+
   const showAwaitingPlaceholder =
     streamActive && isAwaitingModelResponse(messages);
   const awaitingLabel = showAwaitingPlaceholder
     ? awaitingModelLabel(messages)
     : null;
 
-  return (
-    <Conversation className={cn("min-h-0 flex-1", className)}>
-      <ConversationContent className={cn("gap-6 py-4", contentClassName)}>
-        {messages.length === 0 && emptyMessage ? (
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        ) : null}
-        {turns.map((turn, turnIndex) =>
-          turn.kind === "user" ? (
-            <ChatMessageRow key={turn.message.id} message={turn.message} />
-          ) : (
-            <AssistantTurn
-              key={turn.messages.map(({ message }) => message.id).join(":")}
-              messages={turn.messages}
-              profileId={profileId}
-              showThinking={showThinking}
-              modelLabel={modelLabel}
-              branchingMessageId={branchingMessageId}
-              actionsDisabled={actionsDisabled}
-              streamActive={streamActive}
-              showAwaiting={turnIndex === turns.length - 1 && awaitingLabel === "Working…"}
-              turnStartedAt={turnStartedAt}
-              onBranchMessage={onBranchMessage}
-              onRetryMessage={onRetryMessage}
-            />
-          ),
-        )}
-      </ConversationContent>
-      <ConversationScrollButton />
-    </Conversation>
+  const scrollToLatest = useCallback(() => {
+    virtuosoRef.current?.scrollToIndex({
+      index: "LAST",
+      align: "end",
+      behavior: "smooth",
+    });
+  }, []);
+
+  const stickiness = useMemo(
+    () => ({
+      isAtBottom,
+      scrollToLatest,
+    }),
+    [isAtBottom, scrollToLatest],
   );
-}
 
-function groupMessagesIntoTurns(messages: ChatListItem[]): MessageTurn[] {
-  const turns: MessageTurn[] = [];
-  let currentAssistantTurn: IndexedMessage[] | null = null;
+  const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
+    isAtBottomRef.current = atBottom;
+    setIsAtBottom(atBottom);
+  }, []);
 
-  for (const [index, message] of messages.entries()) {
-    if (message.role === "user") {
-      if (currentAssistantTurn) {
-        turns.push({ kind: "assistant", messages: currentAssistantTurn });
-        currentAssistantTurn = null;
+  const handleFollowOutput = useCallback(
+    (atBottom: boolean) => followOutputBehavior(atBottom),
+    [],
+  );
+
+  const handleTotalListHeightChanged = useCallback((_height: number) => {
+    if (shouldAutoscrollOnHeightGrowth(isAtBottomRef.current)) {
+      virtuosoRef.current?.autoscrollToBottom();
+    }
+  }, []);
+
+  const renderTurn = useCallback(
+    (turnIndex: number, turn: MessageTurn) => {
+      const itemClassName = cn(
+        "px-4",
+        contentClassName,
+        turnIndex === 0 ? "pt-4" : null,
+        turnIndex === turns.length - 1 ? "pb-4" : "pb-6",
+      );
+
+      if (turn.kind === "user") {
+        return (
+          <div className={itemClassName}>
+            <ChatMessageRow message={turn.message} />
+          </div>
+        );
       }
 
-      turns.push({ kind: "user", message, index });
-      continue;
-    }
+      return (
+        <div className={itemClassName}>
+          <AssistantTurn
+            messages={turn.messages}
+            profileId={profileId}
+            showThinking={showThinking}
+            modelLabel={modelLabel}
+            branchingMessageId={branchingMessageId}
+            actionsDisabled={actionsDisabled}
+            streamActive={streamActive}
+            showAwaiting={
+              turnIndex === turns.length - 1 && awaitingLabel === "Working…"
+            }
+            turnStartedAt={turnStartedAt}
+            onBranchMessage={onBranchMessage}
+            onRetryMessage={onRetryMessage}
+          />
+        </div>
+      );
+    },
+    [
+      actionsDisabled,
+      awaitingLabel,
+      branchingMessageId,
+      contentClassName,
+      modelLabel,
+      onBranchMessage,
+      onRetryMessage,
+      profileId,
+      showThinking,
+      streamActive,
+      turnStartedAt,
+      turns.length,
+    ],
+  );
 
-    currentAssistantTurn ??= [];
-    currentAssistantTurn.push({ message, index });
+  if (turns.length === 0) {
+    return (
+      <ConversationStickinessProvider
+        value={{ isAtBottom: true, scrollToLatest: () => undefined }}
+      >
+        <Conversation className={cn("min-h-0 flex-1", className)}>
+          <ConversationContent
+            className={cn(
+              "justify-end gap-6 px-4 py-4",
+              contentClassName,
+            )}
+          >
+            {emptyMessage ? (
+              <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            ) : null}
+          </ConversationContent>
+        </Conversation>
+      </ConversationStickinessProvider>
+    );
   }
 
-  if (currentAssistantTurn) {
-    turns.push({ kind: "assistant", messages: currentAssistantTurn });
-  }
-
-  return turns;
+  return (
+    <ConversationStickinessProvider value={stickiness}>
+      <Conversation className={cn("min-h-0 flex-1", className)}>
+        <Virtuoso
+          key={sessionAnchor}
+          ref={virtuosoRef}
+          className="h-full no-scrollbar"
+          data={turns}
+          computeItemKey={(_, turn) => turnKey(turn)}
+          itemContent={renderTurn}
+          alignToBottom
+          initialTopMostItemIndex={turns.length - 1}
+          followOutput={handleFollowOutput}
+          atBottomStateChange={handleAtBottomStateChange}
+          atBottomThreshold={24}
+          increaseViewportBy={{ top: 200, bottom: 200 }}
+          totalListHeightChanged={handleTotalListHeightChanged}
+        />
+        <ConversationScrollButton />
+      </Conversation>
+    </ConversationStickinessProvider>
+  );
 }
 
 function AssistantTurn({
@@ -170,7 +253,7 @@ function AssistantTurn({
   const turnMessages = messages.map(({ message }) => message);
   const segments = segmentAssistantTurn(turnMessages);
   const artifacts = extractTurnArtifacts(turnMessages);
-  const turnKey = messages.map(({ message }) => message.id).join(":");
+  const artifactTurnKey = messages.map(({ message }) => message.id).join(":");
   const anchorMessage = findAssistantTurnAnchor(turnMessages);
   const turnComplete = isAssistantTurnComplete(turnMessages);
   // Wait for the full SSE reply (tools + final summary), not the brief gap after tool_end.
@@ -197,7 +280,7 @@ function AssistantTurn({
       {profileId && showArtifacts ? (
         <div className="flex flex-wrap gap-2">
           {artifacts.map((artifact) => {
-            const chipId = `${turnKey}:${artifact.path}`;
+            const chipId = `${artifactTurnKey}:${artifact.path}`;
 
             return (
               <ArtifactAttachmentPreview
