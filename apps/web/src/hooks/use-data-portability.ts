@@ -23,6 +23,19 @@ export function useRestoreDataImport() {
   });
 }
 
+export function usePreviewSetupDataImport() {
+  return useMutation({
+    mutationFn: (file: File) => client.previewSetupDataImport(file),
+  });
+}
+
+export function useRestoreSetupDataImport() {
+  return useMutation({
+    mutationFn: ({ file, confirm }: { file: File; confirm: boolean }) =>
+      client.restoreSetupDataImport(file, { confirm }),
+  });
+}
+
 export function formatDataPortabilityBytes(value: number): string {
   if (value < 1024) {
     return `${value} B`;

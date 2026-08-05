@@ -3,18 +3,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import type { SetupAccountDraft } from "@/components/setup-wizard/setup-wizard.shared";
+import {
+  SetupBackupRestoreComplete,
+  SetupStepBackupImport,
+} from "@/components/setup-wizard/SetupStepBackupImport";
 
 interface SetupStepAccountProps {
   onNext: (account: SetupAccountDraft) => void;
 }
 
+type SetupAccountMode = "account" | "backup" | "backup-complete";
+
 export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
+  const [mode, setMode] = useState<SetupAccountMode>("account");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  if (mode === "backup-complete") {
+    return <SetupBackupRestoreComplete />;
+  }
+
+  if (mode === "backup") {
+    return (
+      <SetupStepBackupImport
+        onBack={() => setMode("account")}
+        onRestored={() => setMode("backup-complete")}
+      />
+    );
+  }
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -114,6 +134,16 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
         <Button type="submit" className="w-full">
           Continue
         </Button>
+        <div className="border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto w-full px-0 py-1 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground"
+            onClick={() => setMode("backup")}
+          >
+            Restore from backup instead
+          </Button>
+        </div>
       </form>
     </Card>
   );

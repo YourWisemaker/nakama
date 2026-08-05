@@ -233,6 +233,10 @@ export interface RestoreDataImportResponse {
   restoredFileCount: number;
 }
 
+export interface SetupRestoreDataImportResponse extends RestoreDataImportResponse {
+  requiresRestart: boolean;
+}
+
 export interface AuthCredentialsRequest {
   email: string;
   password: string;

@@ -7,6 +7,7 @@ import { NakamaApiError, formatServerError } from "@nakama/core";
 import { errorResponse } from "./shared";
 import { registerSystemRoutes } from "./routes/system";
 import { registerAuthRoutes } from "./routes/auth";
+import { registerSetupImportRoutes } from "./routes/setup-import";
 import { registerWorkerRoutes } from "./routes/workers";
 import { registerModelRoutes } from "./routes/models";
 import { registerUserContextRoutes } from "./routes/user-context";
@@ -94,6 +95,7 @@ export function createHonoApp(options: ServerOptions) {
   app.use("*", createOrgContextMiddleware(options));
   registerSystemRoutes(app, options);
   registerAuthRoutes(app, options);
+  registerSetupImportRoutes(app, options);
   registerWorkerRoutes(app, options);
   registerModelRoutes(app, options);
   registerUserContextRoutes(app, options);

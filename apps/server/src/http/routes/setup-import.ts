@@ -1,66 +1,45 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import {
+  NakamaApiError,
   type DataImportPreviewResponse,
   type PreviewDataImportRequest,
   type RestoreDataImportRequest,
-  type RestoreDataImportResponse,
+  type SetupRestoreDataImportResponse,
 } from "@nakama/core";
+import type { DatabaseAdapter } from "@nakama/db";
 import {
-  createNakamaDataExport,
   decodeArchiveRequestData,
   previewNakamaDataImport,
   restoreNakamaDataImport,
 } from "../../services/data-portability";
 import { errorResponse, json, readJson } from "../shared";
-import { requirePlatformAdminFromContext } from "../org-guards";
 import type { ServerOptions } from "../context";
 import type { HonoApp } from "../types";
 
-export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOptions): void {
+export function registerSetupImportRoutes(app: HonoApp, options: ServerOptions): void {
+  const { databaseAdapter } = options;
   const errorSchema = z.object({ error: z.string() }).openapi("ApiErrorResponse");
   const importRequestSchema = z
     .object({
       data: z.string(),
     })
-    .openapi("PreviewDataImportRequest");
+    .openapi("SetupPreviewDataImportRequest");
   const restoreRequestSchema = z
     .object({
       confirm: z.boolean(),
       data: z.string(),
     })
-    .openapi("RestoreDataImportRequest");
-  const previewResponseSchema = z.object({}).passthrough().openapi("DataImportPreviewResponse");
-  const restoreResponseSchema = z.object({}).passthrough().openapi("RestoreDataImportResponse");
-
-  app.openAPIRegistry.registerPath(
-    createRoute({
-      method: "get",
-      path: "/v1/platform/data/export",
-      tags: ["Platform"],
-      summary: "Export Nakama data",
-      operationId: "exportPlatformData",
-      responses: {
-        200: {
-          description: "Nakama data export ZIP",
-          content: {
-            "application/zip": {
-              schema: z.string().openapi({ type: "string", format: "binary" }),
-            },
-          },
-        },
-        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
-        500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
-      },
-    }),
-  );
+    .openapi("SetupRestoreDataImportRequest");
+  const previewResponseSchema = z.object({}).passthrough().openapi("SetupDataImportPreviewResponse");
+  const restoreResponseSchema = z.object({}).passthrough().openapi("SetupRestoreDataImportResponse");
 
   app.openAPIRegistry.registerPath(
     createRoute({
       method: "post",
-      path: "/v1/platform/data/import/preview",
-      tags: ["Platform"],
-      summary: "Preview Nakama data import",
-      operationId: "previewPlatformDataImport",
+      path: "/v1/auth/setup/import/preview",
+      tags: ["Auth"],
+      summary: "Preview Nakama data import during first-time setup",
+      operationId: "previewSetupDataImport",
       request: {
         body: {
           required: true,
@@ -73,7 +52,7 @@ export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOpti
           content: { "application/json": { schema: previewResponseSchema } },
         },
         400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
-        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        409: { description: "Error", content: { "application/json": { schema: errorSchema } } },
         500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
       },
     }),
@@ -82,10 +61,10 @@ export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOpti
   app.openAPIRegistry.registerPath(
     createRoute({
       method: "post",
-      path: "/v1/platform/data/import/restore",
-      tags: ["Platform"],
-      summary: "Restore Nakama data import",
-      operationId: "restorePlatformDataImport",
+      path: "/v1/auth/setup/import/restore",
+      tags: ["Auth"],
+      summary: "Restore Nakama data import during first-time setup",
+      operationId: "restoreSetupDataImport",
       request: {
         body: {
           required: true,
@@ -98,25 +77,23 @@ export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOpti
           content: { "application/json": { schema: restoreResponseSchema } },
         },
         400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
-        403: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+        409: { description: "Error", content: { "application/json": { schema: errorSchema } } },
         500: { description: "Error", content: { "application/json": { schema: errorSchema } } },
       },
     }),
   );
 
-  app.get("/v1/platform/data/export", async (c) => {
-    requirePlatformAdminFromContext(c);
-    const result = await createNakamaDataExport();
-    return new Response(result.data, {
-      headers: {
-        "Content-Disposition": `attachment; filename="${result.filename}"`,
-        "Content-Type": "application/zip",
-      },
-    });
-  });
+  app.post("/v1/auth/setup/import/preview", async (c) => {
+    if (!databaseAdapter) {
+      return errorResponse("Authentication not configured", 500);
+    }
 
-  app.post("/v1/platform/data/import/preview", async (c) => {
-    requirePlatformAdminFromContext(c);
+    try {
+      await assertSetupImportAllowed(databaseAdapter);
+    } catch (error) {
+      return setupImportErrorResponse(error);
+    }
+
     const body = await readJson<PreviewDataImportRequest>(c.req.raw);
 
     try {
@@ -127,19 +104,49 @@ export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOpti
     }
   });
 
-  app.post("/v1/platform/data/import/restore", async (c) => {
-    requirePlatformAdminFromContext(c);
+  app.post("/v1/auth/setup/import/restore", async (c) => {
+    if (!databaseAdapter) {
+      return errorResponse("Authentication not configured", 500);
+    }
+
+    try {
+      await assertSetupImportAllowed(databaseAdapter);
+    } catch (error) {
+      return setupImportErrorResponse(error);
+    }
+
     const body = await readJson<RestoreDataImportRequest>(c.req.raw);
 
     try {
       const restore = await restoreNakamaDataImport(decodeArchiveRequestData(body.data), {
         confirm: body.confirm,
       });
-      return json<RestoreDataImportResponse>(restore);
+      return json<SetupRestoreDataImportResponse>({
+        ...restore,
+        requiresRestart: true,
+      });
     } catch (error) {
       return errorResponse(formatImportError(error), 400);
     }
   });
+}
+
+async function assertSetupImportAllowed(databaseAdapter: DatabaseAdapter): Promise<void> {
+  const humanUserCount = await databaseAdapter.countHumanUsers();
+  if (humanUserCount > 0) {
+    throw new NakamaApiError(
+      "Setup import is only available before the first admin account is created.",
+      409,
+    );
+  }
+}
+
+function setupImportErrorResponse(error: unknown): Response {
+  if (error instanceof NakamaApiError) {
+    return errorResponse(error.message, error.status);
+  }
+
+  return errorResponse(formatImportError(error), 500);
 }
 
 function formatImportError(error: unknown): string {
