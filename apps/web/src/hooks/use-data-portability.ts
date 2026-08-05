@@ -30,9 +30,12 @@ export function usePreviewSetupDataImport() {
 }
 
 export function useRestoreSetupDataImport() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({ file, confirm }: { file: File; confirm: boolean }) =>
       client.restoreSetupDataImport(file, { confirm }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
