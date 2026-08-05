@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangleIcon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckCircle2Icon, UploadIcon } from "lucide-react";
 import type { DataImportPreviewResponse } from "@nakama/core/contract";
 import {
   DataImportPreview,
@@ -7,6 +7,7 @@ import {
 } from "@/components/data-portability/DataImportPreview";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import {
   canRestoreDataImport,
   shouldStartInitialFilePreview,
@@ -15,6 +16,10 @@ import {
 } from "@/hooks/use-data-portability";
 import { formatError } from "@/lib/client";
 import { cn } from "@/lib/utils";
+
+const REDIRECT_DELAY_MS = 3000;
+
+type RestorePhase = "form" | "restoring" | "done";
 
 interface SetupStepBackupImportProps {
   initialFile?: File | null;
@@ -32,16 +37,18 @@ export function SetupStepBackupImport({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DataImportPreviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<RestorePhase>("form");
+  const [successEntered, setSuccessEntered] = useState(false);
   const {
     mutateAsync: previewImport,
     isPending: previewPending,
   } = usePreviewSetupDataImport();
   const restoreMutation = useRestoreSetupDataImport();
-  const isBusy = previewPending || restoreMutation.isPending;
+  const isBusy = previewPending || restoreMutation.isPending || phase !== "form";
   const restoreAvailable = canRestoreDataImport({
     selectedFile,
     previewReady: Boolean(preview),
-    pending: restoreMutation.isPending,
+    pending: restoreMutation.isPending || phase !== "form",
   });
 
   async function handlePreview(file: File | null) {
@@ -95,19 +102,94 @@ export function SetupStepBackupImport({
     };
   }, [initialFile, previewImport]);
 
+  const onRestoredRef = useRef(onRestored);
+  onRestoredRef.current = onRestored;
+
+  useEffect(() => {
+    if (phase !== "done") {
+      setSuccessEntered(false);
+      return;
+    }
+
+    const enterFrame = requestAnimationFrame(() => setSuccessEntered(true));
+    const redirectTimer = window.setTimeout(() => {
+      onRestoredRef.current();
+    }, REDIRECT_DELAY_MS);
+
+    return () => {
+      cancelAnimationFrame(enterFrame);
+      window.clearTimeout(redirectTimer);
+    };
+  }, [phase]);
+
   async function handleRestore() {
     if (!selectedFile || !preview) {
       return;
     }
 
     setError(null);
+    setPhase("restoring");
 
     try {
       await restoreMutation.mutateAsync({ file: selectedFile, confirm: true });
-      onRestored();
+      setPhase("done");
     } catch (err) {
+      setPhase("form");
       setError(formatError(err));
     }
+  }
+
+  if (phase === "restoring" || phase === "done") {
+    return (
+      <Card className="p-6">
+        <div
+          className="flex flex-col items-center justify-center gap-3 py-10 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          {phase === "restoring" ? (
+            <>
+              <Spinner className="size-8 text-primary" />
+              <p className="text-balance text-sm font-medium text-foreground">
+                Restoring backup…
+              </p>
+            </>
+          ) : (
+            <>
+              <span
+                className={cn(
+                  "flex size-10 items-center justify-center text-primary",
+                  "transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                  "motion-reduce:transition-none",
+                  successEntered
+                    ? "scale-100 opacity-100 blur-0"
+                    : "scale-[0.25] opacity-0 blur-[4px]",
+                )}
+                aria-hidden
+              >
+                <CheckCircle2Icon className="size-10" strokeWidth={1.75} />
+              </span>
+              <div
+                className={cn(
+                  "space-y-1 transition-[opacity,filter,translate] duration-300 ease-out",
+                  "motion-reduce:transition-none",
+                  successEntered
+                    ? "translate-y-0 opacity-100 blur-0 delay-100"
+                    : "translate-y-3 opacity-0 blur-[4px]",
+                )}
+              >
+                <p className="text-balance text-sm font-medium text-foreground">
+                  Backup restored
+                </p>
+                <p className="text-pretty text-xs text-muted-foreground">
+                  Taking you to sign in…
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
+    );
   }
 
   return (
