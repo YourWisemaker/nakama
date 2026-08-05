@@ -1,15 +1,12 @@
 import type { DataImportPreviewResponse } from "@nakama/core/contract";
-import {
-  AlertTriangleIcon,
-  DownloadIcon,
-  RotateCcwIcon,
-  UploadIcon,
-} from "lucide-react";
+import { AlertTriangleIcon, DownloadIcon, UploadIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import {
-  formatDataPortabilityBytes,
+  DataImportPreview,
+  PendingIcon,
+} from "@/components/data-portability/DataImportPreview";
+import { Button } from "@/components/ui/button";
+import {
   canRestoreDataImport,
   useExportData,
   usePreviewDataImport,
@@ -84,32 +81,25 @@ export function DataPortabilityPanel() {
   return (
     <div className="min-w-0 divide-y divide-border">
       <section className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="min-w-0 space-y-0.5">
-          <p className="text-balance text-sm font-medium text-foreground">Export</p>
-          <p className="text-pretty text-xs text-muted-foreground">ZIP backup of the data root</p>
-        </div>
+        <p className="text-balance text-sm font-medium text-foreground">Export</p>
         <Button type="button" size="sm" onClick={handleExport} disabled={isBusy}>
-          <ActionIcon pending={exportMutation.isPending} idle={DownloadIcon} />
+          <PendingIcon pending={exportMutation.isPending} idle={DownloadIcon} />
           Export ZIP
         </Button>
       </section>
 
       <section className="space-y-3 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 space-y-0.5">
-            <p className="text-balance text-sm font-medium text-foreground">Import</p>
-            <p className="text-pretty text-xs text-muted-foreground">
-              Review a ZIP backup before restoring
-            </p>
-          </div>
+          <p className="text-balance text-sm font-medium text-foreground">Import</p>
           <Button
             type="button"
             size="sm"
+            variant={selectedFile ? "outline" : "default"}
             disabled={isBusy}
             onClick={() => inputRef.current?.click()}
           >
-            <ActionIcon pending={previewMutation.isPending} idle={UploadIcon} />
-            Import ZIP
+            <PendingIcon pending={previewMutation.isPending} idle={UploadIcon} />
+            {selectedFile ? "Change ZIP" : "Import ZIP"}
           </Button>
           <input
             ref={inputRef}
@@ -123,132 +113,32 @@ export function DataPortabilityPanel() {
         </div>
 
         {selectedFile ? (
-          <p className="text-pretty text-xs text-muted-foreground">
-            {previewMutation.isPending ? "Inspecting " : "Selected: "}
-            <span className="font-medium text-foreground">{selectedFile.name}</span>
-          </p>
-        ) : null}
-
-        {preview ? (
-          <div className="overflow-hidden rounded-lg border border-border bg-background">
-            <dl className="grid gap-px bg-border text-sm sm:grid-cols-2">
-              <PreviewStat label="Created" value={formatDate(preview.manifest.createdAt)} />
-              <PreviewStat
-                label="Files"
-                value={String(preview.archiveFileCount)}
-                tabular
-              />
-              <PreviewStat
-                label="Size"
-                value={formatDataPortabilityBytes(preview.archiveTotalBytes)}
-                tabular
-              />
-              <PreviewStat
-                label="Action"
-                value={preview.willReplaceRoot ? "Replace current data" : "Create data root"}
-              />
-            </dl>
-            <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-pretty text-xs text-muted-foreground">
-                Top-level paths: {preview.topLevelPaths.join(", ") || "none"}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                disabled={!restoreAvailable}
-                onClick={handleRestore}
-              >
-                <ActionIcon pending={restoreMutation.isPending} idle={RotateCcwIcon} />
-                Restore ZIP
-              </Button>
-            </div>
-          </div>
+          <DataImportPreview
+            fileName={selectedFile.name}
+            preview={preview}
+            inspecting={previewMutation.isPending}
+            restorePending={restoreMutation.isPending}
+            restoreDisabled={!restoreAvailable}
+            onRestore={() => void handleRestore()}
+            showTopLevelPaths
+            restoreLabel="Restore"
+          />
         ) : null}
       </section>
 
       {error ? (
         <div className="px-4 py-3">
-          <StatusMessage tone="danger" icon={AlertTriangleIcon}>
-            {error}
-          </StatusMessage>
+          <div
+            className={cn(
+              "flex items-start gap-2 rounded-md border px-3 py-2 text-sm",
+              "border-destructive/30 bg-destructive/10 text-destructive",
+            )}
+          >
+            <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span className="text-pretty">{error}</span>
+          </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function ActionIcon({
-  pending,
-  idle: IdleIcon,
-}: {
-  pending: boolean;
-  idle: typeof DownloadIcon;
-}) {
-  return (
-    <span className="relative size-3.5 shrink-0" aria-hidden>
-      <span
-        className={cn(
-          "absolute inset-0 flex items-center justify-center transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-          pending ? "scale-100 opacity-100 blur-0" : "scale-[0.25] opacity-0 blur-[4px]",
-        )}
-      >
-        <Spinner className="size-3.5" />
-      </span>
-      <span
-        className={cn(
-          "flex items-center justify-center transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-          pending ? "scale-[0.25] opacity-0 blur-[4px]" : "scale-100 opacity-100 blur-0",
-        )}
-      >
-        <IdleIcon className="size-3.5" />
-      </span>
-    </span>
-  );
-}
-
-function PreviewStat({
-  label,
-  value,
-  tabular = false,
-}: {
-  label: string;
-  value: string;
-  tabular?: boolean;
-}) {
-  return (
-    <div className="bg-card p-3">
-      <dt className="text-xs font-medium uppercase text-muted-foreground">{label}</dt>
-      <dd
-        className={cn(
-          "mt-1 truncate text-sm font-medium text-foreground",
-          tabular && "tabular-nums",
-        )}
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-function StatusMessage({
-  children,
-  icon: Icon,
-  tone,
-}: {
-  children: string;
-  icon: typeof AlertTriangleIcon;
-  tone: "danger";
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-start gap-2 rounded-md border px-3 py-2 text-sm",
-        tone === "danger" && "border-destructive/30 bg-destructive/10 text-destructive",
-      )}
-    >
-      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
-      <span className="text-pretty">{children}</span>
     </div>
   );
 }
@@ -262,12 +152,4 @@ function downloadArchive(filename: string, data: ArrayBuffer) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString();
 }

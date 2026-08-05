@@ -1,13 +1,15 @@
-import type { DataImportPreviewResponse } from "@nakama/core/contract";
-import { AlertTriangleIcon, RotateCcwIcon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AlertTriangleIcon, UploadIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { DataImportPreviewResponse } from "@nakama/core/contract";
+import {
+  DataImportPreview,
+  PendingIcon,
+} from "@/components/data-portability/DataImportPreview";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
 import {
   canRestoreDataImport,
-  formatDataPortabilityBytes,
   shouldStartInitialFilePreview,
   usePreviewSetupDataImport,
   useRestoreSetupDataImport,
@@ -111,16 +113,18 @@ export function SetupStepBackupImport({
 
   return (
     <Card className="p-6">
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-medium text-foreground">Restore backup</p>
-          <Button type="button" size="sm" disabled={isBusy} onClick={() => inputRef.current?.click()}>
-            {previewPending ? (
-              <Spinner className="size-3.5" />
-            ) : (
-              <UploadIcon className="size-3.5" aria-hidden />
-            )}
-            Choose ZIP
+          <p className="text-balance text-sm font-medium text-foreground">Restore backup</p>
+          <Button
+            type="button"
+            size="sm"
+            variant={selectedFile ? "outline" : "default"}
+            disabled={isBusy}
+            onClick={() => inputRef.current?.click()}
+          >
+            <PendingIcon pending={previewPending} idle={UploadIcon} />
+            {selectedFile ? "Change ZIP" : "Choose ZIP"}
           </Button>
           <input
             ref={inputRef}
@@ -134,43 +138,15 @@ export function SetupStepBackupImport({
         </div>
 
         {selectedFile ? (
-          <p className="text-xs text-muted-foreground">
-            {previewPending ? "Inspecting " : "Selected: "}
-            <span className="font-medium text-foreground">{selectedFile.name}</span>
-          </p>
-        ) : null}
-
-        {preview ? (
-          <div className="rounded-md border border-border bg-background">
-            <dl className="grid gap-px overflow-hidden rounded-md bg-border text-sm sm:grid-cols-2">
-              <PreviewStat label="Created" value={formatDate(preview.manifest.createdAt)} />
-              <PreviewStat label="Files" value={String(preview.archiveFileCount)} />
-              <PreviewStat label="Size" value={formatDataPortabilityBytes(preview.archiveTotalBytes)} />
-              <PreviewStat
-                label="Action"
-                value={preview.willReplaceRoot ? "Replace current data" : "Create data root"}
-              />
-            </dl>
-            <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                Top-level paths: {preview.topLevelPaths.join(", ") || "none"}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                disabled={!restoreAvailable}
-                onClick={() => void handleRestore()}
-              >
-                {restoreMutation.isPending ? (
-                  <Spinner className="size-3.5" />
-                ) : (
-                  <RotateCcwIcon className="size-3.5" aria-hidden />
-                )}
-                Restore ZIP
-              </Button>
-            </div>
-          </div>
+          <DataImportPreview
+            fileName={selectedFile.name}
+            preview={preview}
+            inspecting={previewPending}
+            restorePending={restoreMutation.isPending}
+            restoreDisabled={!restoreAvailable}
+            onRestore={() => void handleRestore()}
+            restoreLabel="Restore backup"
+          />
         ) : null}
 
         {error ? (
@@ -181,7 +157,7 @@ export function SetupStepBackupImport({
             )}
           >
             <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>{error}</span>
+            <span className="text-pretty">{error}</span>
           </div>
         ) : null}
 
@@ -197,8 +173,10 @@ export function SetupBackupRestoreComplete() {
   return (
     <Card className="p-6">
       <div className="space-y-4">
-        <p className="text-sm text-foreground">Backup restored. Restart Nakama to finish setup.</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-pretty text-sm text-foreground">
+          Backup restored. Restart Nakama to finish setup.
+        </p>
+        <p className="text-pretty text-sm text-muted-foreground">
           After restart, sign in with your existing account. If provider setup is still required, the
           wizard will continue from there.
         </p>
@@ -208,21 +186,4 @@ export function SetupBackupRestoreComplete() {
       </div>
     </Card>
   );
-}
-
-function PreviewStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card p-3">
-      <dt className="text-xs font-medium uppercase text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-foreground">{value}</dd>
-    </div>
-  );
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString();
 }
