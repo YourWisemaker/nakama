@@ -1,8 +1,7 @@
 import type { ProfilesPageState } from "@/pages/profiles/use-profiles-page";
 import { ProfileConfigAssignmentsSection } from "@/pages/profiles/profile-config-assignments-section";
 import { ProfileConfigIdentitySection } from "@/pages/profiles/profile-config-identity-section";
-import { ProfileSkillsPostTurnReviewField } from "@/components/profiles/ProfileSkillsPostTurnReviewField";
-import { ProfileSkillsWriteApprovalField } from "@/components/profiles/ProfileSkillsWriteApprovalField";
+import { ProfileSkillsSettingsSection } from "@/components/profiles/ProfileSkillsSettingsSection";
 
 export function ProfileConfigTab({ state }: { state: ProfilesPageState }) {
   if (!state.detail) {
@@ -16,8 +15,7 @@ export function ProfileConfigTab({ state }: { state: ProfilesPageState }) {
       aria-labelledby="profile-detail-tab-profile"
     >
       <ProfileConfigIdentitySection state={state} />
-      <ProfileSkillsWriteApprovalField profile={state.detail} disabled={state.busy} />
-      <ProfileSkillsPostTurnReviewField profile={state.detail} disabled={state.busy} />
+      <ProfileSkillsSettingsSection profile={state.detail} disabled={state.busy} />
       <ProfileConfigAssignmentsSection state={state} />
     </div>
   );

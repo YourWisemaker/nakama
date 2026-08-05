@@ -33,7 +33,10 @@ import {
   partitionTools,
   toLlmToolDefinitions,
 } from "@nakama/core";
-import { buildChatSystemPrompt } from "./chat-prompt";
+import {
+  buildChatSystemPrompt,
+  UNTRUSTED_DOCUMENT_GUIDANCE,
+} from "./chat-prompt";
 import {
   compactHistory,
   estimateHistoryTokens,
@@ -125,6 +128,9 @@ export function createAgentChatSession(
     soul: options.soul,
     userTimezone: options.userTimezone,
     channel,
+    hasDocumentAttachments: messagesIncludeUserDocuments(
+      options.initialHistory ?? [],
+    ),
   });
   const toolContext = options.toolContext ?? {};
   const history: ChatMessage[] = options.initialHistory
@@ -353,9 +359,18 @@ async function sendMessage(
   const promptContext = options.resolvePromptContext
     ? await options.resolvePromptContext({ userMessage })
     : "";
-  const effectiveSystemPrompt = promptContext.trim()
+  let effectiveSystemPrompt = promptContext.trim()
     ? `${systemPrompt}\n\n${promptContext.trim()}`
     : systemPrompt;
+  const hasDocumentAttachments =
+    messageContentHasDocuments(userContent) ||
+    messagesIncludeUserDocuments(history);
+  if (
+    hasDocumentAttachments &&
+    !effectiveSystemPrompt.includes("untrusted document data")
+  ) {
+    effectiveSystemPrompt = `${effectiveSystemPrompt}\n\n${UNTRUSTED_DOCUMENT_GUIDANCE}`;
+  }
   const effectiveToolContext =
     input.clientOrigin?.trim() && options.toolContext
       ? { ...options.toolContext, clientOrigin: input.clientOrigin.trim() }
