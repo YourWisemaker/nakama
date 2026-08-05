@@ -5,6 +5,7 @@ import {
   FilmIcon,
   ImageIcon,
   MoreHorizontalIcon,
+  RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -52,8 +53,11 @@ import { client } from "@/lib/client";
 import type { ChatArtifactRef } from "@/lib/chat-artifacts";
 import { formatBytes } from "@/lib/knowledge-base-files";
 
-const sectionClass = "rounded-md border border-border bg-card";
 const EMPTY_ARTIFACTS: ArtifactFile[] = [];
+
+/** Extend icon-sm (28px) to a 40px hit target without overlapping neighbors at gap-3. */
+const iconActionHitArea =
+  "relative after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2";
 
 function toChatArtifactRef(artifact: ArtifactFile): ChatArtifactRef {
   return {
@@ -127,6 +131,7 @@ function ArtifactRowMenu({
               variant="outline"
               size="icon-sm"
               aria-label="Artifact actions"
+              className={iconActionHitArea}
             />
           }
         >
@@ -235,61 +240,58 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
   return (
     <>
       <div className="space-y-4">
-        <section className={sectionClass}>
-          <div className="space-y-3 border-b border-border px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Artifacts</h2>
-                <p className="text-xs text-muted-foreground">
-                  Files your agent created and saved for you.
-                </p>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-                {isFetching ? <Spinner className="mr-2 size-4" /> : null}
-                Refresh
-              </Button>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="type-section-title text-balance">Artifacts</h2>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+            {isFetching ? (
+              <Spinner className="size-4" />
+            ) : (
+              <RefreshCwIcon className="size-4" aria-hidden />
+            )}
+            Refresh
+          </Button>
+        </div>
+
+        {artifacts.length > 0 ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <SearchIcon
+                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search files…"
+                className="h-8 border-border/60 bg-muted/20 pl-8 text-sm shadow-none focus-visible:border-foreground/20 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-foreground/10 dark:bg-muted/15 dark:focus-visible:bg-background/60"
+              />
             </div>
-
-            {artifacts.length > 0 ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <SearchIcon
-                    className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <Input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search files…"
-                    className="h-8 border-border/60 bg-muted/20 pl-8 text-sm shadow-none focus-visible:border-foreground/20 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-foreground/10 dark:bg-muted/15 dark:focus-visible:bg-background/60"
-                  />
-                </div>
-                <Select
-                  value={effectiveTypeFilter}
-                  onValueChange={(value) => {
-                    if (value != null) {
-                      setTypeFilter(value as ArtifactTypeFilter);
-                    }
-                  }}
-                >
-                  <SelectTrigger
-                    className="h-8 w-full shrink-0 border-border/60 bg-muted/20 shadow-none sm:w-40 dark:bg-muted/15"
-                    aria-label="Filter by file type"
-                  >
-                    <SelectValue>{ARTIFACT_TYPE_FILTER_LABELS[effectiveTypeFilter]}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {typeOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {ARTIFACT_TYPE_FILTER_LABELS[option]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
+            <Select
+              value={effectiveTypeFilter}
+              onValueChange={(value) => {
+                if (value != null) {
+                  setTypeFilter(value as ArtifactTypeFilter);
+                }
+              }}
+            >
+              <SelectTrigger
+                className="h-8 w-full shrink-0 border-border/60 bg-muted/20 shadow-none sm:w-40 dark:bg-muted/15"
+                aria-label="Filter by file type"
+              >
+                <SelectValue>{ARTIFACT_TYPE_FILTER_LABELS[effectiveTypeFilter]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {typeOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {ARTIFACT_TYPE_FILTER_LABELS[option]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+        ) : null}
 
+        <div className="rounded-md border border-border">
           {isLoading ? (
             <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
               <Spinner className="size-4" />
@@ -298,7 +300,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
           ) : error ? (
             <div className="px-4 py-6 text-sm text-destructive">{formatError(error)}</div>
           ) : artifacts.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
               No artifacts yet.
             </div>
           ) : filteredArtifacts.length === 0 ? (
@@ -310,7 +312,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
               {filteredArtifacts.map((artifact) => (
                 <li
                   key={artifact.filename}
-                  className="flex items-center justify-between gap-3 px-4 py-3"
+                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-100 ease-out hover:bg-muted/40"
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <ArtifactIcon mimeType={artifact.mimeType} filename={artifact.filename} />
@@ -318,17 +320,21 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
                       <p className="truncate text-sm font-medium text-foreground">
                         {artifact.filename}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {artifact.mimeType} · {formatBytes(artifact.sizeBytes)} · {formatTimestamp(artifact.updatedAt)}
+                      <p className="text-xs text-pretty text-muted-foreground">
+                        {artifact.mimeType} ·{" "}
+                        <span className="tabular-nums">{formatBytes(artifact.sizeBytes)}</span>
+                        {" · "}
+                        {formatTimestamp(artifact.updatedAt)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <ArtifactAttachmentPreview
                       id={`artifacts-tab:${artifact.path || artifact.filename}`}
                       profileId={profileId}
                       artifact={toChatArtifactRef(artifact)}
                       variant="icon"
+                      className={iconActionHitArea}
                     />
                     <ArtifactRowMenu
                       profileId={profileId}
@@ -341,7 +347,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
               ))}
             </ul>
           )}
-        </section>
+        </div>
       </div>
 
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>

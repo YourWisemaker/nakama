@@ -40,7 +40,7 @@ export function ProfileDetailTabButton({
       aria-controls={controls}
       data-active={active || undefined}
       className={cn(
-        "relative -mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4",
+        "relative -mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-sm font-medium transition-colors sm:gap-2 sm:px-4",
         active
           ? "border-foreground text-foreground"
           : "border-transparent text-muted-foreground hover:text-foreground",

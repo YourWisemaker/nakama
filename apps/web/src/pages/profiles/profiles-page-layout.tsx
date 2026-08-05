@@ -182,11 +182,11 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                 </div>
               ) : (
                 <>
-                  <div className={profilePanelHeaderClass}>
+                  <div className="flex min-w-0 shrink-0 items-stretch border-b border-border">
                     <div
                       role="tablist"
                       aria-label="Profile settings"
-                      className="flex min-w-0 flex-1"
+                      className="no-scrollbar flex min-w-0 flex-1 overflow-x-auto px-2 sm:px-3"
                     >
                       <ProfileDetailTabButton
                         id="profile-detail-tab-profile"
@@ -229,7 +229,7 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                         >
                           Proposals
                           {pendingSkillProposals > 0 ? (
-                            <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+                            <span className="tabular-nums text-xs text-amber-600 dark:text-amber-400">
                               ({pendingSkillProposals > 99 ? "99+" : pendingSkillProposals})
                             </span>
                           ) : null}
@@ -237,17 +237,20 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                       ) : null}
                     </div>
                     {!detail.isSuper ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={busy}
-                        className="shrink-0 text-destructive hover:text-destructive"
-                        onClick={() => openDeleteDialog(selectedId)}
-                      >
-                        <Trash2Icon className="size-4" aria-hidden />
-                        Delete
-                      </Button>
+                      <div className="flex shrink-0 items-center border-l border-border px-2 sm:px-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          aria-label="Delete profile"
+                          className="text-destructive hover:text-destructive max-sm:size-7 max-sm:px-0"
+                          onClick={() => openDeleteDialog(selectedId)}
+                        >
+                          <Trash2Icon className="size-3.5" aria-hidden />
+                          <span className="hidden sm:inline">Delete</span>
+                        </Button>
+                      </div>
                     ) : null}
                   </div>
                   {detailTab === "profile" ? (
