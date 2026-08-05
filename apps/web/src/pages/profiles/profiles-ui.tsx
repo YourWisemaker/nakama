@@ -108,7 +108,7 @@ function ProfileAvatarOverlay({
   const overlayIconClass = size === "lg" ? "size-5" : "size-4";
 
   return (
-    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/50 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-visible:opacity-100">
       {uploading ? (
         <Spinner className={cn(overlayIconClass, "text-primary-foreground")} />
       ) : (
@@ -134,7 +134,7 @@ export function EditableProfileAvatar({
   size?: "xs" | "sm" | "md" | "ml" | "lg";
 }) {
   const triggerClassName =
-    "group relative shrink-0 rounded-full disabled:cursor-not-allowed disabled:opacity-50";
+    "group relative shrink-0 rounded-full transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
   if (profile.hasAvatar && onRemove) {
     return (

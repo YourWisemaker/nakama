@@ -54,16 +54,18 @@ export function ProfileAvatar({
 }) {
   const avatarUrl = getProfileAvatarUrl(profile);
 
+  const surfaceClass = cn(
+    "shrink-0 rounded-full outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
+    sizeClasses[size],
+    className,
+  );
+
   if (avatarUrl) {
     return (
       <img
         src={avatarUrl}
         alt=""
-        className={cn(
-          "shrink-0 rounded-full object-cover",
-          sizeClasses[size],
-          className,
-        )}
+        className={cn(surfaceClass, "object-cover")}
       />
     );
   }
@@ -77,7 +79,7 @@ export function ProfileAvatar({
       size={sizePixels[size]}
       tones={tonesFromHash(hash)}
       animated={active}
-      className={cn("shrink-0 rounded-full", sizeClasses[size], className)}
+      className={surfaceClass}
       // Let Tailwind className control radius (Hashvatar defaults to 50%).
       style={{ borderRadius: undefined }}
     />
