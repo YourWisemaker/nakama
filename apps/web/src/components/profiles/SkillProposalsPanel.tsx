@@ -39,8 +39,17 @@ function proposalPreview(proposal: SkillProposal): string {
   if (proposal.action === "create" && proposal.content) {
     return proposal.content;
   }
+  if (proposal.action === "edit" && proposal.content) {
+    return proposal.content;
+  }
   if (proposal.action === "patch") {
     return `Replace:\n${proposal.patchOldString ?? ""}\n\nWith:\n${proposal.patchNewString ?? ""}`;
+  }
+  if (proposal.action === "write_file") {
+    return `Write ${proposal.relativePath ?? "?"}:\n${proposal.content ?? ""}`;
+  }
+  if (proposal.action === "remove_file") {
+    return `Remove supporting file "${proposal.relativePath ?? "?"}" from skill "${proposal.skillName}"`;
   }
   return `Delete skill "${proposal.skillName}"`;
 }
@@ -51,6 +60,15 @@ function actionLabel(action: SkillProposal["action"]): string {
   }
   if (action === "patch") {
     return "Patch";
+  }
+  if (action === "edit") {
+    return "Edit";
+  }
+  if (action === "write_file") {
+    return "Write file";
+  }
+  if (action === "remove_file") {
+    return "Remove file";
   }
   return "Delete";
 }

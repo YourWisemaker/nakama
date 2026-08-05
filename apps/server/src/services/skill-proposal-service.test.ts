@@ -282,4 +282,83 @@ describe("SkillProposalService", () => {
       service.approveProposal("org_other", staged.proposalId!, "admin_user"),
     ).rejects.toMatchObject({ status: 404 });
   });
+
+  test("stage and approve edit replaces SKILL.md", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const profile = await seedOrg(db);
+    const skills = new SkillsService(db);
+    const service = new SkillProposalService(db, skills);
+
+    await skills.createAndAssignRawSkillToProfile(
+      ORG_ID,
+      profile.id,
+      sampleSkillMarkdown,
+    );
+
+    const editedContent = `---
+name: deploy-notes
+description: Notes about deploy process.
+---
+
+Use the canary checklist.
+`;
+
+    const staged = await service.stageProposal({
+      orgId: ORG_ID,
+      profileId: profile.id,
+      action: "edit",
+      skillName: "deploy-notes",
+      content: editedContent,
+    });
+    expect(staged.outcome).toBe("created");
+
+    const skillId = (await skills.listSkills()).skills.find(
+      (skill) => skill.name === "deploy-notes",
+    )!.id;
+    const before = await skills.getSkill(skillId);
+    expect(before.skill.body).toContain("Run the deploy checklist");
+
+    await service.approveProposal(ORG_ID, staged.proposalId!, "admin_user");
+
+    const after = await skills.getSkill(skillId);
+    expect(after.skill.body).toContain("Use the canary checklist");
+  });
+
+  test("stage and approve write_file creates supporting file", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { getProfileSkillsDir } = await import("@nakama/core");
+
+    const db = createInMemoryDatabaseAdapter();
+    const profile = await seedOrg(db);
+    const skills = new SkillsService(db);
+    const service = new SkillProposalService(db, skills);
+
+    await skills.createAndAssignRawSkillToProfile(
+      ORG_ID,
+      profile.id,
+      sampleSkillMarkdown,
+    );
+
+    const staged = await service.stageProposal({
+      orgId: ORG_ID,
+      profileId: profile.id,
+      action: "write_file",
+      skillName: "deploy-notes",
+      relativePath: "checklist.md",
+      content: "- staging\n",
+    });
+    expect(staged.outcome).toBe("created");
+
+    const { proposals } = await service.listProposals(ORG_ID, { profileId: profile.id });
+    expect(proposals[0]?.relativePath).toBe("checklist.md");
+    expect(proposals[0]?.action).toBe("write_file");
+
+    await service.approveProposal(ORG_ID, staged.proposalId!, "admin_user");
+
+    const onDisk = await readFile(
+      join(getProfileSkillsDir(ORG_ID, profile.id), "deploy-notes", "checklist.md"),
+      "utf8",
+    );
+    expect(onDisk).toContain("- staging");
+  });
 });

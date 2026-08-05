@@ -4,6 +4,7 @@ import {
   isGlobalSkillSourcePath,
   isPathWithinProfileSkillsDir,
   parseRawProfileSkillContent,
+  resolveProfileSkillSupportingFilePath,
   resolveSkillWriteApprovalRequired,
 } from "@nakama/core";
 import {
@@ -34,6 +35,7 @@ export interface StageSkillProposalInput {
   content?: string;
   oldString?: string;
   newString?: string;
+  relativePath?: string;
   sessionId?: string | null;
   proposedByUserId?: string | null;
 }
@@ -79,6 +81,15 @@ export class SkillProposalService {
     }
     if (input.action === "patch") {
       return this.stagePatch(input);
+    }
+    if (input.action === "edit") {
+      return this.stageEdit(input);
+    }
+    if (input.action === "write_file") {
+      return this.stageWriteFile(input);
+    }
+    if (input.action === "remove_file") {
+      return this.stageRemoveFile(input);
     }
     return this.stageDelete(input);
   }
@@ -134,6 +145,41 @@ export class SkillProposalService {
         proposal.skillName,
         oldString,
         newString,
+      );
+    } else if (proposal.action === "edit") {
+      const content = proposal.content;
+      if (!content?.trim()) {
+        throw new NakamaApiError("Edit proposal is missing content.", 400);
+      }
+      await skills.editAssignedProfileSkill(
+        orgId,
+        proposal.profileId,
+        proposal.skillName,
+        content,
+      );
+    } else if (proposal.action === "write_file") {
+      const content = proposal.content;
+      const relativePath = proposal.relativePath;
+      if (content === null || !relativePath?.trim()) {
+        throw new NakamaApiError("Write-file proposal is missing path or content.", 400);
+      }
+      await skills.writeAssignedProfileSkillSupportingFile(
+        orgId,
+        proposal.profileId,
+        proposal.skillName,
+        relativePath,
+        content,
+      );
+    } else if (proposal.action === "remove_file") {
+      const relativePath = proposal.relativePath;
+      if (!relativePath?.trim()) {
+        throw new NakamaApiError("Remove-file proposal is missing path.", 400);
+      }
+      await skills.removeAssignedProfileSkillSupportingFile(
+        orgId,
+        proposal.profileId,
+        proposal.skillName,
+        relativePath,
       );
     } else {
       await skills.deleteAssignedProfileSkill(orgId, proposal.profileId, proposal.skillName);
@@ -231,6 +277,7 @@ export class SkillProposalService {
       content,
       patchOldString: null,
       patchNewString: null,
+      relativePath: null,
     });
 
     return {
@@ -293,6 +340,7 @@ export class SkillProposalService {
       content: null,
       patchOldString: oldString,
       patchNewString: newString,
+      relativePath: null,
     });
 
     return {
@@ -329,6 +377,7 @@ export class SkillProposalService {
       content: null,
       patchOldString: null,
       patchNewString: null,
+      relativePath: null,
     });
 
     return {
@@ -338,12 +387,158 @@ export class SkillProposalService {
     };
   }
 
+  private async stageEdit(input: StageSkillProposalInput): Promise<StageSkillProposalResult> {
+    const name = this.readSkillName(input);
+    assertNotBundledSkillName(name);
+    await this.assertProfileOwnedSkill(input.orgId, input.profileId, name);
+
+    const content = input.content;
+    if (!content?.trim()) {
+      throw new NakamaApiError("content is required for edit.", 400);
+    }
+    this.assertContentSize(content);
+
+    const { name: parsedName } = parseRawProfileSkillContent(
+      content,
+      input.orgId,
+      input.profileId,
+    );
+    if (parsedName !== name) {
+      throw new NakamaApiError(
+        `Frontmatter name "${parsedName}" must match skill name "${name}".`,
+        400,
+      );
+    }
+
+    const pending = await this.pendingForSkillOrAlready(input, name, content);
+    if (pending) {
+      return pending;
+    }
+
+    const proposal = await this.insertProposal({
+      ...input,
+      action: "edit",
+      skillName: name,
+      content,
+      patchOldString: null,
+      patchNewString: null,
+      relativePath: null,
+    });
+
+    return {
+      outcome: "created",
+      proposalId: proposal.id,
+      message: `Staged edit for skill "${name}" (proposal ${proposal.id}). An org admin must approve before it goes live.`,
+      warnings: this.warningsForContent(content),
+    };
+  }
+
+  private async stageWriteFile(input: StageSkillProposalInput): Promise<StageSkillProposalResult> {
+    const name = this.readSkillName(input);
+    assertNotBundledSkillName(name);
+    await this.assertProfileOwnedSkill(input.orgId, input.profileId, name);
+
+    const relativePath = input.relativePath?.trim();
+    if (!relativePath) {
+      throw new NakamaApiError("path is required for write_file.", 400);
+    }
+    const content = input.content;
+    if (content === undefined) {
+      throw new NakamaApiError("content is required for write_file.", 400);
+    }
+    this.assertContentSize(content);
+
+    // Validate path containment / basename before staging.
+    resolveProfileSkillSupportingFilePath(input.orgId, input.profileId, name, relativePath);
+
+    const pending = await this.pendingForSkillOrAlready(input, name);
+    if (pending) {
+      return pending;
+    }
+
+    const proposal = await this.insertProposal({
+      ...input,
+      action: "write_file",
+      skillName: name,
+      content,
+      patchOldString: null,
+      patchNewString: null,
+      relativePath,
+    });
+
+    return {
+      outcome: "created",
+      proposalId: proposal.id,
+      message: `Staged write_file for skill "${name}" path "${relativePath}" (proposal ${proposal.id}). An org admin must approve before it goes live.`,
+      warnings: this.warningsForContent(content),
+    };
+  }
+
+  private async stageRemoveFile(input: StageSkillProposalInput): Promise<StageSkillProposalResult> {
+    const name = this.readSkillName(input);
+    assertNotBundledSkillName(name);
+    await this.assertProfileOwnedSkill(input.orgId, input.profileId, name);
+
+    const relativePath = input.relativePath?.trim();
+    if (!relativePath) {
+      throw new NakamaApiError("path is required for remove_file.", 400);
+    }
+
+    resolveProfileSkillSupportingFilePath(input.orgId, input.profileId, name, relativePath);
+
+    const pending = await this.pendingForSkillOrAlready(input, name);
+    if (pending) {
+      return pending;
+    }
+
+    const proposal = await this.insertProposal({
+      ...input,
+      action: "remove_file",
+      skillName: name,
+      content: null,
+      patchOldString: null,
+      patchNewString: null,
+      relativePath,
+    });
+
+    return {
+      outcome: "created",
+      proposalId: proposal.id,
+      message: `Staged remove_file for skill "${name}" path "${relativePath}" (proposal ${proposal.id}). An org admin must approve before it is removed.`,
+    };
+  }
+
+  private async pendingForSkillOrAlready(
+    input: StageSkillProposalInput,
+    name: string,
+    contentForWarnings?: string,
+  ): Promise<StageSkillProposalResult | null> {
+    const db = this.requireDatabase();
+    const pending = await db.getPendingSkillProposalForSkill(
+      input.orgId,
+      input.profileId,
+      name,
+    );
+    if (!pending) {
+      return null;
+    }
+    return {
+      outcome: "already_pending",
+      proposalId: pending.id,
+      message: `A pending proposal already exists for skill "${name}".`,
+      ...(contentForWarnings
+        ? { warnings: this.warningsForContent(contentForWarnings) }
+        : {}),
+    };
+  }
+
   private async insertProposal(
     input: StageSkillProposalInput & {
       skillName: string;
       content: string | null;
       patchOldString: string | null;
       patchNewString: string | null;
+      relativePath: string | null;
     },
   ): Promise<StoredSkillProposal> {
     const db = this.requireDatabase();
@@ -359,6 +554,7 @@ export class SkillProposalService {
       content: input.content,
       patchOldString: input.patchOldString,
       patchNewString: input.patchNewString,
+      relativePath: input.relativePath,
       status: "pending",
       reviewerUserId: null,
       reviewedAt: null,
@@ -435,7 +631,12 @@ export class SkillProposalService {
   private withWarnings(proposal: StoredSkillProposal): StoredSkillProposal & {
     warnings?: string[];
   } {
-    if (proposal.action === "create" && proposal.content) {
+    if (
+      (proposal.action === "create" ||
+        proposal.action === "edit" ||
+        proposal.action === "write_file") &&
+      proposal.content
+    ) {
       const warnings = this.warningsForContent(proposal.content);
       return warnings ? { ...proposal, warnings } : proposal;
     }
