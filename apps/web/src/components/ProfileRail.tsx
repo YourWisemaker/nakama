@@ -98,6 +98,7 @@ export function ProfileRail() {
               <ProfileAvatar
                 profile={profile}
                 size="sm"
+                active={active}
                 className={cn(
                   "size-7 rounded-md transition-all duration-150",
                   active

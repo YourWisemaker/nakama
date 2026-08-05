@@ -122,6 +122,17 @@ export function useUploadProfileAvatarMutation() {
   });
 }
 
+export function useDeleteProfileAvatarMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (profileId: string) => client.deleteProfileAvatar(profileId),
+    onSuccess: async (_data, profileId) => {
+      await invalidateProfileQueries(queryClient, profileId);
+    },
+  });
+}
+
 export function useAssignToolMutation() {
   const queryClient = useQueryClient();
 

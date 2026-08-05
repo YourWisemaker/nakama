@@ -21,6 +21,7 @@ type IdentityState = Pick<
   | "busy"
   | "avatarInputRef"
   | "uploadAvatarMutation"
+  | "deleteAvatarMutation"
   | "editName"
   | "handleEditNameChange"
   | "flushSave"
@@ -34,6 +35,7 @@ type IdentityState = Pick<
   | "editPrompt"
   | "handleEditPromptChange"
   | "handleAvatarSelected"
+  | "handleAvatarRemove"
 >;
 
 export function ProfileConfigIdentitySection({ state }: { state: IdentityState }) {
@@ -42,6 +44,7 @@ export function ProfileConfigIdentitySection({ state }: { state: IdentityState }
     busy,
     avatarInputRef,
     uploadAvatarMutation,
+    deleteAvatarMutation,
     editName,
     handleEditNameChange,
     flushSave,
@@ -55,6 +58,7 @@ export function ProfileConfigIdentitySection({ state }: { state: IdentityState }
     editPrompt,
     handleEditPromptChange,
     handleAvatarSelected,
+    handleAvatarRemove,
   } = state;
 
   if (!detail) {
@@ -77,9 +81,14 @@ export function ProfileConfigIdentitySection({ state }: { state: IdentityState }
           <EditableProfileAvatar
             profile={detail}
             size="ml"
-            disabled={busy || uploadAvatarMutation.isPending}
-            uploading={uploadAvatarMutation.isPending}
+            disabled={
+              busy || uploadAvatarMutation.isPending || deleteAvatarMutation.isPending
+            }
+            uploading={
+              uploadAvatarMutation.isPending || deleteAvatarMutation.isPending
+            }
             onPick={() => avatarInputRef.current?.click()}
+            onRemove={() => void handleAvatarRemove()}
           />
 
           <div className="min-w-0 flex-1">
