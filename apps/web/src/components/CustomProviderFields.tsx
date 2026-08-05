@@ -175,6 +175,8 @@ export function CustomProviderFields({
             <ModelListEditor
               models={customModels}
               disabled={disabled}
+              showPricing={false}
+              showThinking
               browseLabel={
                 browseSource === "remote"
                   ? `Browse ${resolvedBrowseLabel}`
