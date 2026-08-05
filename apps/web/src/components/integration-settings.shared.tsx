@@ -1,7 +1,36 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+
+export function IntegrationCardShell({
+  embedded,
+  children,
+  className,
+  busyLabel,
+}: {
+  embedded?: boolean;
+  children: ReactNode;
+  className?: string;
+  busyLabel?: string;
+}) {
+  if (embedded) {
+    return (
+      <div className={className} aria-busy={busyLabel ? true : undefined} aria-label={busyLabel}>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <Card className={cn("w-full shadow-none", className)}>
+      <CardContent className="p-0" aria-busy={busyLabel ? true : undefined} aria-label={busyLabel}>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
 
 export const SETTINGS_CARD_LOADING_SKELETON = (
   <div className="h-16 animate-pulse rounded-lg bg-muted px-4" aria-hidden="true" />

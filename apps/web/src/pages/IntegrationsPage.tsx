@@ -149,9 +149,9 @@ export function IntegrationsPage() {
           {section === "coding-agents" ? <CodingHarnessSettingsPanel embedded /> : null}
 
           {section === "composio" ? (
-            <div className="space-y-4">
-              {isOrgAdmin ? <ComposioSettingsCard /> : null}
-              <ComposioConnectionsCard />
+            <div className={cn(isOrgAdmin && "divide-y divide-border")}>
+              {isOrgAdmin ? <ComposioSettingsCard embedded /> : null}
+              <ComposioConnectionsCard embedded />
             </div>
           ) : null}
 
