@@ -341,6 +341,8 @@ export async function runWriteDocx(
   const bytes = await markdownToDocx(parsed.markdown);
   const guardOptions = buildFileGuardOptions(context, options);
   const guarded = await guardFilePath(parsed.path, parsed.cwd ?? null, bytes.length, guardOptions);
+  refuseProfileSkillMarkdownWrite(context, guarded.resolved);
+  refuseSkillLocalToolFileWrite(guarded.resolved);
   // Same rule as write_file: never silently overwrite an existing artifact.
   const filePath = isArtifactPath(parsed.path)
     ? await uniqueArtifactPath(guarded.resolved)

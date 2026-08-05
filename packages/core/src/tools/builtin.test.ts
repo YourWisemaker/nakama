@@ -364,7 +364,7 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/write_docx/);
   });
 
-  test("write_file refuses skills/* paths when forbidProfileSkillMarkdownWrites", async () => {
+  test("file tools refuse skills/* paths when forbidProfileSkillMarkdownWrites", async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-skill-md-"));
     await mkdir(path.join(tempDir, "skills", "notes", "docs"), { recursive: true });
     await writeFile(
@@ -372,6 +372,7 @@ describe("file builtin tools", () => {
       "---\nname: notes\ndescription: Notes.\n---\n\nBody.\n",
       "utf8",
     );
+    await writeFile(path.join(tempDir, "skills", "notes", "docs", "notes.md"), "nested\n", "utf8");
     const context = { ...PROFILE_CONTEXT, forbidProfileSkillMarkdownWrites: true };
 
     await expect(
@@ -383,10 +384,37 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/Use skill_manage/);
 
     await expect(
-      runWriteFile({ path: "skills/notes/docs/notes.md", content: "nested" }, context, {
+      runWriteFile({ path: "skills/notes/docs/notes.md", content: "changed" }, context, {
         workspaceRoot: tempDir,
       }),
     ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
+      runEditFile(
+        {
+          path: "skills/notes/docs/notes.md",
+          edits: [{ oldText: "nested", newText: "changed" }],
+        },
+        context,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
+      runDeleteFile({ path: "skills/notes/docs/notes.md" }, context, { workspaceRoot: tempDir }),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
+      runWriteDocx(
+        { path: "skills/notes/notes.docx", markdown: "# hi" },
+        context,
+        { workspaceRoot: tempDir },
+      ),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    expect(await readFile(path.join(tempDir, "skills", "notes", "docs", "notes.md"), "utf8")).toBe(
+      "nested\n",
+    );
   });
 
   test("write_file, edit_file, and delete_file refuse skills/*/tool.js and tool.ts", async () => {

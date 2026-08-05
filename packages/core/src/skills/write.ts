@@ -1,5 +1,5 @@
 import { realpathSync } from "node:fs";
-import { mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathExists } from "../fs";
 import { getUserConfigDir } from "../user-config";
@@ -170,18 +170,32 @@ export function assertPathWithinProfileSkillsDir(
 }
 
 export function assertSupportingFileAllowed(filePath: string): void {
-  const base = path.basename(filePath);
+  const lower = path.basename(filePath).toLowerCase();
 
-  if (base === SKILL_FILE_NAME) {
+  if (lower === SKILL_FILE_NAME.toLowerCase()) {
     throw new Error(
       `Use patch/edit for ${SKILL_FILE_NAME}; write_file/remove_file are for supporting files only.`,
     );
   }
 
-  if ((SKILL_TOOL_FILES as readonly string[]).includes(base)) {
+  if ((SKILL_TOOL_FILES as readonly string[]).some((name) => name.toLowerCase() === lower)) {
     throw new Error(
       `Skill-local tools (${SKILL_TOOL_FILES.join(", ")}) cannot be written by agents.`,
     );
+  }
+}
+
+async function assertSupportingPathIsNotSymlink(absolutePath: string): Promise<void> {
+  try {
+    const stats = await lstat(absolutePath);
+    if (stats.isSymbolicLink()) {
+      throw new Error("Supporting file path must not be a symbolic link.");
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+    throw error;
   }
 }
 
@@ -239,7 +253,9 @@ export async function writeProfileSkillSupportingFile(options: {
     options.relativePath,
   );
 
+  await assertSupportingPathIsNotSymlink(absolutePath);
   await mkdir(path.dirname(absolutePath), { recursive: true });
+  await assertSupportingPathIsNotSymlink(absolutePath);
   await writeFile(absolutePath, options.content, "utf8");
 
   const skillRoot = resolveProfileSkillDirectory(
@@ -264,6 +280,8 @@ export async function removeProfileSkillSupportingFile(options: {
     options.name,
     options.relativePath,
   );
+
+  await assertSupportingPathIsNotSymlink(absolutePath);
 
   if (!(await pathExists(absolutePath))) {
     throw new Error(`Supporting file "${options.relativePath}" not found.`);

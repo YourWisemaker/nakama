@@ -45,6 +45,8 @@ export interface StageSkillProposalResult {
   proposalId?: string;
   message: string;
   warnings?: string[];
+  /** Present for supporting-file proposals (including already_pending echoes). */
+  relativePath?: string;
 }
 
 export class SkillProposalService {
@@ -471,6 +473,7 @@ export class SkillProposalService {
       proposalId: proposal.id,
       message: `Staged write_file for skill "${name}" path "${relativePath}" (proposal ${proposal.id}). An org admin must approve before it goes live.`,
       warnings: this.warningsForContent(content),
+      relativePath,
     };
   }
 
@@ -505,6 +508,7 @@ export class SkillProposalService {
       outcome: "created",
       proposalId: proposal.id,
       message: `Staged remove_file for skill "${name}" path "${relativePath}" (proposal ${proposal.id}). An org admin must approve before it is removed.`,
+      relativePath,
     };
   }
 
@@ -526,6 +530,7 @@ export class SkillProposalService {
       outcome: "already_pending",
       proposalId: pending.id,
       message: `A pending proposal already exists for skill "${name}".`,
+      relativePath: pending.relativePath ?? undefined,
       ...(contentForWarnings
         ? { warnings: this.warningsForContent(contentForWarnings) }
         : {}),

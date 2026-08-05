@@ -323,7 +323,9 @@ export function createSkillManageTools(deps: SkillManageToolDeps): ToolDefinitio
               proposalId: staged.proposalId,
               outcome: staged.outcome,
               message: staged.message,
-              path: relativePath,
+              ...(staged.relativePath || staged.outcome === "created"
+                ? { path: staged.relativePath ?? relativePath }
+                : {}),
             });
           }
 
@@ -353,7 +355,9 @@ export function createSkillManageTools(deps: SkillManageToolDeps): ToolDefinitio
               proposalId: staged.proposalId,
               outcome: staged.outcome,
               message: staged.message,
-              path: relativePath,
+              ...(staged.relativePath || staged.outcome === "created"
+                ? { path: staged.relativePath ?? relativePath }
+                : {}),
             });
           }
 

@@ -399,10 +399,27 @@ Use staging first.
 `,
     });
 
-    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/SKILL.md")).toThrow(/patch\/edit/);
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/SKILL.md")).toThrow();
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/Tool.js")).toThrow();
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/skill.md")).toThrow();
     expect(() =>
       resolveProfileSkillSupportingFilePath(ORG_ID, PROFILE_ID, "deploy", "../escape.md"),
-    ).toThrow(/\.\.|escape/i);
+    ).toThrow();
+
+    const skillDir = resolveProfileSkillDirectory(ORG_ID, PROFILE_ID, "deploy");
+    const outside = join(configDir, "outside.txt");
+    const symlinkPath = join(skillDir, "sidecar.md");
+    await symlink(outside, symlinkPath);
+    await expect(
+      writeProfileSkillSupportingFile({
+        orgId: ORG_ID,
+        profileId: PROFILE_ID,
+        name: "deploy",
+        relativePath: "sidecar.md",
+        content: "ESCAPED\n",
+      }),
+    ).rejects.toThrow(/symbolic link/i);
+    expect(await pathExists(outside)).toBe(false);
 
     const written = await writeProfileSkillSupportingFile({
       orgId: ORG_ID,

@@ -94,7 +94,7 @@ function ProposalReviewDialog({
   async function handleApprove() {
     try {
       await approveMutation.mutateAsync(proposal.id);
-      toast(`Approved ${proposal.action} for "${proposal.skillName}".`);
+      toast(`Approved ${actionLabel(proposal.action).toLowerCase()} for "${proposal.skillName}".`);
       onOpenChange(false);
     } catch (err) {
       toast(formatError(err));
