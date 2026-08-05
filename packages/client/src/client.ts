@@ -321,6 +321,12 @@ export class NakamaClient {
     return this.request<ModelsResponse>(`/v1/models${query}`);
   }
 
+  async getExternalModelCatalog(
+    catalogId: "models-dev" | "openrouter" | "cerebras",
+  ): Promise<unknown> {
+    return this.request(`/v1/model-catalogs/${encodeURIComponent(catalogId)}`);
+  }
+
   async discoverModels(request: {
     baseUrl?: string;
     apiKey?: string;
