@@ -6,16 +6,18 @@ import { cn } from "@/lib/utils";
 
 export function IntegrationCardShell({
   embedded,
+  bordered,
   children,
   className,
   busyLabel,
 }: {
   embedded?: boolean;
+  bordered?: boolean;
   children: ReactNode;
   className?: string;
   busyLabel?: string;
 }) {
-  if (embedded) {
+  if (embedded && !bordered) {
     return (
       <div className={className} aria-busy={busyLabel ? true : undefined} aria-label={busyLabel}>
         {children}
@@ -25,7 +27,11 @@ export function IntegrationCardShell({
 
   return (
     <Card className={cn("w-full shadow-none", className)}>
-      <CardContent className="p-0" aria-busy={busyLabel ? true : undefined} aria-label={busyLabel}>
+      <CardContent
+        className="overflow-hidden p-0"
+        aria-busy={busyLabel ? true : undefined}
+        aria-label={busyLabel}
+      >
         {children}
       </CardContent>
     </Card>

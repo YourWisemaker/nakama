@@ -23,7 +23,7 @@ function ComposioStatusBadge({
   if (!configured) {
     return (
       <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-        <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+        <span className="size-1.5 rounded-full bg-muted-foreground/60" aria-hidden />
         Not configured
       </span>
     );
@@ -47,8 +47,8 @@ function ComposioStatusBadge({
 }
 
 function ComposioSettingsSkeleton({ embedded = false }: { embedded?: boolean }) {
-  const sectionPadding = embedded ? "px-4 py-3" : "p-5";
-  const footerPadding = embedded ? "px-4 py-3" : "px-5 py-3";
+  const sectionPadding = embedded ? "pb-1.5" : "p-5";
+  const footerPadding = embedded ? "pt-1.5" : "px-5 py-3";
 
   return (
     <IntegrationCardShell embedded={embedded} busyLabel="Loading Composio settings">
@@ -67,24 +67,20 @@ function ComposioSettingsSkeleton({ embedded = false }: { embedded?: boolean }) 
         </>
       ) : null}
 
-      <div className={cn("space-y-3", sectionPadding, embedded && "pt-0")}>
+      <div className={cn("space-y-2", sectionPadding, embedded && "pt-0")}>
         <div className="space-y-2">
           <div className="skeleton-shimmer h-4 w-28 rounded" />
           <div className="skeleton-shimmer h-4 w-full rounded" />
           <div className="skeleton-shimmer h-4 w-4/5 rounded" />
         </div>
-        <div className="skeleton-shimmer h-9 w-full rounded-md" />
-        <div className="skeleton-shimmer h-4 w-64 rounded" />
+        <div className="flex items-center gap-2">
+          <div className="skeleton-shimmer h-9 min-w-0 flex-1 rounded-md" />
+          <div className="skeleton-shimmer h-8 w-16 shrink-0 rounded-md" />
+        </div>
       </div>
 
-      <div
-        className={cn(
-          "flex flex-wrap items-center justify-between gap-3 bg-muted/40",
-          footerPadding,
-        )}
-      >
+      <div className={cn(footerPadding)}>
         <div className="skeleton-shimmer h-4 w-72 max-w-full rounded" />
-        <div className="skeleton-shimmer h-8 w-16 shrink-0 rounded-md" />
       </div>
     </IntegrationCardShell>
   );
@@ -114,9 +110,8 @@ export function ComposioSettingsCard({ embedded = false }: { embedded?: boolean 
   const canSave = configured || apiKey.trim().length > 0;
   const errorMessage = formError ?? (loadError ? formatError(loadError) : null);
 
-  const sectionPadding = embedded ? "px-4 py-3" : "p-5";
-  const footerPadding = embedded ? "px-4 py-3" : "px-5 py-3";
-  const messagePadding = embedded ? "px-4" : "px-5";
+  const sectionPadding = embedded ? "pb-1.5" : "p-5";
+  const footerPadding = embedded ? "pt-1.5" : "px-5 py-3";
 
   async function handleSave() {
     setFormError(null);
@@ -152,14 +147,12 @@ export function ComposioSettingsCard({ embedded = false }: { embedded?: boolean 
         </>
       ) : null}
 
-      <div className={cn("space-y-3", sectionPadding, embedded && "pt-0")}>
+      <div className={cn("space-y-2", sectionPadding, embedded && "pt-0")}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <p className="text-sm font-medium text-foreground">Project API key</p>
             <p className="text-sm text-muted-foreground [text-wrap:pretty]">
-              Paste your Composio <span className="text-foreground">project API key</span> to enable
-              SaaS integrations. This is not the MCP consumer key shown on the dashboard home page
-              or under AI Clients.
+              Paste a Composio project API key — not the MCP consumer key.
             </p>
           </div>
           {embedded ? (
@@ -167,7 +160,8 @@ export function ComposioSettingsCard({ embedded = false }: { embedded?: boolean 
           ) : null}
         </div>
 
-        <InputGroup className="h-9">
+        <div className="flex items-center gap-2">
+          <InputGroup className="h-9 min-w-0 flex-1">
             <InputGroupInput
               type={showApiKey ? "text" : "password"}
               autoComplete="off"
@@ -189,6 +183,7 @@ export function ComposioSettingsCard({ embedded = false }: { embedded?: boolean 
               <InputGroupButton
                 type="button"
                 size="icon-xs"
+                className="relative before:absolute before:-inset-2 before:content-['']"
                 aria-label={showApiKey ? "Hide API key" : "Show API key"}
                 onClick={() => setShowApiKey((current) => !current)}
               >
@@ -196,39 +191,10 @@ export function ComposioSettingsCard({ embedded = false }: { embedded?: boolean 
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
-
-          <p className="text-sm text-muted-foreground">
-            Saved to{" "}
-            <code className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-foreground">
-              ~/.nakama/composio/config.ini
-            </code>
-          </p>
-      </div>
-
-      <div
-        className={cn(
-          "flex flex-wrap items-center justify-between gap-3 bg-muted/40",
-          footerPadding,
-        )}
-      >
-          <a
-            href="https://docs.composio.dev/reference/authentication"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ExternalLinkIcon className="size-3.5 shrink-0" aria-hidden />
-            <span>
-              Get a project API key:{" "}
-              <span className={cn("font-medium text-primary")}>
-                Settings → Project Settings → API Keys
-              </span>
-            </span>
-          </a>
           <Button
             type="button"
             size="sm"
-            className="min-w-[4.5rem]"
+            className="min-w-[4.5rem] shrink-0"
             disabled={!canSave || saveMutation.isPending}
             onClick={() => void handleSave()}
           >
@@ -236,16 +202,36 @@ export function ComposioSettingsCard({ embedded = false }: { embedded?: boolean 
           </Button>
         </div>
 
-      {configured && !composioReachable ? (
-        <p className={cn(messagePadding, "pb-1 text-sm text-amber-800 dark:text-amber-200")}>
-          The saved key could not reach Composio. Check that it is a project API key from Settings
-          → Project Settings → API Keys.
-        </p>
-      ) : null}
+        {configured && !composioReachable ? (
+          <p className="text-sm text-amber-800 dark:text-amber-200" role="status">
+            The saved key could not reach Composio. Check that it is a project API key from Settings
+            → Project Settings → API Keys.
+          </p>
+        ) : null}
 
-      {errorMessage ? (
-        <p className={cn(messagePadding, "pb-4 text-sm text-destructive")}>{errorMessage}</p>
-      ) : null}
+        {errorMessage ? (
+          <p className="text-sm text-destructive" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+      </div>
+
+      <div className={cn(footerPadding)}>
+        <a
+          href="https://docs.composio.dev/reference/authentication"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ExternalLinkIcon className="size-3.5 shrink-0" aria-hidden />
+          <span>
+            Get a project API key:{" "}
+            <span className={cn("font-medium text-primary")}>
+              Settings → Project Settings → API Keys
+            </span>
+          </span>
+        </a>
+      </div>
     </IntegrationCardShell>
   );
 }

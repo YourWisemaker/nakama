@@ -377,9 +377,9 @@ function ComposioToolkitList({
   );
 }
 
-function ComposioConnectionsSkeleton({ embedded = false }: { embedded?: boolean }) {
+function ComposioConnectionsSkeleton({ bordered = false }: { bordered?: boolean }) {
   return (
-    <IntegrationCardShell embedded={embedded} busyLabel="Loading Composio toolkits">
+    <IntegrationCardShell bordered={bordered} busyLabel="Loading Composio toolkits">
         <div className="space-y-3 border-b border-border px-4 py-3">
           <div className="space-y-2">
             <div className="skeleton-shimmer h-4 w-28 rounded" />
@@ -410,7 +410,13 @@ function ComposioConnectionsSkeleton({ embedded = false }: { embedded?: boolean 
   );
 }
 
-export function ComposioConnectionsCard({ embedded = false }: { embedded?: boolean }) {
+export function ComposioConnectionsCard({
+  embedded = false,
+  bordered = false,
+}: {
+  embedded?: boolean;
+  bordered?: boolean;
+}) {
   const { activeOrg } = useAuth();
   const isOrgAdmin = activeOrg?.role === "admin";
   const { data: settings } = useComposioSettings();
@@ -426,13 +432,15 @@ export function ComposioConnectionsCard({ embedded = false }: { embedded?: boole
     disconnectMutation.isPending ||
     syncMutation.isPending;
 
+  const shellProps = { embedded, bordered };
+
   if (toolkitsQuery.isLoading) {
-    return <ComposioConnectionsSkeleton embedded={embedded} />;
+    return <ComposioConnectionsSkeleton bordered={bordered} />;
   }
 
   if (toolkitsQuery.error) {
     return (
-      <IntegrationCardShell embedded={embedded}>
+      <IntegrationCardShell {...shellProps}>
         <div className="p-4 text-sm text-destructive">{formatError(toolkitsQuery.error)}</div>
       </IntegrationCardShell>
     );
@@ -443,7 +451,7 @@ export function ComposioConnectionsCard({ embedded = false }: { embedded?: boole
 
   if (!configured) {
     return (
-      <IntegrationCardShell embedded={embedded}>
+      <IntegrationCardShell {...shellProps}>
         <div className="space-y-2 p-4 text-sm text-muted-foreground">
           <p className="font-medium text-foreground">
             {isOrgAdmin
@@ -466,7 +474,7 @@ export function ComposioConnectionsCard({ embedded = false }: { embedded?: boole
 
   if (data.catalogError) {
     return (
-      <IntegrationCardShell embedded={embedded}>
+      <IntegrationCardShell {...shellProps}>
         <div className="space-y-2 p-4 text-sm">
           <p className="font-medium text-foreground">Could not load Composio toolkits</p>
           <p className="text-destructive">{data.catalogError}</p>
@@ -482,7 +490,7 @@ export function ComposioConnectionsCard({ embedded = false }: { embedded?: boole
   }
 
   return (
-    <IntegrationCardShell embedded={embedded}>
+    <IntegrationCardShell {...shellProps}>
       <ComposioToolkitList
           data={data}
           isOrgAdmin={isOrgAdmin}
