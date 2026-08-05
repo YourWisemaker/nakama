@@ -38,7 +38,7 @@ On first run, complete the setup wizard in the browser and add your LLM provider
 To remove the container, volume, and image and start fresh:
 
 ```bash
-./scripts/docker-reset.sh
+./scripts/docker-destroy.sh
 ./scripts/docker-build.sh
 docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
 ```

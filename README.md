@@ -62,7 +62,7 @@ docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
 **Fresh start:**
 
 ```bash
-./scripts/docker-reset.sh
+./scripts/docker-destroy.sh
 ./scripts/docker-build.sh
 docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
 ```
