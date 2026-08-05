@@ -6,13 +6,17 @@ import { join } from "node:path";
 import { pathExists } from "../fs";
 import {
   assertPathWithinProfileSkillsDir,
+  assertSupportingFileAllowed,
   assertValidSkillName,
   composeSkillMarkdown,
   createSkillFile,
   deleteSkillDirectory,
   isPathWithinProfileSkillsDir,
   patchSkillFile,
+  removeProfileSkillSupportingFile,
   resolveProfileSkillDirectory,
+  resolveProfileSkillSupportingFilePath,
+  writeProfileSkillSupportingFile,
   writeRawProfileSkillMarkdown,
 } from "./write";
 
@@ -365,5 +369,103 @@ describe("resolveProfileSkillDirectory", () => {
     expect(() =>
       assertPathWithinProfileSkillsDir(ORG_ID, PROFILE_ID, join(skillsRoot, "leaked", "SKILL.md")),
     ).toThrow(/outside the profile skills directory/);
+  });
+});
+
+describe("assertSupportingFileAllowed", () => {
+  test("refuses SKILL.md and skill-local tool files", () => {
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/SKILL.md")).toThrow(/patch\/edit/);
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/tool.ts")).toThrow(/tool\.ts/);
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/tool.js")).toThrow(/tool\.js/);
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/notes.md")).not.toThrow();
+  });
+});
+
+describe("profile skill supporting files", () => {
+  let configDir: string;
+
+  afterEach(async () => {
+    delete process.env.NAKAMA_CONFIG_DIR;
+
+    if (configDir) {
+      await rm(configDir, { recursive: true, force: true });
+    }
+  });
+
+  test("writes and removes nested supporting files under the skill dir", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-skill-support-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+
+    await writeRawProfileSkillMarkdown({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      content: `---
+name: deploy
+description: Deploy the service.
+---
+
+Use staging first.
+`,
+    });
+
+    const written = await writeProfileSkillSupportingFile({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      name: "deploy",
+      relativePath: "docs/checklist.md",
+      content: "- staging\n- prod\n",
+    });
+
+    expect(written.relativePath).toBe("docs/checklist.md");
+    expect(await pathExists(written.absolutePath)).toBe(true);
+    expect(await readFile(written.absolutePath, "utf8")).toContain("- staging");
+
+    const removed = await removeProfileSkillSupportingFile({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      name: "deploy",
+      relativePath: "docs/checklist.md",
+    });
+
+    expect(removed.relativePath).toBe("docs/checklist.md");
+    expect(await pathExists(written.absolutePath)).toBe(false);
+  });
+
+  test("refuses SKILL.md, escapes, and missing remove targets", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-skill-support-err-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+
+    await writeRawProfileSkillMarkdown({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      content: `---
+name: deploy
+description: Deploy the service.
+---
+
+Body.
+`,
+    });
+
+    expect(() =>
+      resolveProfileSkillSupportingFilePath(ORG_ID, PROFILE_ID, "deploy", "SKILL.md"),
+    ).toThrow(/patch\/edit/);
+
+    expect(() =>
+      resolveProfileSkillSupportingFilePath(ORG_ID, PROFILE_ID, "deploy", "../escape.md"),
+    ).toThrow(/\.\.|escape/i);
+
+    expect(() =>
+      resolveProfileSkillSupportingFilePath(ORG_ID, PROFILE_ID, "deploy", "/tmp/abs.md"),
+    ).toThrow(/relative/);
+
+    await expect(
+      removeProfileSkillSupportingFile({
+        orgId: ORG_ID,
+        profileId: PROFILE_ID,
+        name: "deploy",
+        relativePath: "missing.md",
+      }),
+    ).rejects.toThrow(/not found/i);
   });
 });
