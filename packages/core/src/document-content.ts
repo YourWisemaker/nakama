@@ -1,6 +1,5 @@
 import type { DocumentAttachment, MessageContentPart, ProviderName } from "./contract";
 import { NakamaApiError } from "./api-error";
-import { convertDocumentBytes } from "./anydoc-text";
 
 export type DocumentTextParser = (
   document: DocumentAttachment,
@@ -21,6 +20,7 @@ function decodeDocumentText(data: string): string {
 }
 
 async function parseWithAnydoc(document: DocumentAttachment): Promise<string> {
+  const { convertDocumentBytes } = await import("./anydoc-text");
   const { text, truncated } = await convertDocumentBytes(
     Buffer.from(document.data, "base64"),
     {

@@ -6,7 +6,7 @@ import {
   convertDocumentBytes,
   resolveAnydocFormat,
 } from "./anydoc-text";
-import { MAX_EMAIL_BODY_BYTES } from "./mail/types";
+import { ANYDOC_MAX_OUTPUT_BYTES } from "./anydoc-text";
 
 const FIXTURES = join(import.meta.dir, "__fixtures__");
 const SAMPLE_PDF = readFileSync(join(FIXTURES, "sample.pdf"));
@@ -81,19 +81,19 @@ describe("convertDocumentBytes", () => {
   });
 
   test("truncates output above the shared UTF-8 byte limit", async () => {
-    const hugeRow = "x".repeat(MAX_EMAIL_BODY_BYTES + 8_192);
+    const hugeRow = "x".repeat(ANYDOC_MAX_OUTPUT_BYTES + 8_192);
     const csv = Buffer.from(`col\n${hugeRow}\n`, "utf8");
     const result = await convertDocumentBytes(csv, {
       format: "csv",
-      maxOutputBytes: MAX_EMAIL_BODY_BYTES,
+      maxOutputBytes: ANYDOC_MAX_OUTPUT_BYTES,
     });
     expect(result.truncated).toBe(true);
-    // truncateMailBody may append an ellipsis after the byte cut.
+    // Truncation may append an ellipsis after the byte cut.
     expect(Buffer.byteLength(result.text, "utf8")).toBeLessThan(
       Buffer.byteLength(hugeRow, "utf8"),
     );
     expect(Buffer.byteLength(result.text, "utf8")).toBeLessThanOrEqual(
-      MAX_EMAIL_BODY_BYTES + 3,
+      ANYDOC_MAX_OUTPUT_BYTES + 3,
     );
   });
 

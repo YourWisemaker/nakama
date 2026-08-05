@@ -1,7 +1,27 @@
-import { MAX_EMAIL_BODY_BYTES, truncateMailBody } from "./mail/types";
-
+/** Shared with email body truncation (`MAX_EMAIL_BODY_BYTES`) — keep in sync. */
+export const ANYDOC_MAX_OUTPUT_BYTES = 256 * 1024;
 export const ANYDOC_TIMEOUT_MS = 10_000;
 export const ANYDOC_MAX_CONCURRENT = 2;
+
+function truncateUtf8(
+  value: string,
+  maxBytes = ANYDOC_MAX_OUTPUT_BYTES,
+): { text: string; truncated: boolean } {
+  const bytes = Buffer.byteLength(value, "utf8");
+  if (bytes <= maxBytes) {
+    return { text: value, truncated: false };
+  }
+
+  let end = value.length;
+  while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > maxBytes) {
+    end -= 1;
+  }
+
+  return {
+    text: `${value.slice(0, end)}…`,
+    truncated: true,
+  };
+}
 
 export type AnydocFormat =
   | "doc"
@@ -129,7 +149,7 @@ export async function convertDocumentBytes(
   const format =
     options.format ?? resolveAnydocFormat(options.mediaType, options.filename);
   const timeoutMs = options.timeoutMs ?? ANYDOC_TIMEOUT_MS;
-  const maxOutputBytes = options.maxOutputBytes ?? MAX_EMAIL_BODY_BYTES;
+  const maxOutputBytes = options.maxOutputBytes ?? ANYDOC_MAX_OUTPUT_BYTES;
   const input = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
 
   return withAnydocSlot(async () => {
@@ -137,7 +157,11 @@ export async function convertDocumentBytes(
       options.convertFn ??
       (async (bytes, resolvedFormat) => {
         const { toMarkdownBytes } = await import("@firecrawl/anydoc");
-        return toMarkdownBytes(bytes, resolvedFormat);
+        // anydoc's Format const-enum typing is stricter than our string union.
+        return toMarkdownBytes(
+          bytes,
+          resolvedFormat as Parameters<typeof toMarkdownBytes>[1],
+        );
       });
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -157,8 +181,7 @@ export async function convertDocumentBytes(
         return { text: "", truncated: false };
       }
 
-      const { text, truncated } = truncateMailBody(trimmed, maxOutputBytes);
-      return { text, truncated };
+      return truncateUtf8(trimmed, maxOutputBytes);
     } finally {
       if (timeout) {
         clearTimeout(timeout);
