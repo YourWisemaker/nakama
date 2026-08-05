@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   canRestoreDataImport,
   formatDataPortabilityBytes,
+  shouldStartInitialFilePreview,
   usePreviewSetupDataImport,
   useRestoreSetupDataImport,
 } from "@/hooks/use-data-portability";
@@ -26,12 +27,16 @@ export function SetupStepBackupImport({
   onRestored,
 }: SetupStepBackupImportProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const initialPreviewStartedForRef = useRef<File | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DataImportPreviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const previewMutation = usePreviewSetupDataImport();
+  const {
+    mutateAsync: previewImport,
+    isPending: previewPending,
+  } = usePreviewSetupDataImport();
   const restoreMutation = useRestoreSetupDataImport();
-  const isBusy = previewMutation.isPending || restoreMutation.isPending;
+  const isBusy = previewPending || restoreMutation.isPending;
   const restoreAvailable = canRestoreDataImport({
     selectedFile,
     previewReady: Boolean(preview),
@@ -48,7 +53,7 @@ export function SetupStepBackupImport({
     }
 
     try {
-      setPreview(await previewMutation.mutateAsync(file));
+      setPreview(await previewImport(file));
     } catch (err) {
       setError(formatError(err));
     }
@@ -56,16 +61,23 @@ export function SetupStepBackupImport({
 
   useEffect(() => {
     if (!initialFile) {
+      initialPreviewStartedForRef.current = null;
       return;
     }
+
+    // useMutation's result object changes identity when pending/error state flips.
+    // Depend on stable mutateAsync only, and skip if we already started this File.
+    if (!shouldStartInitialFilePreview(initialFile, initialPreviewStartedForRef.current)) {
+      return;
+    }
+    initialPreviewStartedForRef.current = initialFile;
 
     let cancelled = false;
     setSelectedFile(initialFile);
     setPreview(null);
     setError(null);
 
-    void previewMutation
-      .mutateAsync(initialFile)
+    void previewImport(initialFile)
       .then((result) => {
         if (!cancelled) {
           setPreview(result);
@@ -80,7 +92,7 @@ export function SetupStepBackupImport({
     return () => {
       cancelled = true;
     };
-  }, [initialFile, previewMutation]);
+  }, [initialFile, previewImport]);
 
   async function handleRestore() {
     if (!selectedFile || !preview) {
@@ -103,7 +115,7 @@ export function SetupStepBackupImport({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-medium text-foreground">Restore backup</p>
           <Button type="button" size="sm" disabled={isBusy} onClick={() => inputRef.current?.click()}>
-            {previewMutation.isPending ? (
+            {previewPending ? (
               <Spinner className="size-3.5" />
             ) : (
               <UploadIcon className="size-3.5" aria-hidden />
@@ -123,7 +135,7 @@ export function SetupStepBackupImport({
 
         {selectedFile ? (
           <p className="text-xs text-muted-foreground">
-            {previewMutation.isPending ? "Inspecting " : "Selected: "}
+            {previewPending ? "Inspecting " : "Selected: "}
             <span className="font-medium text-foreground">{selectedFile.name}</span>
           </p>
         ) : null}
