@@ -103,7 +103,10 @@ export function SetupStepBackupImport({
   }, [initialFile, previewImport]);
 
   const onRestoredRef = useRef(onRestored);
-  onRestoredRef.current = onRestored;
+
+  useEffect(() => {
+    onRestoredRef.current = onRestored;
+  }, [onRestored]);
 
   useEffect(() => {
     if (phase !== "done") {
