@@ -144,6 +144,7 @@ import type {
   RegenerateNotificationDestinationKeyResponse,
   RestoreDataImportRequest,
   RestoreDataImportResponse,
+  SetupRestoreDataImportResponse,
   SetActiveOrgRequest,
   AddOrgMemberRequest,
   AddOrgMemberResponse,
@@ -281,6 +282,32 @@ export class NakamaClient {
       data: await encodeArchiveData(data),
     };
     return this.request<RestoreDataImportResponse>("/v1/platform/data/import/restore", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async previewSetupDataImport(
+    data: Blob | BinaryBufferSource | string,
+  ): Promise<DataImportPreviewResponse> {
+    const request: PreviewDataImportRequest = {
+      data: await encodeArchiveData(data),
+    };
+    return this.request<DataImportPreviewResponse>("/v1/auth/setup/import/preview", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async restoreSetupDataImport(
+    data: Blob | BinaryBufferSource | string,
+    options: { confirm: boolean },
+  ): Promise<SetupRestoreDataImportResponse> {
+    const request: RestoreDataImportRequest = {
+      confirm: options.confirm,
+      data: await encodeArchiveData(data),
+    };
+    return this.request<SetupRestoreDataImportResponse>("/v1/auth/setup/import/restore", {
       method: "POST",
       body: JSON.stringify(request),
     });

@@ -27,8 +27,10 @@ describe("OpenAI-compatible provider", () => {
       expect(String(input)).toBe("https://api.example.com/v1/chat/completions");
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         reasoning?: { effort?: string };
+        reasoning_effort?: string;
       };
       expect(body.reasoning).toEqual({ effort: "high" });
+      expect(body.reasoning_effort).toBe("high");
       return Response.json({
         choices: [{ message: { content: "Answer", reasoning: "Plan" } }],
       });
@@ -58,8 +60,10 @@ describe("OpenAI-compatible provider", () => {
     const fetchMock = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         reasoning?: unknown;
+        reasoning_effort?: unknown;
       };
       expect(body.reasoning).toBeUndefined();
+      expect(body.reasoning_effort).toBeUndefined();
       return Response.json({
         choices: [{ message: { content: "Answer" } }],
       });

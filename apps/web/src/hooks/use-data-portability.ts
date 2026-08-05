@@ -23,6 +23,22 @@ export function useRestoreDataImport() {
   });
 }
 
+export function usePreviewSetupDataImport() {
+  return useMutation({
+    mutationFn: (file: File) => client.previewSetupDataImport(file),
+  });
+}
+
+export function useRestoreSetupDataImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ file, confirm }: { file: File; confirm: boolean }) =>
+      client.restoreSetupDataImport(file, { confirm }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
+
 export function formatDataPortabilityBytes(value: number): string {
   if (value < 1024) {
     return `${value} B`;

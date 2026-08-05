@@ -53,7 +53,7 @@ docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama ghcr.io/ahm
 docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
 
 # Fresh start (removes container, volume, image)
-./scripts/docker-reset.sh
+./scripts/docker-destroy.sh
 ./scripts/docker-build.sh
 docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
 ```

@@ -136,6 +136,15 @@ export async function previewNakamaDataImport(
   };
 }
 
+export function decodeArchiveRequestData(data: string): Buffer {
+  const trimmed = data.trim();
+  if (!trimmed) {
+    throw new Error("Import archive data is required.");
+  }
+
+  return Buffer.from(trimmed, "base64");
+}
+
 export async function restoreNakamaDataImport(
   archive: Buffer | Uint8Array | ArrayBuffer,
   options: RestoreDataImportOptions,

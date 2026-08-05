@@ -1,20 +1,47 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { UploadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import type { SetupAccountDraft } from "@/components/setup-wizard/setup-wizard.shared";
+import {
+  SetupBackupRestoreComplete,
+  SetupStepBackupImport,
+} from "@/components/setup-wizard/SetupStepBackupImport";
 
 interface SetupStepAccountProps {
   onNext: (account: SetupAccountDraft) => void;
 }
 
+type SetupAccountMode = "account" | "backup" | "backup-complete";
+
 export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
+  const backupInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<SetupAccountMode>("account");
+  const [initialBackupFile, setInitialBackupFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  if (mode === "backup-complete") {
+    return <SetupBackupRestoreComplete />;
+  }
+
+  if (mode === "backup") {
+    return (
+      <SetupStepBackupImport
+        initialFile={initialBackupFile}
+        onBack={() => {
+          setInitialBackupFile(null);
+          setMode("account");
+        }}
+        onRestored={() => setMode("backup-complete")}
+      />
+    );
+  }
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -114,6 +141,33 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
         <Button type="submit" className="w-full">
           Continue
         </Button>
+        <div className="flex justify-center border-t border-border pt-4">
+          <input
+            ref={backupInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="sr-only"
+            aria-label="Upload backup ZIP file"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = "";
+              if (!file) {
+                return;
+              }
+              setInitialBackupFile(file);
+              setMode("backup");
+            }}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => backupInputRef.current?.click()}
+          >
+            <UploadIcon className="size-3.5" aria-hidden />
+            Choose ZIP
+          </Button>
+        </div>
       </form>
     </Card>
   );

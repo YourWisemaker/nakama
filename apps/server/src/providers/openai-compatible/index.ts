@@ -151,6 +151,20 @@ function readReasoningText(
   return trimmed ? trimmed : undefined;
 }
 
+function buildThinkingBody(thinking?: ProviderChatOptions["thinking"]) {
+  if (!thinking?.enabled) {
+    return {};
+  }
+
+  const effort = normalizeThinkingEffort(thinking.effort);
+
+  return {
+    reasoning: { effort },
+    // Rapid MLX and other local OpenAI-compatible servers use top-level reasoning_effort.
+    reasoning_effort: effort,
+  };
+}
+
 async function requestChatCompletion(
   client: OpenAI,
   label: string,
@@ -166,9 +180,7 @@ async function requestChatCompletion(
     const completion = await client.chat.completions.create({
       model: options.model,
       messages: await buildMessages(options.system, options.messages),
-      ...(options.thinking?.enabled
-        ? { reasoning: { effort: normalizeThinkingEffort(options.thinking.effort) } }
-        : {}),
+      ...buildThinkingBody(options.thinking),
       ...(options.tools?.length
         ? {
             tools: toOpenAITools(options.tools),
@@ -226,9 +238,7 @@ async function streamChatCompletion(options: {
       stream: true,
       messages: await buildMessages(options.system, options.messages),
       stream_options: { include_usage: true },
-      ...(options.thinking?.enabled
-        ? { reasoning: { effort: normalizeThinkingEffort(options.thinking.effort) } }
-        : {}),
+      ...buildThinkingBody(options.thinking),
       ...(options.tools?.length
         ? {
             tools: toOpenAITools(options.tools),
