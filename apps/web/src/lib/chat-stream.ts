@@ -679,21 +679,16 @@ export const composerSelectTriggerClass =
 const composerInputGroupBase =
   "[&_[data-slot=input-group]]:h-auto [&_[data-slot=input-group]]:flex-col [&_[data-slot=input-group]]:items-stretch [&_[data-slot=input-group]]:gap-0 [&_[data-slot=input-group]]:p-2.5 sm:[&_[data-slot=input-group]]:p-3";
 
-const composerFocusRing =
-  "focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-ring/25";
-
-/** Chat composer InputGroup: always solid. Overrides InputGroup's dark:bg-input/30 and has-disabled:opacity-50. */
+/** Chat composer InputGroup: solid face, no focus ring (streaming rim is the active cue). */
 export const composerInputGroupClass =
-  "chat-composer-input @container/composer overflow-visible";
+  "chat-composer-input @container/composer overflow-visible has-[[data-slot=input-group-control]:focus-visible]:border-border has-[[data-slot=input-group-control]:focus-visible]:ring-0";
 
-export const composerDockClass = cn(
-  "flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-[box-shadow,border-color]",
-  composerFocusRing,
-);
+export const composerDockClass =
+  "flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-[box-shadow,border-color]";
 
 export const composerShellClass = cn(
   composerInputGroupBase,
-  "[&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border [&_[data-slot=input-group]]:border-border [&_[data-slot=input-group]]:shadow-xs [&_[data-slot=input-group]]:transition-[box-shadow,border-color] [&_[data-slot=input-group]:focus-within]:border-primary/30 [&_[data-slot=input-group]:focus-within]:ring-2 [&_[data-slot=input-group]:focus-within]:ring-ring/25",
+  "[&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border [&_[data-slot=input-group]]:border-border [&_[data-slot=input-group]]:shadow-xs [&_[data-slot=input-group]]:transition-[box-shadow,border-color]",
 );
 
 export const composerShellStackedClass = cn(
@@ -703,4 +698,4 @@ export const composerShellStackedClass = cn(
 );
 
 export const composerShellCompactClass =
-  "[&_[data-slot=input-group]]:h-auto [&_[data-slot=input-group]]:flex-col [&_[data-slot=input-group]]:items-stretch [&_[data-slot=input-group]]:gap-0 [&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border-border [&_[data-slot=input-group]]:p-2.5 [&_[data-slot=input-group]]:shadow-xs [&_[data-slot=input-group]]:transition-[box-shadow,border-color] [&_[data-slot=input-group]:focus-within]:border-primary/30 [&_[data-slot=input-group]:focus-within]:ring-2 [&_[data-slot=input-group]:focus-within]:ring-ring/25";
+  "[&_[data-slot=input-group]]:h-auto [&_[data-slot=input-group]]:flex-col [&_[data-slot=input-group]]:items-stretch [&_[data-slot=input-group]]:gap-0 [&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border-border [&_[data-slot=input-group]]:p-2.5 [&_[data-slot=input-group]]:shadow-xs [&_[data-slot=input-group]]:transition-[box-shadow,border-color]";

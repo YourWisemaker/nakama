@@ -373,4 +373,52 @@ Original body.
     const detail = await service.getSkill(notes!.id);
     expect(detail.skill.body).toBe("Updated body.");
   });
+
+  test("editAssignedProfileSkill replaces SKILL.md and refuses rename", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const service = new SkillsService(db);
+
+    await service.createAndAssignRawSkillToProfile(
+      ORG_ID,
+      PROFILE_ID,
+      `---
+name: deploy
+description: Deploy the service.
+---
+
+Use staging first.
+`,
+    );
+
+    const edited = await service.editAssignedProfileSkill(
+      ORG_ID,
+      PROFILE_ID,
+      "deploy",
+      `---
+name: deploy
+description: Deploy with canary.
+---
+
+Use canary then prod.
+`,
+    );
+
+    expect(edited.skill.description).toBe("Deploy with canary.");
+    expect(edited.skill.body).toContain("Use canary then prod.");
+
+    await expect(
+      service.editAssignedProfileSkill(
+        ORG_ID,
+        PROFILE_ID,
+        "deploy",
+        `---
+name: other
+description: Renamed.
+---
+
+Nope.
+`,
+      ),
+    ).rejects.toThrow(/must match skill name/i);
+  });
 });

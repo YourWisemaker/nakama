@@ -364,14 +364,15 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/write_docx/);
   });
 
-  test("write_file, edit_file, and delete_file refuse skills/*/SKILL.md when forbidProfileSkillMarkdownWrites", async () => {
+  test("file tools refuse skills/* paths when forbidProfileSkillMarkdownWrites", async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-skill-md-"));
-    await mkdir(path.join(tempDir, "skills", "notes"), { recursive: true });
+    await mkdir(path.join(tempDir, "skills", "notes", "docs"), { recursive: true });
     await writeFile(
       path.join(tempDir, "skills", "notes", "SKILL.md"),
       "---\nname: notes\ndescription: Notes.\n---\n\nBody.\n",
       "utf8",
     );
+    await writeFile(path.join(tempDir, "skills", "notes", "docs", "notes.md"), "nested\n", "utf8");
     const context = { ...PROFILE_CONTEXT, forbidProfileSkillMarkdownWrites: true };
 
     await expect(
@@ -383,10 +384,16 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/Use skill_manage/);
 
     await expect(
+      runWriteFile({ path: "skills/notes/docs/notes.md", content: "changed" }, context, {
+        workspaceRoot: tempDir,
+      }),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
       runEditFile(
         {
-          path: "skills/notes/SKILL.md",
-          edits: [{ oldText: "Body.", newText: "Updated." }],
+          path: "skills/notes/docs/notes.md",
+          edits: [{ oldText: "nested", newText: "changed" }],
         },
         context,
         { workspaceRoot: tempDir },
@@ -394,24 +401,20 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/Use skill_manage/);
 
     await expect(
-      runDeleteFile({ path: "skills/notes/SKILL.md" }, context, { workspaceRoot: tempDir }),
+      runDeleteFile({ path: "skills/notes/docs/notes.md" }, context, { workspaceRoot: tempDir }),
     ).rejects.toThrow(/Use skill_manage/);
 
     await expect(
-      runWriteFile(
-        { path: "skills/notes/Skill.md", content: "---\nname: notes\ndescription: x\n---\n" },
+      runWriteDocx(
+        { path: "skills/notes/notes.docx", markdown: "# hi" },
         context,
         { workspaceRoot: tempDir },
       ),
     ).rejects.toThrow(/Use skill_manage/);
 
-    // Sidecar under skills/ remains writable.
-    const sidecar = await runWriteFile(
-      { path: "skills/notes/README.md", content: "ok" },
-      context,
-      { workspaceRoot: tempDir },
+    expect(await readFile(path.join(tempDir, "skills", "notes", "docs", "notes.md"), "utf8")).toBe(
+      "nested\n",
     );
-    expect(await readFile(sidecar.path, "utf8")).toBe("ok");
   });
 
   test("write_file, edit_file, and delete_file refuse skills/*/tool.js and tool.ts", async () => {

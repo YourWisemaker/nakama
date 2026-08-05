@@ -34,7 +34,9 @@ import {
   parseSkillMarkdown,
   patchSkillFile,
   pickPreferredSkillSourcePath,
+  removeProfileSkillSupportingFile,
   SKILL_FILE_NAME,
+  writeProfileSkillSupportingFile,
   writeRawProfileSkillMarkdown,
   type DiscoveredSkill,
 } from "@nakama/core";
@@ -259,7 +261,7 @@ export class SkillsService {
           : `${existingContent}\n`;
         if (normalizedExisting !== nextContent) {
           throw new Error(
-            `Skill "${name}" is already assigned to this profile. Use action patch to update it.`,
+            `Skill "${name}" is already assigned to this profile. Use action patch or edit to update it.`,
           );
         }
       }
@@ -288,6 +290,87 @@ export class SkillsService {
     await this.db.assignSkillToProfile(profileId, record.id);
     const response = await this.getSkill(record.id);
     return { ...response, created: written.created };
+  }
+
+  async editAssignedProfileSkill(
+    orgId: string,
+    profileId: string,
+    name: string,
+    content: string,
+  ): Promise<SkillResponse> {
+    const skillName = assertValidSkillName(name);
+    const { name: parsedName } = parseRawProfileSkillContent(content, orgId, profileId);
+
+    if (parsedName !== skillName) {
+      throw new Error(
+        `Frontmatter name "${parsedName}" must match skill name "${skillName}".`,
+      );
+    }
+
+    await this.assertProfileOwnedSkill(orgId, profileId, skillName);
+
+    const written = await writeRawProfileSkillMarkdown({
+      orgId,
+      profileId,
+      content,
+      allowExisting: true,
+    });
+
+    if (written.created) {
+      throw new Error(
+        `Skill "${skillName}" was not found on disk; use action create instead of edit.`,
+      );
+    }
+
+    const record = await this.syncSkillRecordFromDirectory(
+      written.directory,
+      written.name,
+      "patched",
+    );
+
+    await this.skillUsageService.recordPatch(orgId, profileId, record.id);
+
+    return this.getSkill(record.id);
+  }
+
+  async writeAssignedProfileSkillSupportingFile(
+    orgId: string,
+    profileId: string,
+    name: string,
+    relativePath: string,
+    content: string,
+  ): Promise<{ skillName: string; relativePath: string }> {
+    const skillName = assertValidSkillName(name);
+    await this.assertProfileOwnedSkill(orgId, profileId, skillName);
+
+    const written = await writeProfileSkillSupportingFile({
+      orgId,
+      profileId,
+      name: skillName,
+      relativePath,
+      content,
+    });
+
+    return { skillName, relativePath: written.relativePath };
+  }
+
+  async removeAssignedProfileSkillSupportingFile(
+    orgId: string,
+    profileId: string,
+    name: string,
+    relativePath: string,
+  ): Promise<{ skillName: string; relativePath: string }> {
+    const skillName = assertValidSkillName(name);
+    await this.assertProfileOwnedSkill(orgId, profileId, skillName);
+
+    const removed = await removeProfileSkillSupportingFile({
+      orgId,
+      profileId,
+      name: skillName,
+      relativePath,
+    });
+
+    return { skillName, relativePath: removed.relativePath };
   }
 
   async patchAssignedProfileSkill(
@@ -545,6 +628,36 @@ export class SkillsService {
     }
 
     return skill;
+  }
+
+  private async assertProfileOwnedSkill(
+    orgId: string,
+    profileId: string,
+    name: string,
+  ): Promise<StoredSkillRecord> {
+    assertNotBundledSkillName(name);
+
+    const record = await this.db.getSkillByName(name);
+    if (!record) {
+      throw new Error(`Skill "${name}" not found.`);
+    }
+
+    if (isGlobalSkillSourcePath(record.sourcePath)) {
+      throw new Error("Global skills cannot be modified by agents.");
+    }
+
+    if (!isPathWithinProfileSkillsDir(orgId, profileId, record.sourcePath)) {
+      throw new Error(`Skill "${name}" is not owned by this profile.`);
+    }
+
+    const skillFile = path.join(record.sourcePath, SKILL_FILE_NAME);
+    try {
+      await readFile(skillFile, "utf8");
+    } catch {
+      throw new Error(`Skill "${name}" is missing SKILL.md on disk.`);
+    }
+
+    return record;
   }
 
   private async consolidateDuplicateSkills(): Promise<void> {

@@ -282,4 +282,41 @@ describe("SkillProposalService", () => {
       service.approveProposal("org_other", staged.proposalId!, "admin_user"),
     ).rejects.toMatchObject({ status: 404 });
   });
+
+  test("stage and approve write_file creates supporting file", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { getProfileSkillsDir } = await import("@nakama/core");
+
+    const db = createInMemoryDatabaseAdapter();
+    const profile = await seedOrg(db);
+    const skills = new SkillsService(db);
+    const service = new SkillProposalService(db, skills);
+
+    await skills.createAndAssignRawSkillToProfile(
+      ORG_ID,
+      profile.id,
+      sampleSkillMarkdown,
+    );
+
+    const staged = await service.stageProposal({
+      orgId: ORG_ID,
+      profileId: profile.id,
+      action: "write_file",
+      skillName: "deploy-notes",
+      relativePath: "checklist.md",
+      content: "- staging\n",
+    });
+    expect(staged.outcome).toBe("created");
+    expect(
+      (await service.listProposals(ORG_ID, { profileId: profile.id })).proposals[0]?.relativePath,
+    ).toBe("checklist.md");
+
+    await service.approveProposal(ORG_ID, staged.proposalId!, "admin_user");
+
+    const onDisk = await readFile(
+      join(getProfileSkillsDir(ORG_ID, profile.id), "deploy-notes", "checklist.md"),
+      "utf8",
+    );
+    expect(onDisk).toContain("- staging");
+  });
 });

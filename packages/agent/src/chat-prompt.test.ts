@@ -42,7 +42,8 @@ test("buildChatSystemPrompt includes skill crystallization nudge when skill_mana
   );
 
   expect(prompt).toContain("skill_manage to crystallize");
-  expect(prompt).toContain("Prefer skill_manage over write_file/edit_file");
+  expect(prompt).toContain("Prefer skill_manage over builtin file tools");
+  expect(prompt).toContain("write_file/remove_file for supporting files");
 });
 
 test("buildChatSystemPrompt omits skill crystallization nudge when skill_manage is unavailable", () => {

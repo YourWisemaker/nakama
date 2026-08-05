@@ -376,7 +376,13 @@ export interface StoredOrgMemoryProposal {
 }
 
 export type SkillProposalStatus = "pending" | "approved" | "rejected";
-export type SkillProposalAction = "create" | "patch" | "delete";
+export type SkillProposalAction =
+  | "create"
+  | "patch"
+  | "delete"
+  | "edit"
+  | "write_file"
+  | "remove_file";
 
 export interface StoredSkillProposal {
   id: string;
@@ -389,6 +395,7 @@ export interface StoredSkillProposal {
   content: string | null;
   patchOldString: string | null;
   patchNewString: string | null;
+  relativePath: string | null;
   status: SkillProposalStatus;
   reviewerUserId: string | null;
   reviewedAt: string | null;

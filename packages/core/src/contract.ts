@@ -483,7 +483,13 @@ export interface OrgMemoryProposalResponse {
 }
 
 export type SkillProposalStatus = "pending" | "approved" | "rejected";
-export type SkillProposalAction = "create" | "patch" | "delete";
+export type SkillProposalAction =
+  | "create"
+  | "patch"
+  | "delete"
+  | "edit"
+  | "write_file"
+  | "remove_file";
 
 export interface SkillProposal {
   id: string;
@@ -496,6 +502,7 @@ export interface SkillProposal {
   content: string | null;
   patchOldString: string | null;
   patchNewString: string | null;
+  relativePath: string | null;
   status: SkillProposalStatus;
   reviewerUserId: string | null;
   reviewedAt: string | null;

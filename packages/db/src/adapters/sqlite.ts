@@ -353,6 +353,7 @@ interface SkillProposalRow {
   content: string | null;
   patch_old_string: string | null;
   patch_new_string: string | null;
+  relative_path: string | null;
   status: string;
   reviewer_user_id: string | null;
   reviewed_at: string | null;
@@ -1236,14 +1237,14 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const createSkillProposalStmt = db.prepare(`
     INSERT INTO skill_proposals (
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const listSkillProposalsByStatusStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND status = ?
@@ -1252,7 +1253,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const listSkillProposalsByStatusAndProfileStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND status = ? AND profile_id = ?
@@ -1261,7 +1262,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const listAllSkillProposalsStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ?
@@ -1270,7 +1271,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const listAllSkillProposalsForProfileStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ?
@@ -1279,7 +1280,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const getSkillProposalStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND id = ?
@@ -1288,7 +1289,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const getPendingSkillProposalForCreateStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'create' AND status = 'pending'
@@ -1297,7 +1298,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const getPendingSkillProposalForSkillStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND status = 'pending'
@@ -1306,7 +1307,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const getPendingSkillProposalForPatchStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
-      action, skill_name, content, patch_old_string, patch_new_string,
+      action, skill_name, content, patch_old_string, patch_new_string, relative_path,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'patch'
@@ -1727,6 +1728,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.content,
         record.patchOldString,
         record.patchNewString,
+        record.relativePath,
         record.status,
         record.reviewerUserId,
         record.reviewedAt,
@@ -3222,6 +3224,7 @@ function toSkillProposalRecord(row: SkillProposalRow): StoredSkillProposal {
     content: row.content,
     patchOldString: row.patch_old_string,
     patchNewString: row.patch_new_string,
+    relativePath: row.relative_path,
     status: row.status as StoredSkillProposal["status"],
     reviewerUserId: row.reviewer_user_id,
     reviewedAt: row.reviewed_at,

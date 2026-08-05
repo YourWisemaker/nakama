@@ -319,6 +319,7 @@ CREATE TABLE IF NOT EXISTS skill_proposals (
   content TEXT,
   patch_old_string TEXT,
   patch_new_string TEXT,
+  relative_path TEXT,
   status TEXT NOT NULL,
   reviewer_user_id TEXT,
   reviewed_at TEXT,

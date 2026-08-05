@@ -6,13 +6,17 @@ import { join } from "node:path";
 import { pathExists } from "../fs";
 import {
   assertPathWithinProfileSkillsDir,
+  assertSupportingFileAllowed,
   assertValidSkillName,
   composeSkillMarkdown,
   createSkillFile,
   deleteSkillDirectory,
   isPathWithinProfileSkillsDir,
   patchSkillFile,
+  removeProfileSkillSupportingFile,
   resolveProfileSkillDirectory,
+  resolveProfileSkillSupportingFilePath,
+  writeProfileSkillSupportingFile,
   writeRawProfileSkillMarkdown,
 } from "./write";
 
@@ -365,5 +369,74 @@ describe("resolveProfileSkillDirectory", () => {
     expect(() =>
       assertPathWithinProfileSkillsDir(ORG_ID, PROFILE_ID, join(skillsRoot, "leaked", "SKILL.md")),
     ).toThrow(/outside the profile skills directory/);
+  });
+});
+
+describe("profile skill supporting files", () => {
+  let configDir: string;
+
+  afterEach(async () => {
+    delete process.env.NAKAMA_CONFIG_DIR;
+
+    if (configDir) {
+      await rm(configDir, { recursive: true, force: true });
+    }
+  });
+
+  test("writes nested supporting files and refuses SKILL.md / path escape", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-skill-support-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+
+    await writeRawProfileSkillMarkdown({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      content: `---
+name: deploy
+description: Deploy the service.
+---
+
+Use staging first.
+`,
+    });
+
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/SKILL.md")).toThrow();
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/Tool.js")).toThrow();
+    expect(() => assertSupportingFileAllowed("/tmp/skills/demo/skill.md")).toThrow();
+    expect(() =>
+      resolveProfileSkillSupportingFilePath(ORG_ID, PROFILE_ID, "deploy", "../escape.md"),
+    ).toThrow();
+
+    const skillDir = resolveProfileSkillDirectory(ORG_ID, PROFILE_ID, "deploy");
+    const outside = join(configDir, "outside.txt");
+    const symlinkPath = join(skillDir, "sidecar.md");
+    await symlink(outside, symlinkPath);
+    await expect(
+      writeProfileSkillSupportingFile({
+        orgId: ORG_ID,
+        profileId: PROFILE_ID,
+        name: "deploy",
+        relativePath: "sidecar.md",
+        content: "ESCAPED\n",
+      }),
+    ).rejects.toThrow(/symbolic link/i);
+    expect(await pathExists(outside)).toBe(false);
+
+    const written = await writeProfileSkillSupportingFile({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      name: "deploy",
+      relativePath: "docs/checklist.md",
+      content: "- staging\n",
+    });
+    expect(written.relativePath).toBe("docs/checklist.md");
+    expect(await readFile(written.absolutePath, "utf8")).toContain("- staging");
+
+    await removeProfileSkillSupportingFile({
+      orgId: ORG_ID,
+      profileId: PROFILE_ID,
+      name: "deploy",
+      relativePath: "docs/checklist.md",
+    });
+    expect(await pathExists(written.absolutePath)).toBe(false);
   });
 });

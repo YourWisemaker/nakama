@@ -1,5 +1,5 @@
 import { realpathSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathExists } from "../fs";
 import { getUserConfigDir } from "../user-config";
@@ -170,19 +170,133 @@ export function assertPathWithinProfileSkillsDir(
 }
 
 export function assertSupportingFileAllowed(filePath: string): void {
-  const base = path.basename(filePath);
+  const lower = path.basename(filePath).toLowerCase();
 
-  if (base === SKILL_FILE_NAME) {
+  if (lower === SKILL_FILE_NAME.toLowerCase()) {
     throw new Error(
       `Use patch/edit for ${SKILL_FILE_NAME}; write_file/remove_file are for supporting files only.`,
     );
   }
 
-  if ((SKILL_TOOL_FILES as readonly string[]).includes(base)) {
+  if ((SKILL_TOOL_FILES as readonly string[]).some((name) => name.toLowerCase() === lower)) {
     throw new Error(
-      `Skill-local tools (${SKILL_TOOL_FILES.join(", ")}) cannot be written by agents in Phase 1.`,
+      `Skill-local tools (${SKILL_TOOL_FILES.join(", ")}) cannot be written by agents.`,
     );
   }
+}
+
+async function assertSupportingPathIsNotSymlink(absolutePath: string): Promise<void> {
+  try {
+    const stats = await lstat(absolutePath);
+    if (stats.isSymbolicLink()) {
+      throw new Error("Supporting file path must not be a symbolic link.");
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Resolve a supporting file under `skills/<name>/` with path-escape and
+ * basename guards. Does not require the file to exist yet.
+ */
+export function resolveProfileSkillSupportingFilePath(
+  orgId: string,
+  profileId: string,
+  name: string,
+  relativePath: string,
+): string {
+  const directory = resolveProfileSkillDirectory(orgId, profileId, name);
+  const trimmed = relativePath.trim();
+  if (!trimmed) {
+    throw new Error("path is required.");
+  }
+  if (path.isAbsolute(trimmed)) {
+    throw new Error("path must be relative to the skill directory.");
+  }
+
+  const segments = trimmed.split(/[/\\]+/).filter((segment) => segment.length > 0);
+  if (segments.length === 0) {
+    throw new Error("path is required.");
+  }
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    throw new Error("path cannot contain '.' or '..' segments.");
+  }
+
+  const target = path.join(directory, ...segments);
+  const resolved = assertPathWithinProfileSkillsDir(orgId, profileId, target);
+  const skillRoot = resolveWithRealpath(directory);
+  const resolvedTarget = resolveWithRealpath(resolved);
+
+  if (!isResolvedWithinRoot(skillRoot, resolvedTarget)) {
+    throw new Error("Path escapes the skill directory.");
+  }
+
+  assertSupportingFileAllowed(resolved);
+  return resolved;
+}
+
+export async function writeProfileSkillSupportingFile(options: {
+  orgId: string;
+  profileId: string;
+  name: string;
+  relativePath: string;
+  content: string;
+}): Promise<{ absolutePath: string; relativePath: string }> {
+  const absolutePath = resolveProfileSkillSupportingFilePath(
+    options.orgId,
+    options.profileId,
+    options.name,
+    options.relativePath,
+  );
+
+  await assertSupportingPathIsNotSymlink(absolutePath);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  await assertSupportingPathIsNotSymlink(absolutePath);
+  await writeFile(absolutePath, options.content, "utf8");
+
+  const skillRoot = resolveProfileSkillDirectory(
+    options.orgId,
+    options.profileId,
+    options.name,
+  );
+  const relativePath = path.relative(skillRoot, absolutePath).split(path.sep).join("/");
+
+  return { absolutePath, relativePath };
+}
+
+export async function removeProfileSkillSupportingFile(options: {
+  orgId: string;
+  profileId: string;
+  name: string;
+  relativePath: string;
+}): Promise<{ absolutePath: string; relativePath: string }> {
+  const absolutePath = resolveProfileSkillSupportingFilePath(
+    options.orgId,
+    options.profileId,
+    options.name,
+    options.relativePath,
+  );
+
+  await assertSupportingPathIsNotSymlink(absolutePath);
+
+  if (!(await pathExists(absolutePath))) {
+    throw new Error(`Supporting file "${options.relativePath}" not found.`);
+  }
+
+  await unlink(absolutePath);
+
+  const skillRoot = resolveProfileSkillDirectory(
+    options.orgId,
+    options.profileId,
+    options.name,
+  );
+  const relativePath = path.relative(skillRoot, absolutePath).split(path.sep).join("/");
+
+  return { absolutePath, relativePath };
 }
 
 export async function createSkillFile(options: CreateSkillFileOptions): Promise<string> {

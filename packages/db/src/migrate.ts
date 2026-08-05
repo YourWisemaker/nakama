@@ -355,6 +355,7 @@ function migrateSkillProposalsTable(db: Database): void {
       content TEXT,
       patch_old_string TEXT,
       patch_new_string TEXT,
+      relative_path TEXT,
       status TEXT NOT NULL,
       reviewer_user_id TEXT,
       reviewed_at TEXT,
@@ -364,6 +365,13 @@ function migrateSkillProposalsTable(db: Database): void {
     CREATE INDEX IF NOT EXISTS skill_proposals_org_status ON skill_proposals (org_id, status);
     CREATE INDEX IF NOT EXISTS skill_proposals_org_profile_status ON skill_proposals (org_id, profile_id, status);
   `);
+
+  const columns = db
+    .prepare("PRAGMA table_info(skill_proposals)")
+    .all() as Array<{ name: string }>;
+  if (!new Set(columns.map((column) => column.name)).has("relative_path")) {
+    db.exec(`ALTER TABLE skill_proposals ADD COLUMN relative_path TEXT;`);
+  }
 }
 
 function migrateSkillSuggestionsTable(db: Database): void {
