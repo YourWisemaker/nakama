@@ -27,4 +27,6 @@ export interface ServerOptions {
   skillSuggestionService?: SkillSuggestionService | null;
   databaseAdapter?: DatabaseAdapter | null;
   webDistDir?: string | null;
+  /** Close/reopen SQLite and reload config after a data-root restore. */
+  onDataRestored?: () => Promise<void>;
 }

@@ -16,7 +16,7 @@ import { requirePlatformAdminFromContext } from "../org-guards";
 import type { ServerOptions } from "../context";
 import type { HonoApp } from "../types";
 
-export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOptions): void {
+export function registerDataPortabilityRoutes(app: HonoApp, options: ServerOptions): void {
   const errorSchema = z.object({ error: z.string() }).openapi("ApiErrorResponse");
   const importRequestSchema = z
     .object({
@@ -135,6 +135,7 @@ export function registerDataPortabilityRoutes(app: HonoApp, _options: ServerOpti
       const restore = await restoreNakamaDataImport(decodeArchiveRequestData(body.data), {
         confirm: body.confirm,
       });
+      await options.onDataRestored?.();
       return json<RestoreDataImportResponse>(restore);
     } catch (error) {
       return errorResponse(formatImportError(error), 400);

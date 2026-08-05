@@ -67,7 +67,7 @@ export function DataPortabilityPanel() {
     setError(null);
     try {
       await restoreMutation.mutateAsync({ file: selectedFile, confirm: true });
-      toast("Import restored.");
+      toast("Backup restored.");
       setPreview(null);
       setSelectedFile(null);
       if (inputRef.current) {
@@ -81,16 +81,16 @@ export function DataPortabilityPanel() {
   return (
     <div className="min-w-0 divide-y divide-border">
       <section className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <p className="text-balance text-sm font-medium text-foreground">Export</p>
+        <p className="text-balance text-sm font-medium text-foreground">Download backup</p>
         <Button type="button" size="sm" onClick={handleExport} disabled={isBusy}>
           <PendingIcon pending={exportMutation.isPending} idle={DownloadIcon} />
-          Export ZIP
+          Download
         </Button>
       </section>
 
       <section className="space-y-3 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-balance text-sm font-medium text-foreground">Import</p>
+          <p className="text-balance text-sm font-medium text-foreground">Restore from backup</p>
           <Button
             type="button"
             size="sm"
@@ -99,7 +99,7 @@ export function DataPortabilityPanel() {
             onClick={() => inputRef.current?.click()}
           >
             <PendingIcon pending={previewMutation.isPending} idle={UploadIcon} />
-            {selectedFile ? "Change ZIP" : "Import ZIP"}
+            {selectedFile ? "Choose a different file" : "Choose backup file"}
           </Button>
           <input
             ref={inputRef}
@@ -107,7 +107,7 @@ export function DataPortabilityPanel() {
             accept=".zip,application/zip"
             disabled={isBusy}
             className="sr-only"
-            aria-label="Import backup ZIP file"
+            aria-label="Choose a backup file"
             onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
           />
         </div>
@@ -121,7 +121,6 @@ export function DataPortabilityPanel() {
             restoreDisabled={!restoreAvailable}
             onRestore={() => void handleRestore()}
             showTopLevelPaths
-            restoreLabel="Restore"
           />
         ) : null}
       </section>

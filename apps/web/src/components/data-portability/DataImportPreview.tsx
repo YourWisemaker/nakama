@@ -26,8 +26,12 @@ export function DataImportPreview({
   restoreDisabled,
   onRestore,
   showTopLevelPaths = false,
-  restoreLabel = "Restore",
+  restoreLabel,
 }: DataImportPreviewProps) {
+  const actionLabel =
+    restoreLabel ??
+    (preview?.willReplaceRoot ? "Replace with this backup" : "Use this backup");
+
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex items-start gap-3 p-3">
@@ -40,10 +44,10 @@ export function DataImportPreview({
         <div className="min-w-0 flex-1 space-y-1">
           <p className="truncate text-sm font-medium text-foreground">{fileName}</p>
           {inspecting ? (
-            <p className="text-xs text-muted-foreground">Inspecting…</p>
+            <p className="text-xs text-muted-foreground">Checking file…</p>
           ) : preview ? (
             <p className="text-pretty text-xs text-muted-foreground tabular-nums">
-              {formatDate(preview.manifest.createdAt)}
+              Saved {formatDate(preview.manifest.createdAt)}
               <MetaSep />
               {preview.archiveFileCount} files
               <MetaSep />
@@ -59,12 +63,14 @@ export function DataImportPreview({
             <div
               className={cn(
                 "flex items-start gap-2 rounded-md border px-3 py-2 text-sm",
-                "border-destructive/30 bg-destructive/10 text-destructive",
+                "border-primary/30 bg-primary/10 text-primary",
               )}
               role="status"
             >
               <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span className="text-pretty">Replaces current data</span>
+              <span className="text-pretty">
+                This replaces everything already set up here.
+              </span>
             </div>
           ) : null}
 
@@ -84,12 +90,11 @@ export function DataImportPreview({
           <Button
             type="button"
             className="w-full"
-            variant="destructive"
             disabled={restoreDisabled}
             onClick={onRestore}
           >
             <PendingIcon pending={restorePending} idle={RotateCcwIcon} />
-            {restoreLabel}
+            {actionLabel}
           </Button>
         </div>
       ) : null}

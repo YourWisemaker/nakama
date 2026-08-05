@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { queryKeys } from "@/lib/query-keys";
 
 export function useExportData() {
   return useMutation({
@@ -19,7 +20,10 @@ export function useRestoreDataImport() {
   return useMutation({
     mutationFn: ({ file, confirm }: { file: File; confirm: boolean }) =>
       client.restoreDataImport(file, { confirm }),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.health });
+      await queryClient.invalidateQueries();
+    },
   });
 }
 
@@ -35,7 +39,10 @@ export function useRestoreSetupDataImport() {
   return useMutation({
     mutationFn: ({ file, confirm }: { file: File; confirm: boolean }) =>
       client.restoreSetupDataImport(file, { confirm }),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.health });
+      await queryClient.invalidateQueries();
+    },
   });
 }
 

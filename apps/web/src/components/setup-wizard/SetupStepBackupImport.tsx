@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangleIcon, UploadIcon } from "lucide-react";
-import { Link } from "react-router-dom";
 import type { DataImportPreviewResponse } from "@nakama/core/contract";
 import {
   DataImportPreview,
@@ -115,7 +114,9 @@ export function SetupStepBackupImport({
     <Card className="p-6">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-balance text-sm font-medium text-foreground">Restore backup</p>
+          <p className="text-balance text-sm font-medium text-foreground">
+            Restore from a backup
+          </p>
           <Button
             type="button"
             size="sm"
@@ -124,7 +125,7 @@ export function SetupStepBackupImport({
             onClick={() => inputRef.current?.click()}
           >
             <PendingIcon pending={previewPending} idle={UploadIcon} />
-            {selectedFile ? "Change ZIP" : "Choose ZIP"}
+            {selectedFile ? "Choose a different file" : "Choose backup file"}
           </Button>
           <input
             ref={inputRef}
@@ -132,7 +133,7 @@ export function SetupStepBackupImport({
             accept=".zip,application/zip"
             disabled={isBusy}
             className="sr-only"
-            aria-label="Import backup ZIP file"
+            aria-label="Choose a backup file"
             onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
           />
         </div>
@@ -145,7 +146,6 @@ export function SetupStepBackupImport({
             restorePending={restoreMutation.isPending}
             restoreDisabled={!restoreAvailable}
             onRestore={() => void handleRestore()}
-            restoreLabel="Restore backup"
           />
         ) : null}
 
@@ -163,25 +163,6 @@ export function SetupStepBackupImport({
 
         <Button type="button" variant="outline" className="w-full" onClick={onBack} disabled={isBusy}>
           Back to account setup
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-export function SetupBackupRestoreComplete() {
-  return (
-    <Card className="p-6">
-      <div className="space-y-4">
-        <p className="text-pretty text-sm text-foreground">
-          Backup restored. Restart Nakama to finish setup.
-        </p>
-        <p className="text-pretty text-sm text-muted-foreground">
-          After restart, sign in with your existing account. If provider setup is still required, the
-          wizard will continue from there.
-        </p>
-        <Button type="button" className="w-full" render={<Link to="/login" />}>
-          Go to sign in
         </Button>
       </div>
     </Card>

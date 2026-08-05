@@ -166,6 +166,10 @@ const app = createHonoApp({
   skillSuggestionService,
   databaseAdapter: database.adapter,
   webDistDir,
+  onDataRestored: async () => {
+    await database.reopen();
+    await agent.reloadAfterDataRestore();
+  },
 });
 
 const server = startServer({

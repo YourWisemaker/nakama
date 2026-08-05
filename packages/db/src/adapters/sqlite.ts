@@ -46,6 +46,7 @@ import type {
 export interface SqliteDatabase {
   adapter: DatabaseAdapter;
   close(): void;
+  reopen(): Promise<void>;
 }
 
 interface AutomationRow {
@@ -397,13 +398,30 @@ export async function createSqliteDatabase(databaseUrl: string): Promise<SqliteD
   const databasePath = resolveDatabasePath(databaseUrl);
   ensureDatabaseDirectory(databasePath);
 
-  const db = new Database(databasePath, { create: true });
+  let db = new Database(databasePath, { create: true });
   migrateDatabase(db);
+  let adapter = createSqliteDatabaseAdapter(db);
+
+  // Stable proxy so services keep one adapter reference across reopen().
+  const adapterProxy = new Proxy({} as DatabaseAdapter, {
+    get(_target, property, receiver) {
+      const value = Reflect.get(adapter as object, property, receiver);
+      return typeof value === "function"
+        ? (value as (...args: unknown[]) => unknown).bind(adapter)
+        : value;
+    },
+  });
 
   return {
-    adapter: createSqliteDatabaseAdapter(db),
+    adapter: adapterProxy,
     close() {
       db.close();
+    },
+    async reopen() {
+      db.close();
+      db = new Database(databasePath, { create: true });
+      migrateDatabase(db);
+      adapter = createSqliteDatabaseAdapter(db);
     },
   };
 }

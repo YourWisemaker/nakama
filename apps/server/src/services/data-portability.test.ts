@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -79,6 +79,25 @@ describe("Nakama data portability", () => {
     expect(await readFile(join(rootDir, "config.ini"), "utf8")).toBe("original");
     await expect(readFile(join(rootDir, "extra.txt"), "utf8")).rejects.toThrow();
     await expect(readFile(join(rootDir, NAKAMA_EXPORT_MANIFEST), "utf8")).rejects.toThrow();
+  });
+
+  test("restore keeps the root directory inode so volume mounts stay put", async () => {
+    await writeFile(join(rootDir, "config.ini"), "original");
+    const exportResult = await createNakamaDataExport({ rootDir });
+    await writeFile(join(rootDir, "config.ini"), "changed");
+    const before = await lstat(rootDir);
+
+    await restoreNakamaDataImport(exportResult.data, { rootDir, confirm: true });
+
+    const after = await lstat(rootDir);
+    expect(after.dev).toBe(before.dev);
+    expect(after.ino).toBe(before.ino);
+    expect(await readFile(join(rootDir, "config.ini"), "utf8")).toBe("original");
+
+    const leftovers = (await readdir(rootDir)).filter(
+      (name) => name.startsWith(".nakama-backup-") || name.startsWith(".nakama-restore-"),
+    );
+    expect(leftovers).toEqual([]);
   });
 
   test("restore requires explicit confirmation", async () => {
