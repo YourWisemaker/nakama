@@ -125,10 +125,10 @@ export function IntegrationsPage() {
   return (
     <section className={cn(sectionClass, "flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden")}>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="shrink-0 border-b border-border p-4 md:w-56 md:border-r md:border-b-0">
+        <aside className="shrink-0 border-b border-border px-4 sm:px-5 md:w-56 md:border-r md:border-b-0 md:p-4">
           <nav
             aria-label="Integration settings"
-            className="flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-col md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden"
+            className="flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] md:flex-col md:overflow-visible [&::-webkit-scrollbar]:hidden"
           >
             {visibleSections.map((item) => (
               <SidebarButton
@@ -186,7 +186,7 @@ function SidebarButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-left outline-none transition-[color,background-color,border-color,box-shadow,scale] active:scale-[0.96] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:min-h-0 md:w-full md:shrink md:gap-3 md:px-2 md:py-2.5",
+        "flex shrink-0 items-center gap-2 px-3 py-2.5 text-left outline-none transition-[color,background-color,border-color,box-shadow,scale] active:scale-[0.96] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-4 md:w-full md:shrink md:gap-3 md:rounded-md md:px-2",
         active
           ? "bg-primary/10 text-foreground"
           : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
