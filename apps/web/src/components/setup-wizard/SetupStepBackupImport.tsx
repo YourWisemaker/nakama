@@ -1,6 +1,6 @@
 import type { DataImportPreviewResponse } from "@nakama/core/contract";
 import { AlertTriangleIcon, RotateCcwIcon, UploadIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,11 +15,16 @@ import { formatError } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
 interface SetupStepBackupImportProps {
+  initialFile?: File | null;
   onBack: () => void;
   onRestored: () => void;
 }
 
-export function SetupStepBackupImport({ onBack, onRestored }: SetupStepBackupImportProps) {
+export function SetupStepBackupImport({
+  initialFile = null,
+  onBack,
+  onRestored,
+}: SetupStepBackupImportProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DataImportPreviewResponse | null>(null);
@@ -48,6 +53,34 @@ export function SetupStepBackupImport({ onBack, onRestored }: SetupStepBackupImp
       setError(formatError(err));
     }
   }
+
+  useEffect(() => {
+    if (!initialFile) {
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedFile(initialFile);
+    setPreview(null);
+    setError(null);
+
+    void previewMutation
+      .mutateAsync(initialFile)
+      .then((result) => {
+        if (!cancelled) {
+          setPreview(result);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(formatError(err));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialFile, previewMutation]);
 
   async function handleRestore() {
     if (!selectedFile || !preview) {

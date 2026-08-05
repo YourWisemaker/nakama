@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { UploadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -15,7 +16,9 @@ interface SetupStepAccountProps {
 type SetupAccountMode = "account" | "backup" | "backup-complete";
 
 export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
+  const backupInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<SetupAccountMode>("account");
+  const [initialBackupFile, setInitialBackupFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,7 +33,11 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
   if (mode === "backup") {
     return (
       <SetupStepBackupImport
-        onBack={() => setMode("account")}
+        initialFile={initialBackupFile}
+        onBack={() => {
+          setInitialBackupFile(null);
+          setMode("account");
+        }}
         onRestored={() => setMode("backup-complete")}
       />
     );
@@ -135,13 +142,30 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
           Continue
         </Button>
         <div className="border-t border-border pt-4">
+          <input
+            ref={backupInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="sr-only"
+            aria-label="Upload backup ZIP file"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = "";
+              if (!file) {
+                return;
+              }
+              setInitialBackupFile(file);
+              setMode("backup");
+            }}
+          />
           <Button
             type="button"
-            variant="ghost"
-            className="h-auto w-full px-0 py-1 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground"
-            onClick={() => setMode("backup")}
+            variant="outline"
+            className="w-full"
+            onClick={() => backupInputRef.current?.click()}
           >
-            Restore from backup instead
+            <UploadIcon className="size-4" aria-hidden />
+            Upload backup ZIP
           </Button>
         </div>
       </form>
