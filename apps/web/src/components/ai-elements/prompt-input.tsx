@@ -206,6 +206,8 @@ export type PromptInputProps = Omit<
   maxFileSize?: number;
   prepareFiles?: (files: File[]) => File[] | Promise<File[]>;
   inputGroupClassName?: string;
+  /** Rainbow rim glow while the agent is streaming. */
+  rimActive?: boolean;
   onError?: (err: {
     code: "max_files" | "max_file_size" | "accept";
     message: string;
@@ -226,6 +228,7 @@ export const PromptInput = ({
   maxFileSize,
   prepareFiles,
   inputGroupClassName,
+  rimActive,
   onError,
   onSubmit,
   children,
@@ -345,6 +348,7 @@ export const PromptInput = ({
           accept={accept}
           multiple={multiple}
           inputGroupClassName={inputGroupClassName}
+          rimActive={rimActive}
           inputRef={inputRef}
           formRef={formRef}
           onFileChange={handleChange}

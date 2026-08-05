@@ -212,6 +212,7 @@ export function ChatComposer(props: ChatComposerProps) {
               onError={(attachmentErr) => setAttachmentError(attachmentErr.message)}
               className={shellClass}
               inputGroupClassName={composerInputGroupClass}
+              rimActive={busy}
               onSubmit={({ text, files }) => {
                 setAttachmentError(null);
                 onSubmit(text.trim(), files);
@@ -263,6 +264,7 @@ export function ChatComposer(props: ChatComposerProps) {
             }
             className={shellClass}
             inputGroupClassName={composerInputGroupClass}
+            rimActive={busy}
             onSubmit={({ text, files }) => {
               setAttachmentError(null);
               onSubmit(text.trim(), files);

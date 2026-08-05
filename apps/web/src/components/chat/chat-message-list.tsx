@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, forwardRef } from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -7,7 +7,11 @@ import {
   MoreHorizontalIcon,
   RotateCcwIcon,
 } from "lucide-react";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import {
+  Virtuoso,
+  type Components,
+  type VirtuosoHandle,
+} from "react-virtuoso";
 import {
   AssistantTurnSegmentView,
 } from "@/components/chat/assistant-tool-group";
@@ -35,6 +39,7 @@ import {
 } from "@/lib/chat-stream";
 import {
   followOutputBehavior,
+  listOverflowsViewport,
   shouldAutoscrollOnHeightGrowth,
 } from "@/lib/chat-list-stickiness";
 import { formatElapsedSeconds, useElapsedSeconds } from "@/lib/elapsed-time";
@@ -50,6 +55,44 @@ import {
   type MessageTurn,
 } from "@/lib/chat-message-turns";
 import { cn } from "@/lib/utils";
+
+/** Top/bottom inset as Virtuoso Header/Footer — never put padding on the scroller. */
+function VirtuosoEdgePad() {
+  return <div className="h-4 shrink-0" aria-hidden />;
+}
+
+/**
+ * Keep Virtuoso rows from shrinking if the list uses a flex viewport.
+ * overflow-visible so bubbles aren't clipped by the item wrapper.
+ */
+const VirtuosoItem = forwardRef<
+  HTMLDivElement,
+  {
+    children?: React.ReactNode;
+    style?: React.CSSProperties;
+    "data-index": number;
+    "data-item-index": number;
+    "data-known-size": number;
+    item: MessageTurn;
+  }
+>(function VirtuosoItem({ children, style, ...props }, ref) {
+  return (
+    <div
+      {...props}
+      ref={ref}
+      style={style}
+      className="shrink-0 overflow-visible"
+    >
+      {children}
+    </div>
+  );
+});
+
+const virtuosoComponents: Components<MessageTurn> = {
+  Header: VirtuosoEdgePad,
+  Footer: VirtuosoEdgePad,
+  Item: VirtuosoItem,
+};
 
 interface ChatMessageListProps {
   messages: ChatListItem[];
@@ -90,9 +133,11 @@ function ChatMessageListSession({
 }: ChatMessageListProps) {
   const turns = useMemo(() => groupMessagesIntoTurns(messages), [messages]);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const scrollerRef = useRef<HTMLElement | null>(null);
   const isAtBottomRef = useRef(true);
   const stickIntentRef = useRef(true);
   const lastListHeightRef = useRef(0);
+  const didInitialPinRef = useRef(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   const showAwaitingPlaceholder =
@@ -101,16 +146,32 @@ function ChatMessageListSession({
     ? awaitingModelLabel(messages)
     : null;
 
+  const pinLatest = useCallback((behavior: "auto" | "smooth") => {
+    const scroller = scrollerRef.current;
+    const listHeight = lastListHeightRef.current;
+    // Per Virtuoso docs: omit alignToBottom for top packing. Never use
+    // scrollToIndex({ align: "end" }) when content still fits the viewport —
+    // that is what packs short threads to the bottom.
+    if (
+      !scroller ||
+      !listOverflowsViewport(listHeight, scroller.clientHeight)
+    ) {
+      if (scroller) scroller.scrollTop = 0;
+      return;
+    }
+    virtuosoRef.current?.scrollToIndex({
+      index: "LAST",
+      align: "end",
+      behavior,
+    });
+  }, []);
+
   const scrollToLatest = useCallback(() => {
     stickIntentRef.current = true;
     isAtBottomRef.current = true;
     setIsAtBottom(true);
-    virtuosoRef.current?.scrollToIndex({
-      index: "LAST",
-      align: "end",
-      behavior: "smooth",
-    });
-  }, []);
+    pinLatest("smooth");
+  }, [pinLatest]);
 
   const stickiness = useMemo(
     () => ({
@@ -126,29 +187,49 @@ function ChatMessageListSession({
     stickIntentRef.current = atBottom;
   }, []);
 
-  const handleFollowOutput = useCallback(
-    (_atBottom: boolean) => followOutputBehavior(stickIntentRef.current),
-    [],
-  );
-
-  const handleTotalListHeightChanged = useCallback((height: number) => {
-    const previous = lastListHeightRef.current;
-    lastListHeightRef.current = height;
+  // followOutput is Virtuoso's documented append follower. It scrolls with
+  // align-end semantics, so skip it while the list still fits the viewport.
+  const handleFollowOutput = useCallback((_atBottom: boolean) => {
+    const scroller = scrollerRef.current;
     if (
-      height > previous &&
-      shouldAutoscrollOnHeightGrowth(stickIntentRef.current)
+      !scroller ||
+      !listOverflowsViewport(lastListHeightRef.current, scroller.clientHeight)
     ) {
-      virtuosoRef.current?.scrollToIndex({
-        index: "LAST",
-        align: "end",
-        behavior: "auto",
-      });
+      return false;
     }
+    return followOutputBehavior(stickIntentRef.current);
   }, []);
+
+  // followOutput does not watch existing-item resize (streaming tokens).
+  // Re-pin manually only when overflowing — see Virtuoso issue #195.
+  const handleTotalListHeightChanged = useCallback(
+    (height: number) => {
+      const previous = lastListHeightRef.current;
+      lastListHeightRef.current = height;
+
+      if (!didInitialPinRef.current) {
+        didInitialPinRef.current = true;
+        pinLatest("auto");
+        return;
+      }
+
+      if (
+        height > previous &&
+        shouldAutoscrollOnHeightGrowth(stickIntentRef.current)
+      ) {
+        pinLatest("auto");
+      }
+    },
+    [pinLatest],
+  );
 
   const renderTurn = useCallback(
     (turnIndex: number, turn: MessageTurn) => {
+      // Horizontal inset lives on items — padding on the Virtuoso scroller can
+      // clip absolutely positioned rows.
       const itemClassName = cn(
+        "shrink-0 overflow-visible",
+        contentClassName ?? "px-4",
         turnIndex === turns.length - 1 ? "pb-4" : "pb-6",
       );
 
@@ -184,6 +265,7 @@ function ChatMessageListSession({
       actionsDisabled,
       awaitingLabel,
       branchingMessageId,
+      contentClassName,
       modelLabel,
       onBranchMessage,
       onRetryMessage,
@@ -203,7 +285,7 @@ function ChatMessageListSession({
         <Conversation className={cn("min-h-0 flex-1", className)}>
           <ConversationContent
             className={cn(
-              "justify-end gap-6 px-4 py-4",
+              "justify-start gap-6 px-4 py-4",
               contentClassName,
             )}
           >
@@ -221,12 +303,19 @@ function ChatMessageListSession({
       <Conversation className={cn("min-h-0 flex-1", className)}>
         <Virtuoso
           ref={virtuosoRef}
-          className={cn("h-full no-scrollbar", contentClassName ?? "px-4 py-4")}
+          className="h-full no-scrollbar"
           data={turns}
+          components={virtuosoComponents}
           computeItemKey={(_, turn) => turnKey(turn)}
           itemContent={renderTurn}
-          alignToBottom
-          initialTopMostItemIndex={{ index: "LAST", align: "end" }}
+          // Default is top-aligned for short lists. Do not set alignToBottom —
+          // that uses marginTop:auto and packs messages to the bottom.
+          // https://virtuoso.dev/react-virtuoso/api-reference/virtuoso/
+          initialTopMostItemIndex={0}
+          scrollerRef={(ref) => {
+            scrollerRef.current =
+              ref instanceof HTMLElement ? ref : null;
+          }}
           followOutput={handleFollowOutput}
           atBottomStateChange={handleAtBottomStateChange}
           atBottomThreshold={80}
@@ -339,9 +428,9 @@ function ChatMessageRow({ message }: { message: ChatListItem }) {
   return (
     <Message
       from="user"
-      className="max-w-full ml-auto mr-0 items-end justify-end"
+      className="max-w-full ml-auto mr-0 min-w-0 items-end justify-end overflow-visible"
     >
-      <MessageContent className="max-w-full ml-auto group-[.is-user]:ml-auto">
+      <MessageContent className="max-w-full min-w-0 ml-auto overflow-visible group-[.is-user]:ml-auto">
         <UserMessageContent message={message} />
       </MessageContent>
     </Message>
@@ -585,7 +674,7 @@ function UserMessageContent({ message }: { message: ChatListItem }) {
         </div>
       ) : null}
       {message.content ? (
-        <p className="whitespace-pre-wrap text-foreground">{message.content}</p>
+        <p className="whitespace-pre-wrap break-words text-foreground">{message.content}</p>
       ) : null}
     </div>
   );
