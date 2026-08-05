@@ -186,7 +186,7 @@ function SidebarButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-[11rem] shrink-0 items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors md:w-full md:shrink",
+        "flex w-[11rem] shrink-0 items-center gap-3 rounded-lg px-2 py-2.5 text-left outline-none transition-[color,background-color,border-color,box-shadow,transform] active:scale-[0.96] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:w-full md:shrink",
         active
           ? "bg-primary/10 text-foreground"
           : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
@@ -198,8 +198,12 @@ function SidebarButton({
         aria-hidden
       />
       <span className="min-w-0 space-y-0.5">
-        <span className="block text-sm font-medium leading-tight">{label}</span>
-        <span className="block text-xs leading-snug text-muted-foreground">{description}</span>
+        <span className="block text-sm font-medium leading-tight [text-wrap:balance]">
+          {label}
+        </span>
+        <span className="block text-xs leading-snug text-muted-foreground [text-wrap:pretty]">
+          {description}
+        </span>
       </span>
     </button>
   );

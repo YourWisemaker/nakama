@@ -112,7 +112,7 @@ export function DiscordSettingsPairingSection({
           >
             {regeneratePending ? (
               <>
-                <Spinner className="mr-2" />
+                <Spinner className="size-3" />
                 Generating…
               </>
             ) : (

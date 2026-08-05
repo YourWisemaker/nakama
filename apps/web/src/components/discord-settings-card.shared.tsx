@@ -20,7 +20,7 @@ export function DiscordPairingGuide({ inviteUrl }: { inviteUrl: string | null })
           </a>
         ) : null}
       </div>
-      <div className="overflow-hidden border border-border">
+      <div className="overflow-hidden rounded-md border border-border">
         <PairingStepTile
           step={1}
           title="Invite the bot"
@@ -88,7 +88,7 @@ export function DiscordPairingGuide({ inviteUrl }: { inviteUrl: string | null })
         <summary className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground">
           Using the bot in a server?
         </summary>
-        <div className="mt-3 overflow-hidden border border-border">
+        <div className="mt-3 overflow-hidden rounded-md border border-border">
           <PairingStepTile
             step={1}
             title="Finish DM pairing first"
@@ -142,7 +142,9 @@ export function SettingsRow({
     >
       <div className="min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="text-xs text-muted-foreground [text-wrap:pretty]">{description}</p>
+        ) : null}
       </div>
       {layout === "stacked" ? <div className="w-full min-w-0">{children}</div> : children}
     </div>

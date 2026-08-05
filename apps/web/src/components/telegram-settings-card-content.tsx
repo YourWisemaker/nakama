@@ -29,7 +29,7 @@ function TelegramPairingGuide() {
   return (
     <div className="space-y-3 px-4 py-3">
       <p className="text-xs font-medium text-foreground">Link in Telegram</p>
-      <div className="overflow-hidden border border-border">
+      <div className="overflow-hidden rounded-md border border-border">
         <div className="grid grid-cols-1 sm:grid-cols-2">
           <PairingStepTile
             step={1}
@@ -49,7 +49,7 @@ function TelegramPairingGuide() {
         <summary className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground">
           Using the bot in a group?
         </summary>
-        <div className="mt-3 overflow-hidden border border-border">
+        <div className="mt-3 overflow-hidden rounded-md border border-border">
           <PairingStepTile
             step={1}
             title="Pair privately first"
@@ -269,7 +269,7 @@ export function TelegramSettingsCardContent({
               >
                 {regeneratePending ? (
                   <>
-                    <Spinner className="mr-2" />
+                    <Spinner className="size-3" />
                     Generating…
                   </>
                 ) : (

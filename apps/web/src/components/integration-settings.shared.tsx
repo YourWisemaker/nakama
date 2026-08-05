@@ -46,7 +46,9 @@ export function SettingsRow({
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="text-xs text-muted-foreground [text-wrap:pretty]">{description}</p>
+        ) : null}
       </div>
       {children}
     </div>
@@ -70,7 +72,7 @@ export function IntegrationStatusHeader({
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        <p className="text-xs text-muted-foreground [text-wrap:pretty]">{subtitle}</p>
       </div>
       <span
         className={cn(
@@ -125,7 +127,7 @@ export function IntegrationSettingsFooter({
       <Button type="button" size="sm" disabled={savePending || !canSave} onClick={onSave}>
         {savePending ? (
           <>
-            <Spinner className="mr-2" />
+            <Spinner className="size-3" />
             Saving…
           </>
         ) : (

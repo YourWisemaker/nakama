@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { NotificationDestinationWithSecret } from "@nakama/core/contract";
 import { CheckIcon, CopyIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -70,7 +69,7 @@ function LatestSecret({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">Latest webhook credentials ready</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground [text-wrap:pretty]">
             Copy the curl command, or expand details if you need the raw URL and API key.
           </p>
         </div>
@@ -241,15 +240,14 @@ export function NotificationDestinationsCard() {
   }
 
   return (
-    <Card className="w-full shadow-none">
-      <CardContent className="space-y-4 py-4">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Notification Destinations</p>
-          <p className="text-xs text-muted-foreground">
-            Create a Telegram destination, then use the webhook URL and API key from Nakama
-            to send simple notifications.
-          </p>
-        </div>
+    <div className="space-y-4 py-4">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">Notification Destinations</p>
+        <p className="text-xs text-muted-foreground [text-wrap:pretty]">
+          Create a Telegram destination, then use the webhook URL and API key from Nakama
+          to send simple notifications.
+        </p>
+      </div>
 
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <label className="flex flex-col gap-3">
@@ -391,7 +389,6 @@ export function NotificationDestinationsCard() {
             ))
           )}
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

@@ -110,7 +110,7 @@ export function WhatsAppSettingsLinkingSection({
           >
             {regeneratePending ? (
               <>
-                <Spinner className="mr-2" />
+                <Spinner className="size-3" />
                 Generating…
               </>
             ) : (
@@ -182,7 +182,7 @@ export function WhatsAppSettingsLinkingSection({
           >
             {reconnectPending ? (
               <>
-                <Spinner className="mr-2" />
+                <Spinner className="size-3" />
                 Resetting…
               </>
             ) : (
