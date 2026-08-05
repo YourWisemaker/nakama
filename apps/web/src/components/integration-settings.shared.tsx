@@ -72,13 +72,15 @@ export function SettingsRow({
   label,
   description,
   children,
+  className,
 }: {
   label: string;
   description?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div className={cn("flex flex-wrap items-center justify-between gap-3 px-4 py-3", className)}>
       <div className="min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-foreground">{label}</p>
         {description ? (
@@ -96,15 +98,17 @@ export function IntegrationStatusHeader({
   statusBadge,
   configured,
   connected,
+  className,
 }: {
   title: string;
   subtitle: string;
   statusBadge: string;
   configured: boolean;
   connected: boolean;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div className={cn("flex flex-wrap items-center justify-between gap-3 px-4 py-3", className)}>
       <div className="min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-foreground">{title}</p>
         <p className="text-xs text-muted-foreground [text-wrap:pretty]">{subtitle}</p>
@@ -133,6 +137,7 @@ export function IntegrationSettingsFooter({
   canSave,
   submitLabel,
   onSave,
+  className,
 }: {
   statusLine: string | null;
   formError: string | null;
@@ -141,9 +146,10 @@ export function IntegrationSettingsFooter({
   canSave: boolean;
   submitLabel: string;
   onSave: () => void;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div className={cn("flex flex-wrap items-center justify-between gap-3 px-4 py-3", className)}>
       {statusLine ? (
         <p
           className={cn(

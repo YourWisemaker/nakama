@@ -4,9 +4,15 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { DISCORD_DEVELOPER_PORTAL_URL, DISCORD_SETUP_GUIDE_URL } from "@/lib/integration-docs";
 import { cn } from "@/lib/utils";
 
-export function DiscordPairingGuide({ inviteUrl }: { inviteUrl: string | null }) {
+export function DiscordPairingGuide({
+  inviteUrl,
+  compact = false,
+}: {
+  inviteUrl: string | null;
+  compact?: boolean;
+}) {
   return (
-    <div className="space-y-3 px-4 py-3">
+    <div className={cn("space-y-3", !compact && "px-4 py-3")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium text-foreground">Link in Discord</p>
         {inviteUrl ? (
@@ -125,11 +131,13 @@ export function SettingsRow({
   description,
   layout = "inline",
   children,
+  className,
 }: {
   label: string;
   description?: ReactNode;
   layout?: "inline" | "stacked";
   children: ReactNode;
+  className?: string;
 }) {
   return (
     <div
@@ -138,6 +146,7 @@ export function SettingsRow({
         layout === "stacked"
           ? "flex flex-col gap-3"
           : "flex flex-wrap items-center justify-between gap-3",
+        className,
       )}
     >
       <div className="min-w-0 space-y-0.5">
