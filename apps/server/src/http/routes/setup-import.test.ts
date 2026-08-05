@@ -72,7 +72,93 @@ describe("setup import routes", () => {
     expect(restoreResponse.status).toBe(200);
     await expect(restoreResponse.json()).resolves.toMatchObject({
       restoredFileCount: 1,
+      // createApp() omits onDataRestored — client must restart.
+      requiresRestart: true,
+    });
+    await expect(readFile(join(getUserConfigDir(), "config.ini"), "utf8")).resolves.toBe(
+      "original",
+    );
+  });
+
+  test("setup restore reports requiresRestart false after onDataRestored succeeds", async () => {
+    const databaseAdapter = createInMemoryDatabaseAdapter();
+    const authService = new AuthService();
+    let restoredCalls = 0;
+    const app = createHonoApp({
+      agent: {
+        listProfiles: async () => ({ profiles: [{ id: "default" }] }),
+        providerConfigured: true,
+      } as any,
+      automationService: {} as any,
+      taskService: {} as any,
+      systemStatus: { getStatus: async () => ({ ok: true }) } as any,
+      workerManager: {} as any,
+      mcpService: {} as any,
+      authService,
+      orgService: new OrgService(databaseAdapter, authService),
+      databaseAdapter,
+      webDistDir: null,
+      onDataRestored: async () => {
+        restoredCalls += 1;
+      },
+    });
+
+    await writeFile(join(getUserConfigDir(), "config.ini"), "original");
+    const archive = (await createNakamaDataExport({ rootDir: getUserConfigDir() })).data;
+    await writeFile(join(getUserConfigDir(), "config.ini"), "changed");
+
+    const restoreResponse = await app.fetch(
+      new Request("http://localhost:4310/v1/auth/setup/import/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true, data: archive.toString("base64") }),
+      }),
+    );
+
+    expect(restoreResponse.status).toBe(200);
+    expect(restoredCalls).toBe(1);
+    await expect(restoreResponse.json()).resolves.toMatchObject({
+      restoredFileCount: 1,
       requiresRestart: false,
+    });
+  });
+
+  test("setup restore keeps 200 with requiresRestart when onDataRestored throws", async () => {
+    const databaseAdapter = createInMemoryDatabaseAdapter();
+    const authService = new AuthService();
+    const app = createHonoApp({
+      agent: {
+        listProfiles: async () => ({ profiles: [{ id: "default" }] }),
+        providerConfigured: true,
+      } as any,
+      automationService: {} as any,
+      taskService: {} as any,
+      systemStatus: { getStatus: async () => ({ ok: true }) } as any,
+      workerManager: {} as any,
+      mcpService: {} as any,
+      authService,
+      orgService: new OrgService(databaseAdapter, authService),
+      databaseAdapter,
+      webDistDir: null,
+      onDataRestored: async () => {
+        throw new Error("reopen failed");
+      },
+    });
+
+    await writeFile(join(getUserConfigDir(), "config.ini"), "original");
+    const archive = (await createNakamaDataExport({ rootDir: getUserConfigDir() })).data;
+
+    const restoreResponse = await app.fetch(
+      new Request("http://localhost:4310/v1/auth/setup/import/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true, data: archive.toString("base64") }),
+      }),
+    );
+
+    expect(restoreResponse.status).toBe(200);
+    await expect(restoreResponse.json()).resolves.toMatchObject({
+      requiresRestart: true,
     });
     await expect(readFile(join(getUserConfigDir(), "config.ini"), "utf8")).resolves.toBe(
       "original",

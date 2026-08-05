@@ -418,10 +418,14 @@ export async function createSqliteDatabase(databaseUrl: string): Promise<SqliteD
       db.close();
     },
     async reopen() {
-      db.close();
-      db = new Database(databasePath, { create: true });
-      migrateDatabase(db);
-      adapter = createSqliteDatabaseAdapter(db);
+      ensureDatabaseDirectory(databasePath);
+      const nextDb = new Database(databasePath, { create: true });
+      migrateDatabase(nextDb);
+      const nextAdapter = createSqliteDatabaseAdapter(nextDb);
+      const previousDb = db;
+      db = nextDb;
+      adapter = nextAdapter;
+      previousDb.close();
     },
   };
 }
