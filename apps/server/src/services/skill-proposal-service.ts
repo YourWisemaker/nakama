@@ -533,7 +533,7 @@ export class SkillProposalService {
   }
 
   private async insertProposal(
-    input: Omit<StageSkillProposalInput, "relativePath"> & {
+    input: Omit<StageSkillProposalInput, "relativePath" | "content"> & {
       skillName: string;
       content: string | null;
       patchOldString: string | null;
