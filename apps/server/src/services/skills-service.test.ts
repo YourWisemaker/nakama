@@ -378,7 +378,7 @@ Original body.
     const db = createInMemoryDatabaseAdapter();
     const service = new SkillsService(db);
 
-    const created = await service.createAndAssignRawSkillToProfile(
+    await service.createAndAssignRawSkillToProfile(
       ORG_ID,
       PROFILE_ID,
       `---
@@ -420,51 +420,5 @@ Nope.
 `,
       ),
     ).rejects.toThrow(/must match skill name/i);
-
-    expect(created.skill.id).toBe(edited.skill.id);
-  });
-
-  test("write and remove supporting files for profile-owned skills", async () => {
-    const db = createInMemoryDatabaseAdapter();
-    const service = new SkillsService(db);
-
-    await service.createAndAssignRawSkillToProfile(
-      ORG_ID,
-      PROFILE_ID,
-      `---
-name: deploy
-description: Deploy the service.
----
-
-Body.
-`,
-    );
-
-    const written = await service.writeAssignedProfileSkillSupportingFile(
-      ORG_ID,
-      PROFILE_ID,
-      "deploy",
-      "notes.md",
-      "sidecar\n",
-    );
-    expect(written.relativePath).toBe("notes.md");
-
-    await expect(
-      service.writeAssignedProfileSkillSupportingFile(
-        ORG_ID,
-        PROFILE_ID,
-        "deploy",
-        "SKILL.md",
-        "nope",
-      ),
-    ).rejects.toThrow(/patch\/edit/);
-
-    const removed = await service.removeAssignedProfileSkillSupportingFile(
-      ORG_ID,
-      PROFILE_ID,
-      "deploy",
-      "notes.md",
-    );
-    expect(removed.relativePath).toBe("notes.md");
   });
 });

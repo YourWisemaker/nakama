@@ -433,7 +433,7 @@ Body.
     ).rejects.toThrow(/Use skill_manage/);
   });
 
-  test("edit replaces SKILL.md for an assigned skill", async () => {
+  test("edit, write_file, and remove_file manage an assigned skill", async () => {
     const { service, tool } = await setup();
 
     await tool.run(
@@ -450,7 +450,7 @@ Use staging first.
       memberContext(),
     );
 
-    const result = await tool.run(
+    const edited = await tool.run(
       {
         action: "edit",
         name: "deploy",
@@ -464,35 +464,7 @@ Use canary then prod.
       },
       memberContext(),
     );
-
-    expect(result).toMatchObject({
-      action: "edit",
-      name: "deploy",
-      assigned: true,
-    });
-
-    const detail = await service.getSkill(
-      (await service.listSkills()).skills.find((skill) => skill.name === "deploy")!.id,
-    );
-    expect(detail.skill.body).toContain("Use canary then prod.");
-  });
-
-  test("write_file and remove_file manage supporting files", async () => {
-    const { tool } = await setup();
-
-    await tool.run(
-      {
-        action: "create",
-        content: `---
-name: deploy
-description: Deploy the service.
----
-
-Body.
-`,
-      },
-      memberContext(),
-    );
+    expect(edited).toMatchObject({ action: "edit", name: "deploy", assigned: true });
 
     const written = await tool.run(
       {
@@ -503,36 +475,24 @@ Body.
       },
       memberContext(),
     );
-    expect(written).toMatchObject({
-      action: "write_file",
-      name: "deploy",
-      path: "notes.md",
-    });
+    expect(written).toMatchObject({ action: "write_file", path: "notes.md" });
 
     await expect(
       tool.run(
-        {
-          action: "write_file",
-          name: "deploy",
-          path: "SKILL.md",
-          content: "nope",
-        },
+        { action: "write_file", name: "deploy", path: "SKILL.md", content: "nope" },
         memberContext(),
       ),
     ).rejects.toThrow(/patch\/edit/);
 
     const removed = await tool.run(
-      {
-        action: "remove_file",
-        name: "deploy",
-        path: "notes.md",
-      },
+      { action: "remove_file", name: "deploy", path: "notes.md" },
       memberContext(),
     );
-    expect(removed).toMatchObject({
-      action: "remove_file",
-      name: "deploy",
-      path: "notes.md",
-    });
+    expect(removed).toMatchObject({ action: "remove_file", path: "notes.md" });
+
+    const detail = await service.getSkill(
+      (await service.listSkills()).skills.find((skill) => skill.name === "deploy")!.id,
+    );
+    expect(detail.skill.body).toContain("Use canary then prod.");
   });
 });
