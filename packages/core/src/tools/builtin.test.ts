@@ -774,14 +774,14 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(PathGuardError);
   });
 
-  test("read_file rejects path outside allowed dirs", async () => {
+  test("read_file rejects path outside allowed dirs with workspace hint", async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-read-sec-"));
 
     await expect(
       runReadFile({ path: "/etc/nakama-should-fail" }, PROFILE_CONTEXT, {
         workspaceRoot: tempDir,
       }),
-    ).rejects.toThrow(PathGuardError);
+    ).rejects.toThrow(/relative path under the active profile workspace/i);
   });
 
   test("read_file rejects null byte in path", async () => {
