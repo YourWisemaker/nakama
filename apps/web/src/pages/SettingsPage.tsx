@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { DataPortabilityPanel } from "@/components/settings/DataPortabilityPanel";
 import { ProviderSettingsCard } from "@/components/settings/ProviderSettingsCard";
 import { VisionSettingsCard } from "@/components/settings/VisionSettingsCard";
 import { TranscriptionSettingsCard } from "@/components/settings/TranscriptionSettingsCard";
@@ -17,7 +18,8 @@ import { formatError } from "@/lib/client";
 import { getBrowserTimezone } from "@/lib/timezones";
 
 export function SettingsPage() {
-  const { activeOrg } = useAuth();
+  const { user, activeOrg } = useAuth();
+  const isPlatformAdmin = user?.isPlatformAdmin === true;
   const isOrgAdmin = activeOrg?.role === "admin";
   const [formError, setFormError] = useState<string | null>(null);
   const [timezone, setTimezone] = useState(() => getBrowserTimezone());
@@ -126,6 +128,14 @@ export function SettingsPage() {
             </p>
           ) : null}
         </>
+      ) : null}
+
+      {isPlatformAdmin ? (
+        <Card className="w-full overflow-hidden shadow-none">
+          <CardContent className="p-0">
+            <DataPortabilityPanel />
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );
