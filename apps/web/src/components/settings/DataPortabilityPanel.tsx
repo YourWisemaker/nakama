@@ -82,106 +82,93 @@ export function DataPortabilityPanel() {
   }
 
   return (
-    <div className="min-w-0">
-      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-        <section className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-foreground">Export</p>
-              <p className="text-xs text-muted-foreground">
-                Download a ZIP backup of the configured Nakama data root.
-              </p>
-            </div>
-            <Button type="button" size="sm" onClick={handleExport} disabled={isBusy}>
-              {exportMutation.isPending ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <DownloadIcon className="size-3.5" aria-hidden />
-              )}
-              Export ZIP
-            </Button>
-          </div>
-        </section>
+    <div className="min-w-0 divide-y divide-border">
+      <section className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-balance text-sm font-medium text-foreground">Export</p>
+          <p className="text-pretty text-xs text-muted-foreground">ZIP backup of the data root</p>
+        </div>
+        <Button type="button" size="sm" onClick={handleExport} disabled={isBusy}>
+          <ActionIcon pending={exportMutation.isPending} idle={DownloadIcon} />
+          Export ZIP
+        </Button>
+      </section>
 
-        <section className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-foreground">Import</p>
-              <p className="text-xs text-muted-foreground">
-                Upload a ZIP backup of the configured Nakama data root to review before restoring.
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isBusy}
-              onClick={() => inputRef.current?.click()}
-            >
-              {previewMutation.isPending ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <UploadIcon className="size-3.5" aria-hidden />
-              )}
-              Import ZIP
-            </Button>
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".zip,application/zip"
-              disabled={isBusy}
-              className="sr-only"
-              aria-label="Import backup ZIP file"
-              onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
-            />
-          </div>
-
-          {selectedFile ? (
-            <p className="text-xs text-muted-foreground">
-              {previewMutation.isPending ? "Inspecting " : "Selected: "}
-              <span className="font-medium text-foreground">{selectedFile.name}</span>
+      <section className="space-y-3 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-balance text-sm font-medium text-foreground">Import</p>
+            <p className="text-pretty text-xs text-muted-foreground">
+              Review a ZIP backup before restoring
             </p>
-          ) : null}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={isBusy}
+            onClick={() => inputRef.current?.click()}
+          >
+            <ActionIcon pending={previewMutation.isPending} idle={UploadIcon} />
+            Import ZIP
+          </Button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".zip,application/zip"
+            disabled={isBusy}
+            className="sr-only"
+            aria-label="Import backup ZIP file"
+            onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
+          />
+        </div>
 
-          {preview ? (
-            <div className="rounded-md border border-border bg-background">
-              <dl className="grid gap-px overflow-hidden rounded-md bg-border text-sm sm:grid-cols-2">
-                <PreviewStat label="Created" value={formatDate(preview.manifest.createdAt)} />
-                <PreviewStat label="Files" value={String(preview.archiveFileCount)} />
-                <PreviewStat
-                  label="Size"
-                  value={formatDataPortabilityBytes(preview.archiveTotalBytes)}
-                />
-                <PreviewStat
-                  label="Action"
-                  value={preview.willReplaceRoot ? "Replace current data" : "Create data root"}
-                />
-              </dl>
-              <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Top-level paths: {preview.topLevelPaths.join(", ") || "none"}
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="destructive"
-                  disabled={!restoreAvailable}
-                  onClick={handleRestore}
-                >
-                  {restoreMutation.isPending ? (
-                    <Spinner className="size-3.5" />
-                  ) : (
-                    <RotateCcwIcon className="size-3.5" aria-hidden />
-                  )}
-                  Restore ZIP
-                </Button>
-              </div>
+        {selectedFile ? (
+          <p className="text-pretty text-xs text-muted-foreground">
+            {previewMutation.isPending ? "Inspecting " : "Selected: "}
+            <span className="font-medium text-foreground">{selectedFile.name}</span>
+          </p>
+        ) : null}
+
+        {preview ? (
+          <div className="overflow-hidden rounded-lg border border-border bg-background">
+            <dl className="grid gap-px bg-border text-sm sm:grid-cols-2">
+              <PreviewStat label="Created" value={formatDate(preview.manifest.createdAt)} />
+              <PreviewStat
+                label="Files"
+                value={String(preview.archiveFileCount)}
+                tabular
+              />
+              <PreviewStat
+                label="Size"
+                value={formatDataPortabilityBytes(preview.archiveTotalBytes)}
+                tabular
+              />
+              <PreviewStat
+                label="Action"
+                value={preview.willReplaceRoot ? "Replace current data" : "Create data root"}
+              />
+            </dl>
+            <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-pretty text-xs text-muted-foreground">
+                Top-level paths: {preview.topLevelPaths.join(", ") || "none"}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled={!restoreAvailable}
+                onClick={handleRestore}
+              >
+                <ActionIcon pending={restoreMutation.isPending} idle={RotateCcwIcon} />
+                Restore ZIP
+              </Button>
             </div>
-          ) : null}
-        </section>
-      </div>
+          </div>
+        ) : null}
+      </section>
 
       {error ? (
-        <div className="border-t border-border px-4 py-3 sm:px-5">
+        <div className="px-4 py-3">
           <StatusMessage tone="danger" icon={AlertTriangleIcon}>
             {error}
           </StatusMessage>
@@ -191,11 +178,55 @@ export function DataPortabilityPanel() {
   );
 }
 
-function PreviewStat({ label, value }: { label: string; value: string }) {
+function ActionIcon({
+  pending,
+  idle: IdleIcon,
+}: {
+  pending: boolean;
+  idle: typeof DownloadIcon;
+}) {
+  return (
+    <span className="relative size-3.5 shrink-0" aria-hidden>
+      <span
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+          pending ? "scale-100 opacity-100 blur-0" : "scale-[0.25] opacity-0 blur-[4px]",
+        )}
+      >
+        <Spinner className="size-3.5" />
+      </span>
+      <span
+        className={cn(
+          "flex items-center justify-center transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+          pending ? "scale-[0.25] opacity-0 blur-[4px]" : "scale-100 opacity-100 blur-0",
+        )}
+      >
+        <IdleIcon className="size-3.5" />
+      </span>
+    </span>
+  );
+}
+
+function PreviewStat({
+  label,
+  value,
+  tabular = false,
+}: {
+  label: string;
+  value: string;
+  tabular?: boolean;
+}) {
   return (
     <div className="bg-card p-3">
       <dt className="text-xs font-medium uppercase text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-foreground">{value}</dd>
+      <dd
+        className={cn(
+          "mt-1 truncate text-sm font-medium text-foreground",
+          tabular && "tabular-nums",
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -217,7 +248,7 @@ function StatusMessage({
       )}
     >
       <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
-      <span>{children}</span>
+      <span className="text-pretty">{children}</span>
     </div>
   );
 }
