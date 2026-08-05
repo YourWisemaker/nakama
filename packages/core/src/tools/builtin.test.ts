@@ -364,9 +364,9 @@ describe("file builtin tools", () => {
     ).rejects.toThrow(/write_docx/);
   });
 
-  test("write_file, edit_file, and delete_file refuse skills/*/SKILL.md when forbidProfileSkillMarkdownWrites", async () => {
+  test("write_file, edit_file, and delete_file refuse skills/* paths when forbidProfileSkillMarkdownWrites", async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), "nakama-skill-md-"));
-    await mkdir(path.join(tempDir, "skills", "notes"), { recursive: true });
+    await mkdir(path.join(tempDir, "skills", "notes", "docs"), { recursive: true });
     await writeFile(
       path.join(tempDir, "skills", "notes", "SKILL.md"),
       "---\nname: notes\ndescription: Notes.\n---\n\nBody.\n",
@@ -405,13 +405,18 @@ describe("file builtin tools", () => {
       ),
     ).rejects.toThrow(/Use skill_manage/);
 
-    // Sidecar under skills/ remains writable.
-    const sidecar = await runWriteFile(
-      { path: "skills/notes/README.md", content: "ok" },
-      context,
-      { workspaceRoot: tempDir },
-    );
-    expect(await readFile(sidecar.path, "utf8")).toBe("ok");
+    // Sidecars (including nested) also refuse when skill_manage is present.
+    await expect(
+      runWriteFile({ path: "skills/notes/README.md", content: "ok" }, context, {
+        workspaceRoot: tempDir,
+      }),
+    ).rejects.toThrow(/Use skill_manage/);
+
+    await expect(
+      runWriteFile({ path: "skills/notes/docs/notes.md", content: "nested" }, context, {
+        workspaceRoot: tempDir,
+      }),
+    ).rejects.toThrow(/Use skill_manage/);
   });
 
   test("write_file, edit_file, and delete_file refuse skills/*/tool.js and tool.ts", async () => {

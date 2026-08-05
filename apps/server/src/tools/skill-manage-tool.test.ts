@@ -432,4 +432,107 @@ Body.
       ),
     ).rejects.toThrow(/Use skill_manage/);
   });
+
+  test("edit replaces SKILL.md for an assigned skill", async () => {
+    const { service, tool } = await setup();
+
+    await tool.run(
+      {
+        action: "create",
+        content: `---
+name: deploy
+description: Deploy the service.
+---
+
+Use staging first.
+`,
+      },
+      memberContext(),
+    );
+
+    const result = await tool.run(
+      {
+        action: "edit",
+        name: "deploy",
+        content: `---
+name: deploy
+description: Deploy with canary.
+---
+
+Use canary then prod.
+`,
+      },
+      memberContext(),
+    );
+
+    expect(result).toMatchObject({
+      action: "edit",
+      name: "deploy",
+      assigned: true,
+    });
+
+    const detail = await service.getSkill(
+      (await service.listSkills()).skills.find((skill) => skill.name === "deploy")!.id,
+    );
+    expect(detail.skill.body).toContain("Use canary then prod.");
+  });
+
+  test("write_file and remove_file manage supporting files", async () => {
+    const { tool } = await setup();
+
+    await tool.run(
+      {
+        action: "create",
+        content: `---
+name: deploy
+description: Deploy the service.
+---
+
+Body.
+`,
+      },
+      memberContext(),
+    );
+
+    const written = await tool.run(
+      {
+        action: "write_file",
+        name: "deploy",
+        path: "notes.md",
+        content: "sidecar\n",
+      },
+      memberContext(),
+    );
+    expect(written).toMatchObject({
+      action: "write_file",
+      name: "deploy",
+      path: "notes.md",
+    });
+
+    await expect(
+      tool.run(
+        {
+          action: "write_file",
+          name: "deploy",
+          path: "SKILL.md",
+          content: "nope",
+        },
+        memberContext(),
+      ),
+    ).rejects.toThrow(/patch\/edit/);
+
+    const removed = await tool.run(
+      {
+        action: "remove_file",
+        name: "deploy",
+        path: "notes.md",
+      },
+      memberContext(),
+    );
+    expect(removed).toMatchObject({
+      action: "remove_file",
+      name: "deploy",
+      path: "notes.md",
+    });
+  });
 });

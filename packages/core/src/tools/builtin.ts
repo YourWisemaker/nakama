@@ -165,11 +165,13 @@ function requireProfileScope(context: ToolContext): { orgId: string; profileId: 
 }
 
 /**
- * When skill_manage is available, refuse mutating profile SKILL.md via file tools
- * so creates always go through the assign path.
+ * When skill_manage is available, refuse mutating any file under
+ * `skills/<name>/` via file tools so creates/edits/sidecars go through
+ * skill_manage (and write approval when gated).
  *
- * Call after path guard succeeds. Matches `.../skills/<name>/SKILL.md` on the
- * resolved path (including realpath'd absolute paths under the workspace).
+ * Call after path guard succeeds. Matches any descendant under
+ * `.../skills/<name>/` on the resolved path (including nested paths and
+ * realpath'd absolute paths under the workspace).
  */
 export function refuseProfileSkillMarkdownWrite(
   context: ToolContext,
@@ -180,23 +182,19 @@ export function refuseProfileSkillMarkdownWrite(
   }
 
   const normalized = resolvedPath.replace(/\\/g, "/");
-  const match = normalized.match(/(?:^|\/)skills\/([^/]+)\/([^/]+)$/i);
+  const match = normalized.match(/(?:^|\/)skills\/([^/]+)\/(.+)$/i);
   if (!match) {
     return;
   }
 
   const skillName = match[1];
-  const fileName = match[2];
-  if (!skillName || skillName === "." || skillName === ".." || !fileName) {
-    return;
-  }
-
-  if (fileName.toLowerCase() !== "skill.md") {
+  const rest = match[2];
+  if (!skillName || skillName === "." || skillName === ".." || !rest) {
     return;
   }
 
   throw new Error(
-    `Use skill_manage to create, patch, or delete profile skills; writing skills/${skillName}/SKILL.md via file tools is not allowed when skill_manage is available.`,
+    `Use skill_manage to create, patch, edit, delete, or manage supporting files for profile skills; writing skills/${skillName}/${rest} via file tools is not allowed when skill_manage is available.`,
   );
 }
 

@@ -3,6 +3,7 @@ import {
   type ToolDefinition,
   parseRawProfileSkillContent,
 } from "@nakama/core";
+import type { SkillProposalAction } from "@nakama/db";
 import type { SkillProposalService } from "../services/skill-proposal-service";
 import type { SkillsService } from "../services/skills-service";
 
@@ -10,6 +11,8 @@ export interface SkillManageToolDeps {
   skillsService: SkillsService;
   skillProposalService?: SkillProposalService | null;
 }
+
+type SkillManageAction = SkillProposalAction;
 
 function requireOrgId(context: ToolContext): string {
   const orgId = context.orgId?.trim();
@@ -76,28 +79,42 @@ function readString(input: unknown, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function readAction(input: unknown): "create" | "patch" | "delete" {
+function readAction(input: unknown): SkillManageAction {
   if (typeof input !== "object" || input === null || !("action" in input)) {
-    throw new Error("action is required (create | patch | delete).");
+    throw new Error(
+      "action is required (create | patch | edit | delete | write_file | remove_file).",
+    );
   }
   const value = (input as Record<string, unknown>).action;
-  if (value === "create" || value === "patch" || value === "delete") {
+  if (
+    value === "create" ||
+    value === "patch" ||
+    value === "edit" ||
+    value === "delete" ||
+    value === "write_file" ||
+    value === "remove_file"
+  ) {
     return value;
   }
-  throw new Error("action must be create, patch, or delete.");
+  throw new Error(
+    "action must be create, patch, edit, delete, write_file, or remove_file.",
+  );
 }
 
 function skillManageResult(options: {
-  action: "create" | "patch" | "delete";
+  action: SkillManageAction;
   name: string;
   assigned: boolean;
   description?: string;
   created?: boolean;
+  path?: string;
 }) {
   const matchHint =
     options.action === "delete"
       ? "The skill was removed from this profile (disk, assignment, and DB row). Keyword match and /skill will no longer find it."
-      : "The skill is assigned for this profile. Keyword match and /skill work on later turns; the baked session skills catalog list may refresh on a new session.";
+      : options.action === "write_file" || options.action === "remove_file"
+        ? "Supporting file change applied under the profile skill directory."
+        : "The skill is assigned for this profile. Keyword match and /skill work on later turns; the baked session skills catalog list may refresh on a new session.";
 
   return {
     action: options.action,
@@ -105,16 +122,18 @@ function skillManageResult(options: {
     assigned: options.assigned,
     ...(options.description !== undefined ? { description: options.description } : {}),
     ...(options.created !== undefined ? { created: options.created } : {}),
+    ...(options.path !== undefined ? { path: options.path } : {}),
     matchHint,
   };
 }
 
 function stagedSkillManageResult(options: {
-  action: "create" | "patch" | "delete";
+  action: SkillManageAction;
   name: string;
   proposalId?: string;
   outcome: "created" | "already_pending";
   message: string;
+  path?: string;
 }) {
   return {
     staged: true as const,
@@ -123,6 +142,7 @@ function stagedSkillManageResult(options: {
     name: options.name,
     outcome: options.outcome,
     message: options.message,
+    ...(options.path !== undefined ? { path: options.path } : {}),
     matchHint:
       "The skill change is pending admin approval and is not live yet. It will not match until an org admin approves the proposal.",
   };
@@ -135,22 +155,30 @@ export function createSkillManageTools(deps: SkillManageToolDeps): ToolDefinitio
     {
       name: "skill_manage",
       description:
-        "Create, patch, or delete reusable profile skills (SKILL.md under the profile skills directory) with auto-assign. When write approval is enabled for this org/profile, changes are staged for admin review instead of applying immediately. Prefer patch with unique old_string/new_string over rewriting whole files. Crystallize a skill after complex multi-step success (about 5+ tool calls), error recovery, or when the user corrects your approach — do not dump procedures into MEMORY.md.",
+        "Create, patch, edit, or delete reusable profile skills (SKILL.md under the profile skills directory), or write/remove supporting files under a skill directory, with auto-assign for skill mutations. When write approval is enabled for this org/profile, changes are staged for admin review instead of applying immediately. Prefer patch with unique old_string/new_string over edit for small fixes. Crystallize a skill after complex multi-step success (about 5+ tool calls), error recovery, or when the user corrects your approach — do not dump procedures into MEMORY.md.",
       parameters: {
         type: "object",
         properties: {
           action: {
             type: "string",
-            enum: ["create", "patch", "delete"],
-            description: "create = new/adopt skill; patch = targeted edit; delete = remove profile-owned skill.",
+            enum: ["create", "patch", "edit", "delete", "write_file", "remove_file"],
+            description:
+              "create = new/adopt skill; patch = targeted edit; edit = full SKILL.md replace; delete = remove profile-owned skill; write_file/remove_file = supporting files under the skill dir.",
           },
           content: {
             type: "string",
-            description: "Full SKILL.md markdown including YAML frontmatter. Required for create.",
+            description:
+              "Full SKILL.md markdown including YAML frontmatter (create/edit), or supporting file body (write_file).",
           },
           name: {
             type: "string",
-            description: "Skill name (kebab-case). Required for patch and delete.",
+            description:
+              "Skill name (kebab-case). Required for patch, edit, delete, write_file, and remove_file.",
+          },
+          path: {
+            type: "string",
+            description:
+              "Relative path under the skill directory. Required for write_file and remove_file (not SKILL.md or tool.ts/tool.js).",
           },
           old_string: {
             type: "string",
@@ -235,6 +263,100 @@ export function createSkillManageTools(deps: SkillManageToolDeps): ToolDefinitio
             });
           }
 
+          if (action === "edit") {
+            const name = readString(input, "name");
+            const content = readRawString(input, "content");
+            if (!name) {
+              throw new Error("name is required for edit.");
+            }
+            if (!content?.trim()) {
+              throw new Error("content is required for edit (full SKILL.md markdown).");
+            }
+
+            const staged = await skillProposalService!.stageProposal({
+              orgId,
+              profileId,
+              action: "edit",
+              skillName: name,
+              content,
+              sessionId: context.sessionId ?? null,
+              proposedByUserId: context.userId ?? null,
+            });
+
+            return stagedSkillManageResult({
+              action: "edit",
+              name,
+              proposalId: staged.proposalId,
+              outcome: staged.outcome,
+              message: staged.message,
+            });
+          }
+
+          if (action === "write_file") {
+            const name = readString(input, "name");
+            const relativePath = readString(input, "path");
+            const content = readRawString(input, "content");
+            if (!name) {
+              throw new Error("name is required for write_file.");
+            }
+            if (!relativePath) {
+              throw new Error("path is required for write_file.");
+            }
+            if (content === null) {
+              throw new Error("content is required for write_file.");
+            }
+
+            const staged = await skillProposalService!.stageProposal({
+              orgId,
+              profileId,
+              action: "write_file",
+              skillName: name,
+              relativePath,
+              content,
+              sessionId: context.sessionId ?? null,
+              proposedByUserId: context.userId ?? null,
+            });
+
+            return stagedSkillManageResult({
+              action: "write_file",
+              name,
+              proposalId: staged.proposalId,
+              outcome: staged.outcome,
+              message: staged.message,
+              path: relativePath,
+            });
+          }
+
+          if (action === "remove_file") {
+            const name = readString(input, "name");
+            const relativePath = readString(input, "path");
+            if (!name) {
+              throw new Error("name is required for remove_file.");
+            }
+            if (!relativePath) {
+              throw new Error("path is required for remove_file.");
+            }
+
+            const staged = await skillProposalService!.stageProposal({
+              orgId,
+              profileId,
+              action: "remove_file",
+              skillName: name,
+              relativePath,
+              sessionId: context.sessionId ?? null,
+              proposedByUserId: context.userId ?? null,
+            });
+
+            return stagedSkillManageResult({
+              action: "remove_file",
+              name,
+              proposalId: staged.proposalId,
+              outcome: staged.outcome,
+              message: staged.message,
+              path: relativePath,
+            });
+          }
+
           const name = readString(input, "name");
           if (!name) {
             throw new Error("name is required for delete.");
@@ -307,6 +429,86 @@ export function createSkillManageTools(deps: SkillManageToolDeps): ToolDefinitio
             name: response.skill.name,
             assigned: true,
             description: response.skill.description,
+          });
+        }
+
+        if (action === "edit") {
+          const name = readString(input, "name");
+          const content = readRawString(input, "content");
+          if (!name) {
+            throw new Error("name is required for edit.");
+          }
+          if (!content?.trim()) {
+            throw new Error("content is required for edit (full SKILL.md markdown).");
+          }
+
+          const response = await service.editAssignedProfileSkill(
+            orgId,
+            profileId,
+            name,
+            content,
+          );
+
+          return skillManageResult({
+            action: "edit",
+            name: response.skill.name,
+            assigned: true,
+            description: response.skill.description,
+          });
+        }
+
+        if (action === "write_file") {
+          const name = readString(input, "name");
+          const relativePath = readString(input, "path");
+          const content = readRawString(input, "content");
+          if (!name) {
+            throw new Error("name is required for write_file.");
+          }
+          if (!relativePath) {
+            throw new Error("path is required for write_file.");
+          }
+          if (content === null) {
+            throw new Error("content is required for write_file.");
+          }
+
+          const written = await service.writeAssignedProfileSkillSupportingFile(
+            orgId,
+            profileId,
+            name,
+            relativePath,
+            content,
+          );
+
+          return skillManageResult({
+            action: "write_file",
+            name: written.skillName,
+            assigned: true,
+            path: written.relativePath,
+          });
+        }
+
+        if (action === "remove_file") {
+          const name = readString(input, "name");
+          const relativePath = readString(input, "path");
+          if (!name) {
+            throw new Error("name is required for remove_file.");
+          }
+          if (!relativePath) {
+            throw new Error("path is required for remove_file.");
+          }
+
+          const removed = await service.removeAssignedProfileSkillSupportingFile(
+            orgId,
+            profileId,
+            name,
+            relativePath,
+          );
+
+          return skillManageResult({
+            action: "remove_file",
+            name: removed.skillName,
+            assigned: true,
+            path: removed.relativePath,
           });
         }
 
