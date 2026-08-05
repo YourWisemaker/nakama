@@ -82,8 +82,11 @@ function ProfileSkillsWriteApprovalFieldBody({
   }
 
   return (
-    <div className="mb-3 rounded-md border border-border p-3 sm:p-4">
-      <label htmlFor="profile-skills-write-approval" className="mb-1 block text-xs font-medium text-muted-foreground">
+    <div>
+      <label
+        htmlFor="profile-skills-write-approval"
+        className="mb-1 block text-xs font-medium text-balance text-muted-foreground"
+      >
         Skill write approval
       </label>
       <div className="flex items-center gap-2">
@@ -97,7 +100,7 @@ function ProfileSkillsWriteApprovalFieldBody({
             void handleChange(next as OverrideValue);
           }}
         >
-          <SelectTrigger id="profile-skills-write-approval" className="h-8 max-w-xs">
+          <SelectTrigger id="profile-skills-write-approval" className="max-w-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -108,9 +111,6 @@ function ProfileSkillsWriteApprovalFieldBody({
         </Select>
         {busy ? <Spinner /> : null}
       </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">
-        Overrides the org-wide gate for this profile only.
-      </p>
     </div>
   );
 }

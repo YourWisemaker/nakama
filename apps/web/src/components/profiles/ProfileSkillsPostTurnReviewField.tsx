@@ -84,10 +84,10 @@ function ProfileSkillsPostTurnReviewFieldBody({
   }
 
   return (
-    <div className="mb-3 rounded-md border border-border p-3 sm:p-4">
+    <div>
       <label
         htmlFor="profile-skills-post-turn-review"
-        className="mb-1 block text-xs font-medium text-muted-foreground"
+        className="mb-1 block text-xs font-medium text-balance text-muted-foreground"
       >
         Post-turn skill review
       </label>
@@ -102,7 +102,7 @@ function ProfileSkillsPostTurnReviewFieldBody({
             void handleChange(next as OverrideValue);
           }}
         >
-          <SelectTrigger id="profile-skills-post-turn-review" className="h-8 max-w-xs">
+          <SelectTrigger id="profile-skills-post-turn-review" className="max-w-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -113,10 +113,6 @@ function ProfileSkillsPostTurnReviewFieldBody({
         </Select>
         {busy ? <Spinner /> : null}
       </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">
-        Overrides the org-wide post-turn review setting for this profile only. Separate from skill
-        write approval.
-      </p>
     </div>
   );
 }
