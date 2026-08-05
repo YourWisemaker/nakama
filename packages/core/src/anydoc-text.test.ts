@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -34,10 +34,6 @@ describe("resolveAnydocFormat", () => {
 });
 
 describe("convertDocumentBytes", () => {
-  afterEach(() => {
-    mock.restore();
-  });
-
   test("converts PDF fixture to markdown containing known text", async () => {
     const result = await convertDocumentBytes(SAMPLE_PDF, {
       format: "pdf",
@@ -102,17 +98,14 @@ describe("convertDocumentBytes", () => {
   });
 
   test("surfaces a timeout when conversion stalls", async () => {
-    mock.module("@firecrawl/anydoc", () => ({
-      toMarkdownBytes: () =>
-        new Promise<string>(() => {
-          /* never resolves */
-        }),
-    }));
-
     await expect(
       convertDocumentBytes(SAMPLE_XLSX, {
         format: "xlsx",
         timeoutMs: 25,
+        convertFn: () =>
+          new Promise<string>(() => {
+            /* never resolves */
+          }),
       }),
     ).rejects.toThrow(/timed out/i);
 

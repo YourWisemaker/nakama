@@ -28,6 +28,11 @@ export interface ConvertDocumentBytesOptions {
   filename?: string;
   maxOutputBytes?: number;
   timeoutMs?: number;
+  /** Test seam — defaults to `@firecrawl/anydoc` `toMarkdownBytes`. */
+  convertFn?: (
+    bytes: Uint8Array,
+    format: AnydocFormat | null,
+  ) => Promise<string>;
 }
 
 const MEDIA_TYPE_TO_FORMAT: Record<string, AnydocFormat> = {
@@ -128,12 +133,17 @@ export async function convertDocumentBytes(
   const input = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
 
   return withAnydocSlot(async () => {
-    const { toMarkdownBytes } = await import("@firecrawl/anydoc");
+    const convertFn =
+      options.convertFn ??
+      (async (bytes, resolvedFormat) => {
+        const { toMarkdownBytes } = await import("@firecrawl/anydoc");
+        return toMarkdownBytes(bytes, resolvedFormat);
+      });
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     try {
       const markdown = await Promise.race([
-        toMarkdownBytes(input, format),
+        convertFn(input, format),
         new Promise<never>((_, reject) => {
           timeout = setTimeout(
             () => reject(new Error("Document text extraction timed out.")),

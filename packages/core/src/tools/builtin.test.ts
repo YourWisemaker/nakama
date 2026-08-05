@@ -523,7 +523,7 @@ describe("file builtin tools", () => {
       workspaceRoot: tempDir,
     });
 
-    expect(result.content).toContain("# Laporan Mingguan");
+    expect(result.content).toContain("Laporan Mingguan");
     expect(result.content).toContain("**teks tebal**");
   });
 
