@@ -141,7 +141,7 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
         <Button type="submit" className="w-full">
           Continue
         </Button>
-        <div className="border-t border-border pt-4">
+        <div className="flex justify-center border-t border-border pt-4">
           <input
             ref={backupInputRef}
             type="file"
@@ -160,12 +160,12 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
           />
           <Button
             type="button"
-            variant="outline"
-            className="w-full"
+            variant="ghost"
+            size="sm"
             onClick={() => backupInputRef.current?.click()}
           >
-            <UploadIcon className="size-4" aria-hidden />
-            Upload backup ZIP
+            <UploadIcon className="size-3.5" aria-hidden />
+            Choose ZIP
           </Button>
         </div>
       </form>
