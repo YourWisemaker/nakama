@@ -11,10 +11,12 @@ echo "Stopping ${CONTAINER_NAME}..."
 docker rm -f "${CONTAINER_NAME}" 2>/dev/null || true
 
 echo "Building ${IMAGE_NAME}..."
+# buildx handles cross-platform builds; legacy `docker build` fails on Apple Silicon
+# when forcing linux/amd64. Custom DOCKER_CONFIG disables the buildx CLI plugin.
 if [[ "${IMAGE_NAME}" == "nakama" && "$#" -eq 0 ]]; then
-  "${ROOT}/scripts/docker-build.sh"
+  docker buildx build --load --platform=linux/amd64 -t nakama "${ROOT}"
 else
-  "${ROOT}/scripts/docker-build.sh" --platform=linux/amd64 -t "${IMAGE_NAME}" "$@"
+  docker buildx build --load --platform=linux/amd64 -t "${IMAGE_NAME}" "$@" "${ROOT}"
 fi
 
 echo "Starting ${CONTAINER_NAME}..."

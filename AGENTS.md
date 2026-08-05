@@ -48,14 +48,12 @@ One container: API + web + platform workers. Data at `/nakama/data` (`NAKAMA_CON
 docker pull ghcr.io/ahmadrosid/nakama:latest
 docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama ghcr.io/ahmadrosid/nakama:latest
 
-# Build from source (uses buildx; default linux/amd64 -t nakama)
-./scripts/docker-build.sh
-docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
+# Build from source and run (uses buildx; default linux/amd64 -t nakama)
+./scripts/docker-build-run.sh
 
 # Fresh start (removes container, volume, image)
 ./scripts/docker-destroy.sh
-./scripts/docker-build.sh
-docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
+./scripts/docker-build-run.sh
 ```
 
 ## Multi-tenancy
