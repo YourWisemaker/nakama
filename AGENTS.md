@@ -20,7 +20,7 @@ LLM_VCR_MODE=record bun test path/to/foo.llm.test.ts  # re-record (needs provide
 
 ## GitHub
 
-Use `gh` for issues, PRs, checks, reviews, releases, and any GitHub URL. Do not use the API, browser, or scraping.
+Use `gh` for issues, PRs, checks, reviews, releases, and any GitHub URL. Run the gh cli command outside the sandbox so that the auth can works.
 
 ## Browser automation
 
