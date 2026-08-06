@@ -72,7 +72,7 @@ describe("setup import routes", () => {
     expect(restoreResponse.status).toBe(200);
     await expect(restoreResponse.json()).resolves.toMatchObject({
       restoredFileCount: 1,
-      requiresRestart: true,
+      requiresRestart: false,
     });
     await expect(readFile(join(getUserConfigDir(), "config.ini"), "utf8")).resolves.toBe(
       "original",

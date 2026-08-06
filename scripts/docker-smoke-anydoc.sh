@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prove @firecrawl/anydoc's native binary loads under the production Bun image.
 # Usage:
-#   ./scripts/docker-build.sh
+#   ./scripts/docker-build-run.sh
 #   ./scripts/docker-smoke-anydoc.sh [image-tag]
 set -euo pipefail
 
@@ -16,7 +16,7 @@ if [[ ! -f "${FIXTURE_PDF}" || ! -f "${FIXTURE_XLSX}" ]]; then
 fi
 
 if ! docker image inspect "${IMAGE}" >/dev/null 2>&1; then
-  echo "Docker image '${IMAGE}' not found. Build it first with ./scripts/docker-build.sh" >&2
+  echo "Docker image '${IMAGE}' not found. Build it first with ./scripts/docker-build-run.sh" >&2
   exit 1
 fi
 

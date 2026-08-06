@@ -1,18 +1,25 @@
-import type { DataImportPreviewResponse } from "@nakama/core/contract";
-import { AlertTriangleIcon, RotateCcwIcon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { AlertTriangleIcon, CheckCircle2Icon, UploadIcon } from "lucide-react";
+import type { DataImportPreviewResponse } from "@nakama/core/contract";
+import {
+  DataImportPreview,
+  PendingIcon,
+} from "@/components/data-portability/DataImportPreview";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import {
   canRestoreDataImport,
-  formatDataPortabilityBytes,
+  shouldStartInitialFilePreview,
   usePreviewSetupDataImport,
   useRestoreSetupDataImport,
 } from "@/hooks/use-data-portability";
 import { formatError } from "@/lib/client";
 import { cn } from "@/lib/utils";
+
+const REDIRECT_DELAY_MS = 3000;
+
+type RestorePhase = "form" | "restoring" | "done";
 
 interface SetupStepBackupImportProps {
   initialFile?: File | null;
@@ -26,16 +33,22 @@ export function SetupStepBackupImport({
   onRestored,
 }: SetupStepBackupImportProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const initialPreviewStartedForRef = useRef<File | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DataImportPreviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const previewMutation = usePreviewSetupDataImport();
+  const [phase, setPhase] = useState<RestorePhase>("form");
+  const [successEntered, setSuccessEntered] = useState(false);
+  const {
+    mutateAsync: previewImport,
+    isPending: previewPending,
+  } = usePreviewSetupDataImport();
   const restoreMutation = useRestoreSetupDataImport();
-  const isBusy = previewMutation.isPending || restoreMutation.isPending;
+  const isBusy = previewPending || restoreMutation.isPending || phase !== "form";
   const restoreAvailable = canRestoreDataImport({
     selectedFile,
     previewReady: Boolean(preview),
-    pending: restoreMutation.isPending,
+    pending: restoreMutation.isPending || phase !== "form",
   });
 
   async function handlePreview(file: File | null) {
@@ -48,7 +61,7 @@ export function SetupStepBackupImport({
     }
 
     try {
-      setPreview(await previewMutation.mutateAsync(file));
+      setPreview(await previewImport(file));
     } catch (err) {
       setError(formatError(err));
     }
@@ -56,16 +69,23 @@ export function SetupStepBackupImport({
 
   useEffect(() => {
     if (!initialFile) {
+      initialPreviewStartedForRef.current = null;
       return;
     }
+
+    // useMutation's result object changes identity when pending/error state flips.
+    // Depend on stable mutateAsync only, and skip if we already started this File.
+    if (!shouldStartInitialFilePreview(initialFile, initialPreviewStartedForRef.current)) {
+      return;
+    }
+    initialPreviewStartedForRef.current = initialFile;
 
     let cancelled = false;
     setSelectedFile(initialFile);
     setPreview(null);
     setError(null);
 
-    void previewMutation
-      .mutateAsync(initialFile)
+    void previewImport(initialFile)
       .then((result) => {
         if (!cancelled) {
           setPreview(result);
@@ -80,7 +100,30 @@ export function SetupStepBackupImport({
     return () => {
       cancelled = true;
     };
-  }, [initialFile, previewMutation]);
+  }, [initialFile, previewImport]);
+
+  const onRestoredRef = useRef(onRestored);
+
+  useEffect(() => {
+    onRestoredRef.current = onRestored;
+  }, [onRestored]);
+
+  useEffect(() => {
+    if (phase !== "done") {
+      setSuccessEntered(false);
+      return;
+    }
+
+    const enterFrame = requestAnimationFrame(() => setSuccessEntered(true));
+    const redirectTimer = window.setTimeout(() => {
+      onRestoredRef.current();
+    }, REDIRECT_DELAY_MS);
+
+    return () => {
+      cancelAnimationFrame(enterFrame);
+      window.clearTimeout(redirectTimer);
+    };
+  }, [phase]);
 
   async function handleRestore() {
     if (!selectedFile || !preview) {
@@ -88,27 +131,86 @@ export function SetupStepBackupImport({
     }
 
     setError(null);
+    setPhase("restoring");
 
     try {
       await restoreMutation.mutateAsync({ file: selectedFile, confirm: true });
-      onRestored();
+      setPhase("done");
     } catch (err) {
+      setPhase("form");
       setError(formatError(err));
     }
   }
 
+  if (phase === "restoring" || phase === "done") {
+    return (
+      <Card className="p-6">
+        <div
+          className="flex flex-col items-center justify-center gap-3 py-10 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          {phase === "restoring" ? (
+            <>
+              <Spinner className="size-8 text-primary" />
+              <p className="text-balance text-sm font-medium text-foreground">
+                Restoring backup…
+              </p>
+            </>
+          ) : (
+            <>
+              <span
+                className={cn(
+                  "flex size-10 items-center justify-center text-primary",
+                  "transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                  "motion-reduce:transition-none",
+                  successEntered
+                    ? "scale-100 opacity-100 blur-0"
+                    : "scale-[0.25] opacity-0 blur-[4px]",
+                )}
+                aria-hidden
+              >
+                <CheckCircle2Icon className="size-10" strokeWidth={1.75} />
+              </span>
+              <div
+                className={cn(
+                  "space-y-1 transition-[opacity,filter,translate] duration-300 ease-out",
+                  "motion-reduce:transition-none",
+                  successEntered
+                    ? "translate-y-0 opacity-100 blur-0 delay-100"
+                    : "translate-y-3 opacity-0 blur-[4px]",
+                )}
+              >
+                <p className="text-balance text-sm font-medium text-foreground">
+                  Backup restored
+                </p>
+                <p className="text-pretty text-xs text-muted-foreground">
+                  Taking you to sign in…
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-6">
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-medium text-foreground">Restore backup</p>
-          <Button type="button" size="sm" disabled={isBusy} onClick={() => inputRef.current?.click()}>
-            {previewMutation.isPending ? (
-              <Spinner className="size-3.5" />
-            ) : (
-              <UploadIcon className="size-3.5" aria-hidden />
-            )}
-            Choose ZIP
+          <p className="text-balance text-sm font-medium text-foreground">
+            Restore from a backup
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant={selectedFile ? "outline" : "default"}
+            disabled={isBusy}
+            onClick={() => inputRef.current?.click()}
+          >
+            <PendingIcon pending={previewPending} idle={UploadIcon} />
+            {selectedFile ? "Choose a different file" : "Choose backup file"}
           </Button>
           <input
             ref={inputRef}
@@ -116,49 +218,20 @@ export function SetupStepBackupImport({
             accept=".zip,application/zip"
             disabled={isBusy}
             className="sr-only"
-            aria-label="Import backup ZIP file"
+            aria-label="Choose a backup file"
             onChange={(event) => void handlePreview(event.target.files?.[0] ?? null)}
           />
         </div>
 
         {selectedFile ? (
-          <p className="text-xs text-muted-foreground">
-            {previewMutation.isPending ? "Inspecting " : "Selected: "}
-            <span className="font-medium text-foreground">{selectedFile.name}</span>
-          </p>
-        ) : null}
-
-        {preview ? (
-          <div className="rounded-md border border-border bg-background">
-            <dl className="grid gap-px overflow-hidden rounded-md bg-border text-sm sm:grid-cols-2">
-              <PreviewStat label="Created" value={formatDate(preview.manifest.createdAt)} />
-              <PreviewStat label="Files" value={String(preview.archiveFileCount)} />
-              <PreviewStat label="Size" value={formatDataPortabilityBytes(preview.archiveTotalBytes)} />
-              <PreviewStat
-                label="Action"
-                value={preview.willReplaceRoot ? "Replace current data" : "Create data root"}
-              />
-            </dl>
-            <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                Top-level paths: {preview.topLevelPaths.join(", ") || "none"}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                disabled={!restoreAvailable}
-                onClick={() => void handleRestore()}
-              >
-                {restoreMutation.isPending ? (
-                  <Spinner className="size-3.5" />
-                ) : (
-                  <RotateCcwIcon className="size-3.5" aria-hidden />
-                )}
-                Restore ZIP
-              </Button>
-            </div>
-          </div>
+          <DataImportPreview
+            fileName={selectedFile.name}
+            preview={preview}
+            inspecting={previewPending}
+            restorePending={restoreMutation.isPending}
+            restoreDisabled={!restoreAvailable}
+            onRestore={() => void handleRestore()}
+          />
         ) : null}
 
         {error ? (
@@ -169,7 +242,7 @@ export function SetupStepBackupImport({
             )}
           >
             <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>{error}</span>
+            <span className="text-pretty">{error}</span>
           </div>
         ) : null}
 
@@ -179,38 +252,4 @@ export function SetupStepBackupImport({
       </div>
     </Card>
   );
-}
-
-export function SetupBackupRestoreComplete() {
-  return (
-    <Card className="p-6">
-      <div className="space-y-4">
-        <p className="text-sm text-foreground">Backup restored. Restart Nakama to finish setup.</p>
-        <p className="text-sm text-muted-foreground">
-          After restart, sign in with your existing account. If provider setup is still required, the
-          wizard will continue from there.
-        </p>
-        <Button type="button" className="w-full" render={<Link to="/login" />}>
-          Go to sign in
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-function PreviewStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card p-3">
-      <dt className="text-xs font-medium uppercase text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-foreground">{value}</dd>
-    </div>
-  );
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString();
 }

@@ -55,16 +55,14 @@ docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama ghcr.io/ahm
 **Build from source:**
 
 ```bash
-./scripts/docker-build.sh
-docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
+./scripts/docker-build-run.sh
 ```
 
 **Fresh start:**
 
 ```bash
 ./scripts/docker-destroy.sh
-./scripts/docker-build.sh
-docker run -d -p 4310:4310 -v nakama-data:/nakama/data --name nakama nakama
+./scripts/docker-build-run.sh
 ```
 
 The dashboard will be available at http://localhost:4310.

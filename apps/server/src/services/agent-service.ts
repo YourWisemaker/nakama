@@ -151,6 +151,7 @@ import {
   saveWhatsAppConfig,
   createSmtpSender,
   loadUserThinkingSettings,
+  loadUserConfig,
   saveUserConfig,
   saveUserThinkingSettings,
   saveUserTimezone,
@@ -2048,6 +2049,18 @@ export class AgentService {
       thinking: this.resolveWorkspaceThinkingDefaults(),
     });
     this.sessions.clear();
+  }
+
+  /** After a data-root restore, reload provider config and clear in-memory session state. */
+  async reloadAfterDataRestore(): Promise<void> {
+    this.userConfig = await loadUserConfig();
+    this.refreshHarness();
+    this.composioService?.reloadConfiguration();
+    await this.llmUsageTracker?.reloadFromDatabase();
+    this.visionSettingsPromise = null;
+    this.transcriptionSettingsPromise = null;
+    await this.ensureVisionSettingsLoaded();
+    await this.ensureTranscriptionSettingsLoaded();
   }
 
   async listProfiles(orgId: string): Promise<ListProfilesResponse> {

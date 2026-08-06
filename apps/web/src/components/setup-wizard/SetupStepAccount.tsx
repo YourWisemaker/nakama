@@ -1,21 +1,20 @@
 import { useRef, useState } from "react";
 import { UploadIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import type { SetupAccountDraft } from "@/components/setup-wizard/setup-wizard.shared";
-import {
-  SetupBackupRestoreComplete,
-  SetupStepBackupImport,
-} from "@/components/setup-wizard/SetupStepBackupImport";
+import { SetupStepBackupImport } from "@/components/setup-wizard/SetupStepBackupImport";
 
 interface SetupStepAccountProps {
   onNext: (account: SetupAccountDraft) => void;
 }
 
-type SetupAccountMode = "account" | "backup" | "backup-complete";
+type SetupAccountMode = "account" | "backup";
 
 export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
+  const navigate = useNavigate();
   const backupInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<SetupAccountMode>("account");
   const [initialBackupFile, setInitialBackupFile] = useState<File | null>(null);
@@ -26,10 +25,6 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  if (mode === "backup-complete") {
-    return <SetupBackupRestoreComplete />;
-  }
-
   if (mode === "backup") {
     return (
       <SetupStepBackupImport
@@ -38,7 +33,7 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
           setInitialBackupFile(null);
           setMode("account");
         }}
-        onRestored={() => setMode("backup-complete")}
+        onRestored={() => navigate("/login", { replace: true })}
       />
     );
   }
@@ -147,7 +142,7 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
             type="file"
             accept=".zip,application/zip"
             className="sr-only"
-            aria-label="Upload backup ZIP file"
+            aria-label="Choose a backup file"
             onChange={(event) => {
               const file = event.target.files?.[0] ?? null;
               event.target.value = "";
@@ -165,7 +160,7 @@ export function SetupStepAccount({ onNext }: SetupStepAccountProps) {
             onClick={() => backupInputRef.current?.click()}
           >
             <UploadIcon className="size-3.5" aria-hidden />
-            Choose ZIP
+            I have a backup
           </Button>
         </div>
       </form>

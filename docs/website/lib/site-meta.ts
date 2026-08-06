@@ -160,7 +160,7 @@ export function buildLlmsTxt(pages: string[]) {
     },
     {
       topics:
-        'Docker, docker run, container, production deploy, docker-build, NAKAMA_CONFIG_DIR volume',
+        'Docker, docker run, container, production deploy, docker-build-run, NAKAMA_CONFIG_DIR volume',
       page: 'docker.md',
     },
     {
