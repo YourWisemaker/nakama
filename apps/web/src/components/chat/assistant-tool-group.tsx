@@ -27,7 +27,9 @@ import { WebFetchToolRow } from "@/components/chat/WebFetchToolRow";
 import { isArtifactMetaSidecarTool } from "@/lib/chat-artifacts";
 import { ThinkingReasoning } from "@/components/chat/ThinkingReasoning";
 import thinkingStyles from "@/components/chat/ThinkingReasoning.module.css";
+import { useRafCoalescedValue } from "@/hooks/use-raf-coalesced-value";
 import { formatElapsedSeconds, useElapsedSeconds } from "@/lib/elapsed-time";
+import { splitStreamingMarkdown } from "@/lib/streaming-markdown-seal";
 import { cn } from "@/lib/utils";
 
 import {
@@ -64,11 +66,38 @@ export function AssistantTurnSegmentView({
   );
 }
 
-function AssistantTextContent({ message }: { message: ChatListItem }) {
+function StreamingPlainTail({ text }: { text: string }) {
   return (
-    <MessageResponse isAnimating={Boolean(message.streaming && !message.thinkingStreaming)}>
-      {message.content || "…"}
-    </MessageResponse>
+    <div
+      className={cn(
+        "chat-markdown size-full whitespace-pre-wrap break-words text-foreground",
+        "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+      )}
+    >
+      {text || "…"}
+    </div>
+  );
+}
+
+function AssistantTextContent({ message }: { message: ChatListItem }) {
+  const streaming = Boolean(message.streaming && !message.thinkingStreaming);
+  const content = useRafCoalescedValue(message.content, streaming);
+
+  if (!streaming) {
+    return <MessageResponse>{content || "…"}</MessageResponse>;
+  }
+
+  const { sealed, tail } = splitStreamingMarkdown(content);
+
+  return (
+    <div className="flex w-full min-w-0 flex-col gap-0">
+      {sealed ? (
+        <MessageResponse isAnimating={false} mode="streaming">
+          {sealed}
+        </MessageResponse>
+      ) : null}
+      {tail || !sealed ? <StreamingPlainTail text={tail} /> : null}
+    </div>
   );
 }
 
