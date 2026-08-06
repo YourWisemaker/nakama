@@ -26,6 +26,7 @@ import {
   toOpenAIMessages,
   toOpenAITools,
 } from "../openai";
+import { openAIModelRejectsChatToolsWithReasoning } from "../openai/thinking";
 
 export interface OpenAICompatibleProviderOptions {
   apiKey: string;
@@ -151,7 +152,16 @@ function readReasoningText(
   return trimmed ? trimmed : undefined;
 }
 
-function buildThinkingBody(thinking?: ProviderChatOptions["thinking"]) {
+function buildThinkingBody(
+  thinking: ProviderChatOptions["thinking"] | undefined,
+  options: { model: string; hasTools: boolean },
+) {
+  // OpenAI gpt-5.4+ chat/completions rejects tools + non-none reasoning_effort
+  // (including when the API would default effort). Force none whenever tools are present.
+  if (options.hasTools && openAIModelRejectsChatToolsWithReasoning(options.model)) {
+    return { reasoning_effort: "none" };
+  }
+
   if (!thinking?.enabled) {
     return {};
   }
@@ -180,7 +190,10 @@ async function requestChatCompletion(
     const completion = await client.chat.completions.create({
       model: options.model,
       messages: await buildMessages(options.system, options.messages),
-      ...buildThinkingBody(options.thinking),
+      ...buildThinkingBody(options.thinking, {
+        model: options.model,
+        hasTools: Boolean(options.tools?.length),
+      }),
       ...(options.tools?.length
         ? {
             tools: toOpenAITools(options.tools),
@@ -238,7 +251,10 @@ async function streamChatCompletion(options: {
       stream: true,
       messages: await buildMessages(options.system, options.messages),
       stream_options: { include_usage: true },
-      ...buildThinkingBody(options.thinking),
+      ...buildThinkingBody(options.thinking, {
+        model: options.model,
+        hasTools: Boolean(options.tools?.length),
+      }),
       ...(options.tools?.length
         ? {
             tools: toOpenAITools(options.tools),
