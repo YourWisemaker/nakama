@@ -117,18 +117,29 @@ export function registerSetupImportRoutes(app: HonoApp, options: ServerOptions):
 
     const body = await readJson<RestoreDataImportRequest>(c.req.raw);
 
+    let restore;
     try {
-      const restore = await restoreNakamaDataImport(decodeArchiveRequestData(body.data), {
+      restore = await restoreNakamaDataImport(decodeArchiveRequestData(body.data), {
         confirm: body.confirm,
-      });
-      await options.onDataRestored?.();
-      return json<SetupRestoreDataImportResponse>({
-        ...restore,
-        requiresRestart: false,
       });
     } catch (error) {
       return errorResponse(formatImportError(error), 400);
     }
+
+    let requiresRestart = !options.onDataRestored;
+    if (options.onDataRestored) {
+      try {
+        await options.onDataRestored();
+        requiresRestart = false;
+      } catch {
+        requiresRestart = true;
+      }
+    }
+
+    return json<SetupRestoreDataImportResponse>({
+      ...restore,
+      requiresRestart,
+    });
   });
 }
 

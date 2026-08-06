@@ -34,11 +34,13 @@ export function SetupStepBackupImport({
 }: SetupStepBackupImportProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const initialPreviewStartedForRef = useRef<File | null>(null);
+  const previewGenerationRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DataImportPreviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<RestorePhase>("form");
   const [successEntered, setSuccessEntered] = useState(false);
+  const [requiresRestart, setRequiresRestart] = useState(false);
   const {
     mutateAsync: previewImport,
     isPending: previewPending,
@@ -52,6 +54,7 @@ export function SetupStepBackupImport({
   });
 
   async function handlePreview(file: File | null) {
+    const generation = ++previewGenerationRef.current;
     setSelectedFile(file);
     setPreview(null);
     setError(null);
@@ -61,8 +64,15 @@ export function SetupStepBackupImport({
     }
 
     try {
-      setPreview(await previewImport(file));
+      const result = await previewImport(file);
+      if (generation !== previewGenerationRef.current) {
+        return;
+      }
+      setPreview(result);
     } catch (err) {
+      if (generation !== previewGenerationRef.current) {
+        return;
+      }
       setError(formatError(err));
     }
   }
@@ -79,6 +89,7 @@ export function SetupStepBackupImport({
       return;
     }
     initialPreviewStartedForRef.current = initialFile;
+    const generation = ++previewGenerationRef.current;
 
     let cancelled = false;
     setSelectedFile(initialFile);
@@ -87,18 +98,20 @@ export function SetupStepBackupImport({
 
     void previewImport(initialFile)
       .then((result) => {
-        if (!cancelled) {
+        if (!cancelled && generation === previewGenerationRef.current) {
           setPreview(result);
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && generation === previewGenerationRef.current) {
           setError(formatError(err));
         }
       });
 
     return () => {
       cancelled = true;
+      // Allow Strict Mode remount to retry the same File after cleanup.
+      initialPreviewStartedForRef.current = null;
     };
   }, [initialFile, previewImport]);
 
@@ -115,6 +128,12 @@ export function SetupStepBackupImport({
     }
 
     const enterFrame = requestAnimationFrame(() => setSuccessEntered(true));
+    if (requiresRestart) {
+      return () => {
+        cancelAnimationFrame(enterFrame);
+      };
+    }
+
     const redirectTimer = window.setTimeout(() => {
       onRestoredRef.current();
     }, REDIRECT_DELAY_MS);
@@ -123,7 +142,7 @@ export function SetupStepBackupImport({
       cancelAnimationFrame(enterFrame);
       window.clearTimeout(redirectTimer);
     };
-  }, [phase]);
+  }, [phase, requiresRestart]);
 
   async function handleRestore() {
     if (!selectedFile || !preview) {
@@ -131,10 +150,12 @@ export function SetupStepBackupImport({
     }
 
     setError(null);
+    setRequiresRestart(false);
     setPhase("restoring");
 
     try {
-      await restoreMutation.mutateAsync({ file: selectedFile, confirm: true });
+      const result = await restoreMutation.mutateAsync({ file: selectedFile, confirm: true });
+      setRequiresRestart(Boolean(result.requiresRestart));
       setPhase("done");
     } catch (err) {
       setPhase("form");
@@ -185,7 +206,9 @@ export function SetupStepBackupImport({
                   Backup restored
                 </p>
                 <p className="text-pretty text-xs text-muted-foreground">
-                  Taking you to sign in…
+                  {requiresRestart
+                    ? "Restart Nakama, then sign in with your restored account."
+                    : "Taking you to sign in…"}
                 </p>
               </div>
             </>

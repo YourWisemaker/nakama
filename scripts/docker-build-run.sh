@@ -7,17 +7,18 @@ IMAGE_NAME="${NAKAMA_IMAGE_NAME:-nakama}"
 HOST_PORT="${NAKAMA_HOST_PORT:-4310}"
 VOLUME_NAME="${NAKAMA_DATA_VOLUME:-nakama-data}"
 
-echo "Stopping ${CONTAINER_NAME}..."
-docker rm -f "${CONTAINER_NAME}" 2>/dev/null || true
-
 echo "Building ${IMAGE_NAME}..."
 # buildx handles cross-platform builds; legacy `docker build` fails on Apple Silicon
 # when forcing linux/amd64. Custom DOCKER_CONFIG disables the buildx CLI plugin.
+# Build before stopping the running container so a failed build leaves the old service up.
 if [[ "${IMAGE_NAME}" == "nakama" && "$#" -eq 0 ]]; then
   docker buildx build --load --platform=linux/amd64 -t nakama "${ROOT}"
 else
   docker buildx build --load --platform=linux/amd64 -t "${IMAGE_NAME}" "$@" "${ROOT}"
 fi
+
+echo "Stopping ${CONTAINER_NAME}..."
+docker rm -f "${CONTAINER_NAME}" 2>/dev/null || true
 
 echo "Starting ${CONTAINER_NAME}..."
 docker run -d \

@@ -131,15 +131,24 @@ export function registerDataPortabilityRoutes(app: HonoApp, options: ServerOptio
     requirePlatformAdminFromContext(c);
     const body = await readJson<RestoreDataImportRequest>(c.req.raw);
 
+    let restore;
     try {
-      const restore = await restoreNakamaDataImport(decodeArchiveRequestData(body.data), {
+      restore = await restoreNakamaDataImport(decodeArchiveRequestData(body.data), {
         confirm: body.confirm,
       });
-      await options.onDataRestored?.();
-      return json<RestoreDataImportResponse>(restore);
     } catch (error) {
       return errorResponse(formatImportError(error), 400);
     }
+
+    if (options.onDataRestored) {
+      try {
+        await options.onDataRestored();
+      } catch {
+        // Disk restore already committed; caller must restart to finish reload.
+      }
+    }
+
+    return json<RestoreDataImportResponse>(restore);
   });
 }
 

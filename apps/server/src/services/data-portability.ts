@@ -165,6 +165,8 @@ export async function restoreNakamaDataImport(
   const stagedRoot = join(stagingParent, "root");
   const backupRoot = join(rootDir, `${BACKUP_PREFIX}${Date.now()}`);
   const backedUpEntries: string[] = [];
+  let backupComplete = false;
+  let restoreCommitted = false;
 
   try {
     await mkdir(stagedRoot, { recursive: true, mode: 0o700 });
@@ -186,14 +188,22 @@ export async function restoreNakamaDataImport(
         await movePath(join(rootDir, name), join(backupRoot, name));
         backedUpEntries.push(name);
       }
+      backupComplete = true;
+    } else {
+      backupComplete = true;
     }
 
     for (const name of await readdir(stagedRoot)) {
       await movePath(join(stagedRoot, name), join(rootDir, name));
     }
+    restoreCommitted = true;
 
     if (backedUpEntries.length > 0) {
-      await rm(backupRoot, { recursive: true, force: true });
+      try {
+        await rm(backupRoot, { recursive: true, force: true });
+      } catch {
+        // Restore already committed — leave an orphan backup rather than rolling back.
+      }
     }
 
     return {
@@ -202,17 +212,35 @@ export async function restoreNakamaDataImport(
       restoredFileCount,
     };
   } catch (error) {
-    if (backedUpEntries.length > 0 && (await pathExists(backupRoot))) {
-      for (const name of await listMovableTopLevelEntries(rootDir)) {
-        await rm(join(rootDir, name), { recursive: true, force: true });
-      }
-      for (const name of backedUpEntries) {
-        const from = join(backupRoot, name);
-        if (await pathExists(from)) {
-          await movePath(from, join(rootDir, name));
+    if (!restoreCommitted && backedUpEntries.length > 0 && (await pathExists(backupRoot))) {
+      try {
+        if (backupComplete) {
+          for (const name of await listMovableTopLevelEntries(rootDir)) {
+            await rm(join(rootDir, name), { recursive: true, force: true });
+          }
+          for (const name of backedUpEntries) {
+            const from = join(backupRoot, name);
+            if (await pathExists(from)) {
+              await movePath(from, join(rootDir, name));
+            }
+          }
+        } else {
+          // Partial backup: only put back what we moved; never delete unbacked siblings.
+          for (const name of backedUpEntries) {
+            const live = join(rootDir, name);
+            if (await pathExists(live)) {
+              await rm(live, { recursive: true, force: true });
+            }
+            const from = join(backupRoot, name);
+            if (await pathExists(from)) {
+              await movePath(from, live);
+            }
+          }
         }
+        await rm(backupRoot, { recursive: true, force: true });
+      } catch {
+        // Keep backupRoot for manual recovery if rollback itself fails.
       }
-      await rm(backupRoot, { recursive: true, force: true });
     }
 
     throw error;
@@ -340,6 +368,11 @@ function validateArchivePath(path: string): void {
   const normalized = normalize(path).split(sep).join("/");
   if (normalized === ".." || normalized.startsWith("../") || normalized.includes("/../")) {
     throw new Error(`Archive entry escapes restore root: ${path}`);
+  }
+
+  const first = normalized.split("/")[0] ?? "";
+  if (first.startsWith(RESTORE_PREFIX) || first.startsWith(BACKUP_PREFIX)) {
+    throw new Error(`Archive entry uses a reserved restore path: ${path}`);
   }
 }
 
