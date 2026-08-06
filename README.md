@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="nakama-logo-dither.png" />
+    <source media="(prefers-color-scheme: dark)" srcset="nakama-logo-dither-dark.png" />
     <img alt="Nakama logo" src="nakama-logo-dither-light.png" width="188" />
   </picture>
 </p>
