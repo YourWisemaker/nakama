@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { RafValueCoalescer } from "@/lib/raf-coalesced-value";
 
 /**
  * While `enabled`, propagates `value` at most once per animation frame.
@@ -7,24 +6,58 @@ import { RafValueCoalescer } from "@/lib/raf-coalesced-value";
  */
 export function useRafCoalescedValue<T>(value: T, enabled: boolean): T {
   const [display, setDisplay] = useState(value);
-  const coalescerRef = useRef<RafValueCoalescer<T> | null>(null);
-
-  if (coalescerRef.current === null) {
-    coalescerRef.current = new RafValueCoalescer(value, setDisplay);
-  }
+  const pendingRef = useRef(value);
+  const rafRef = useRef<number | null>(null);
+  const generationRef = useRef(0);
 
   useEffect(() => {
-    const coalescer = coalescerRef.current!;
     if (!enabled) {
-      coalescer.sync(value);
+      generationRef.current += 1;
+      if (rafRef.current != null && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = null;
+      pendingRef.current = value;
+      setDisplay(value);
       return;
     }
-    coalescer.set(value);
+
+    pendingRef.current = value;
+    if (rafRef.current != null) {
+      return;
+    }
+
+    const generation = generationRef.current;
+    const run = () => {
+      if (generation !== generationRef.current) {
+        return;
+      }
+      rafRef.current = null;
+      setDisplay(pendingRef.current);
+    };
+
+    if (typeof requestAnimationFrame === "function") {
+      rafRef.current = requestAnimationFrame(run);
+      return;
+    }
+
+    // Mark scheduled without rAF so bursts in this turn still coalesce.
+    rafRef.current = -1;
+    queueMicrotask(() => {
+      if (rafRef.current !== -1) {
+        return;
+      }
+      run();
+    });
   }, [value, enabled]);
 
   useEffect(() => {
     return () => {
-      coalescerRef.current?.cancel();
+      generationRef.current += 1;
+      if (rafRef.current != null && rafRef.current >= 0 && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = null;
     };
   }, []);
 

@@ -55,6 +55,20 @@ function ThinkingReasoningViewport({
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [fade, setFade] = useState({ top: false, bottom: false });
 
+  // Append-only stream: sealed lines keep a content-prefix key; the live tail
+  // keeps a fixed key so growing text does not remount / re-fade.
+  const items = useMemo(() => {
+    let sealedPrefix = "";
+    return sentences.map((text, index) => {
+      const isLiveTail = isWorkActive && index === sentences.length - 1;
+      if (isLiveTail) {
+        return { key: "live-tail", text, fresh: true as const };
+      }
+      sealedPrefix = `${sealedPrefix}\0${text}`;
+      return { key: `sealed:${sealedPrefix}`, text, fresh: false as const };
+    });
+  }, [sentences, isWorkActive]);
+
   const updateFade = () => {
     const element = viewportRef.current;
     if (!element) {
@@ -94,7 +108,7 @@ function ThinkingReasoningViewport({
     updateFade();
   };
 
-  if (sentences.length === 0) {
+  if (items.length === 0) {
     return null;
   }
 
@@ -115,10 +129,13 @@ function ThinkingReasoningViewport({
       onScroll={handleScroll}
     >
       <div className={styles.stream}>
-        {sentences.map((line, index) => (
-          // Stable index keys: growing the last line must not remount + re-fade.
-          <p key={index} className={styles.sentence} data-fresh={index === sentences.length - 1 || undefined}>
-            {line}
+        {items.map((item) => (
+          <p
+            key={item.key}
+            className={styles.sentence}
+            data-fresh={item.fresh || undefined}
+          >
+            {item.text}
           </p>
         ))}
       </div>
