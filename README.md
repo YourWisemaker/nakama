@@ -1,4 +1,9 @@
-<p align="center"> <img alt="Nakama logo" src="nakama.png" width="188"> </p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="nakama-logo-dither.png" />
+    <img alt="Nakama logo" src="nakama-logo-dither-light.png" width="188" />
+  </picture>
+</p>
 
 # Nakama
 
