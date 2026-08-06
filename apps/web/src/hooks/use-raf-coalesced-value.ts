@@ -13,12 +13,11 @@ export function useRafCoalescedValue<T>(value: T, enabled: boolean): T {
   useEffect(() => {
     if (!enabled) {
       generationRef.current += 1;
-      if (rafRef.current != null && typeof cancelAnimationFrame === "function") {
+      if (rafRef.current != null && rafRef.current >= 0 && typeof cancelAnimationFrame === "function") {
         cancelAnimationFrame(rafRef.current);
       }
       rafRef.current = null;
       pendingRef.current = value;
-      setDisplay(value);
       return;
     }
 
