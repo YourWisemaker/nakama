@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ThinkingReasoning.module.css";
 import { ThinkingState } from "@/components/chat/ThinkingState";
+import { useRafCoalescedValue } from "@/hooks/use-raf-coalesced-value";
 import { splitThinkingLines } from "@/lib/thinking-text";
 import { formatElapsedSeconds } from "@/lib/elapsed-time";
 import { cn } from "@/lib/utils";
@@ -115,7 +116,8 @@ function ThinkingReasoningViewport({
     >
       <div className={styles.stream}>
         {sentences.map((line, index) => (
-          <p key={`${index}:${line}`} className={styles.sentence}>
+          // Stable index keys: growing the last line must not remount + re-fade.
+          <p key={index} className={styles.sentence} data-fresh={index === sentences.length - 1 || undefined}>
             {line}
           </p>
         ))}
@@ -132,8 +134,9 @@ export function ThinkingReasoning({
   className,
   children,
 }: ThinkingReasoningProps) {
-  const trimmed = text.trim();
-  const sentences = useMemo(() => splitThinkingLines(text), [text]);
+  const displayText = useRafCoalescedValue(text, isThinkingStreaming);
+  const trimmed = displayText.trim();
+  const sentences = useMemo(() => splitThinkingLines(displayText), [displayText]);
   const hasBody = sentences.length > 0 || Boolean(children);
   const elapsedSeconds = useThinkingElapsed(isWorkActive, startedAt);
   const [done, setDone] = useState(!isWorkActive && hasBody);
