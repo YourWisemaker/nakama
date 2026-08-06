@@ -156,13 +156,14 @@ function buildThinkingBody(
   thinking: ProviderChatOptions["thinking"] | undefined,
   options: { model: string; hasTools: boolean },
 ) {
-  if (!thinking?.enabled) {
-    return {};
-  }
-
-  // OpenAI gpt-5.4+ chat/completions rejects tools + non-none reasoning_effort.
+  // OpenAI gpt-5.4+ chat/completions rejects tools + non-none reasoning_effort
+  // (including when the API would default effort). Force none whenever tools are present.
   if (options.hasTools && openAIModelRejectsChatToolsWithReasoning(options.model)) {
     return { reasoning_effort: "none" };
+  }
+
+  if (!thinking?.enabled) {
+    return {};
   }
 
   const effort = normalizeThinkingEffort(thinking.effort);
