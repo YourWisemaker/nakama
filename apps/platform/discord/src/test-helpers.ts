@@ -416,8 +416,13 @@ export function createSlashInteraction(options: {
     ? {
         id: threadId,
         parentId,
+        archived: false,
         isDMBased: () => false,
         isThread: () => true,
+        setArchived: async (value: boolean) => {
+          channel.archived = value;
+          return channel;
+        },
       }
     : {
         id: channelId,

@@ -60,6 +60,18 @@ export class ThreadStore {
     delete this.map[lookupKey];
   }
 
+  /** Drop every mapping that points at this Discord thread id. */
+  deleteByThreadId(threadId: string): boolean {
+    let removed = false;
+    for (const [key, value] of Object.entries(this.map)) {
+      if (value === threadId) {
+        delete this.map[key];
+        removed = true;
+      }
+    }
+    return removed;
+  }
+
   async save(): Promise<void> {
     await writePrivateTextFile(this.path, `${JSON.stringify(this.map, null, 2)}\n`, {
       ensureDir: dirname(this.path),

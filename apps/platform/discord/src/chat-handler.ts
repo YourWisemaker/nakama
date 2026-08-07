@@ -285,6 +285,42 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
   }
 
+  async function handleCloseThread(
+    interaction: ChatInputCommandInteraction,
+    conversationKey: string,
+    messenger: DiscordMessenger,
+  ): Promise<void> {
+    const channel = interaction.channel;
+
+    if (!channel?.isThread()) {
+      await messenger.send("Use /close inside a bot conversation thread.");
+      return;
+    }
+
+    if (!threadStore.hasThreadId(channel.id)) {
+      await messenger.send("I can only close threads I started.");
+      return;
+    }
+
+    stopActiveStream(conversationKey);
+    pendingQuestionnaires.delete(conversationKey);
+
+    if (threadStore.deleteByThreadId(channel.id)) {
+      await threadStore.save();
+    }
+
+    await messenger.send("Thread closed.");
+
+    try {
+      if (!channel.archived) {
+        await channel.setArchived(true);
+      }
+    } catch (error) {
+      console.error("Failed to archive Discord thread after /close:", error);
+      await messenger.send("Couldn't archive the thread. Check the bot's Manage Threads permission.");
+    }
+  }
+
   async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     // Caller (bot.ts) already deferred — do not wait on withChatLock here.
     // Agent replies hold that lock for a long time and would leave commands stuck.
@@ -368,6 +404,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           pendingQuestionnaires.delete(conversationKey);
           await createAndBindSession(conversationKey);
           await messenger.send("Started a new conversation.");
+          return;
+        }
+        case "close": {
+          await handleCloseThread(interaction, conversationKey, messenger);
           return;
         }
         case "status":
