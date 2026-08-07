@@ -865,6 +865,14 @@ export const TRANSCRIPTION_MODEL_OPTIONS = [
   { id: "gpt-4o-mini-transcribe", name: "GPT-4o mini Transcribe" },
 ] as const;
 
+/** Sole v1 image-generation model option (matches server allowlist). */
+export const IMAGE_GENERATION_MODEL_OPTIONS = [
+  { id: "gpt-image-2", name: "GPT Image 2" },
+] as const;
+
+/** Workspace selection string accepted by `/v1/settings/image-generation`. */
+export const IMAGE_GENERATION_SELECTION = `openai::${IMAGE_GENERATION_MODEL_OPTIONS[0].id}` as const;
+
 export function modelsFromCustomRows(
   rows: Array<{ id: string; name?: string; default?: boolean; inputPerMillionUsd?: number; outputPerMillionUsd?: number }>,
 ): ProviderModelOption[] {
