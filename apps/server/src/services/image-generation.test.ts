@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { NakamaApiError, type UserConfig } from "@nakama/core";
 import { createInMemoryDatabaseAdapter, WORKSPACE_SETTINGS_ID } from "@nakama/db";
 import { IMAGE_GENERATION_SELECTION } from "../providers/models";
+import { estimateUsageCostUsd } from "../providers/pricing";
+import { withMswCassette } from "../testing/llm-msw-cassette";
 import { AgentService } from "./agent-service";
 import {
   fallbackImageGenerationTokens,
@@ -10,6 +12,7 @@ import {
   resolveImageGenerationSelection,
   resolveImageGenerationTokens,
 } from "./image-generation";
+import { LlmUsageTracker } from "./llm-usage-tracker";
 
 const openaiConfig = (overrides?: Partial<UserConfig>): UserConfig => ({
   defaultProviderId: "p-openai",
@@ -24,6 +27,8 @@ const openaiConfig = (overrides?: Partial<UserConfig>): UserConfig => ({
   ],
   ...overrides,
 });
+
+const imagesUrl = "https://api.openai.com/v1/images/generations";
 
 describe("resolveImageGenerationSelection", () => {
   test("returns null when image model is not configured", () => {
@@ -163,5 +168,102 @@ describe("AgentService image generation settings", () => {
     expect(await service.getImageGenerationSettings()).toEqual({
       imageGeneration: { model: IMAGE_GENERATION_SELECTION },
     });
+  });
+});
+
+describe("AgentService image generation usage (AE5)", () => {
+  test("successful generate increments gpt-image-2 stats and estimated cost", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const tracker = await LlmUsageTracker.create(db);
+    const service = new AgentService(
+      openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      null,
+      db,
+      tracker,
+    );
+
+    await withMswCassette(
+      "image-generation-gpt-image-2",
+      async () => {
+        await service.generateImage({
+          prompt: "A tiny red circle on white background, minimal",
+          size: "1024x1024",
+        });
+      },
+      { url: imagesUrl, mode: "replay" },
+    );
+
+    const stats = tracker.getStats();
+    expect(stats.requestCount).toBe(1);
+    expect(stats.inputTokens).toBe(16);
+    expect(stats.outputTokens).toBe(200);
+    expect(stats.estimatedCostUsd).toBe(estimateUsageCostUsd("gpt-image-2", 16, 200));
+    expect(stats.estimatedCostUsd).toBeGreaterThan(0);
+    expect(tracker.getStatsByModel()).toEqual([
+      expect.objectContaining({
+        modelId: "gpt-image-2",
+        requestCount: 1,
+        inputTokens: 16,
+        outputTokens: 200,
+      }),
+    ]);
+  });
+
+  test("failed OpenAI response does not increment usage", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const tracker = await LlmUsageTracker.create(db);
+    const service = new AgentService(
+      openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      null,
+      db,
+      tracker,
+    );
+
+    await expect(
+      withMswCassette(
+        "image-generation-usage-failure",
+        async () =>
+          service.generateImage({
+            prompt: "should fail",
+            size: "1024x1024",
+          }),
+        { url: imagesUrl, mode: "replay" },
+      ),
+    ).rejects.toBeTruthy();
+
+    expect(tracker.getStats().requestCount).toBe(0);
+    expect(tracker.getStatsByModel()).toEqual([]);
+  });
+
+  test("missing usage object still records fallback tokens so cost moves", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    const tracker = await LlmUsageTracker.create(db);
+    const service = new AgentService(
+      openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      null,
+      db,
+      tracker,
+    );
+
+    await withMswCassette(
+      "image-generation-usage-no-usage-field",
+      async () => {
+        await service.generateImage({
+          prompt: "abcd",
+          size: "1024x1024",
+        });
+      },
+      { url: imagesUrl, mode: "replay" },
+    );
+
+    const fallback = fallbackImageGenerationTokens("abcd", "1024x1024");
+    const stats = tracker.getStats();
+    expect(stats.requestCount).toBe(1);
+    expect(stats.inputTokens).toBe(fallback.inputTokens);
+    expect(stats.outputTokens).toBe(fallback.outputTokens);
+    expect(stats.estimatedCostUsd).toBe(
+      estimateUsageCostUsd("gpt-image-2", fallback.inputTokens, fallback.outputTokens),
+    );
+    expect(stats.estimatedCostUsd).toBeGreaterThan(0);
   });
 });

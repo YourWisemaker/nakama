@@ -1,5 +1,5 @@
 import { findCustomModel, type ProviderInstance, type ProviderName } from "@nakama/core";
-import { getModelById } from "./models";
+import { getModelById, IMAGE_GENERATION_MODEL_ID } from "./models";
 
 export interface ModelPricing {
   /** USD per 1M input tokens */
@@ -11,6 +11,18 @@ export interface ModelPricing {
 const DEFAULT_PRICING: ModelPricing = {
   inputPerMillionUsd: 1,
   outputPerMillionUsd: 3,
+};
+
+/**
+ * Token-shaped pricing bridge for Images API models.
+ * gpt-image-2: text input $5/MTok, image output $30/MTok (OpenAI list pricing).
+ * Image-input rates are unused for v1 generate-only calls.
+ */
+const IMAGE_GENERATION_PRICING: Record<string, ModelPricing> = {
+  [IMAGE_GENERATION_MODEL_ID]: {
+    inputPerMillionUsd: 5,
+    outputPerMillionUsd: 30,
+  },
 };
 
 export interface PricingContext {
@@ -41,6 +53,11 @@ export function getModelPricing(
   modelId: string,
   context: PricingContext = {},
 ): ModelPricing | null {
+  const imagePricing = IMAGE_GENERATION_PRICING[modelId];
+  if (imagePricing) {
+    return imagePricing;
+  }
+
   const provider = context.provider ?? context.providerInstance?.type ?? null;
 
   if (provider === "openai_compatible" || provider === "openrouter" || provider === "cerebras" || provider === "fireworks" || provider === "ollama") {

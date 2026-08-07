@@ -787,6 +787,12 @@ export class AgentService {
       model: selection.model,
     });
 
+    const usage = result.usage ?? {
+      inputTokens: 0,
+      outputTokens: 0,
+    };
+    this.llmUsageTracker?.record(result.model, usage.inputTokens, usage.outputTokens);
+
     return {
       model: result.model,
       mediaType: result.mediaType,

@@ -46,6 +46,16 @@ describe("estimateUsageCostUsd", () => {
     expect(pricing?.outputPerMillionUsd).toBe(3);
   });
 
+  test("prices gpt-image-2 with Images token rates", () => {
+    const pricing = getModelPricing("gpt-image-2");
+    expect(pricing).toEqual({
+      inputPerMillionUsd: 5,
+      outputPerMillionUsd: 30,
+    });
+    // 1M input + 1M output → $5 + $30
+    expect(estimateUsageCostUsd("gpt-image-2", 1_000_000, 1_000_000)).toBe(35);
+  });
+
   test("uses saved pricing for openrouter custom models", () => {
     const cost = estimateUsageCostUsd("anthropic/claude-sonnet-4-6", 1_000_000, 1_000_000, {
       provider: "openrouter",
