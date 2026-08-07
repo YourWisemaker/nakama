@@ -129,14 +129,16 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const channelId = message.channel.id;
     const text = message.content?.trim();
     const isGuild = isDiscordGuildMessage(message);
+    const isThread = isDiscordThreadMessage(message);
     const botInfo = resolveBotInfo(message, getBotInfo());
-    const groupDecision = isGuild ? explainGuildMessageHandling(message, botInfo) : null;
+    const botOwnsThread = isThread ? threadStore.hasThreadId(channelId) : false;
+    const groupDecision = isGuild
+      ? explainGuildMessageHandling(message, botInfo, { botOwnsThread })
+      : null;
 
     if (groupDecision && !groupDecision.shouldHandle) {
       return;
     }
-
-    const isThread = isDiscordThreadMessage(message);
     const parentChannelId = resolveOrgChannelId(message, channelId, isGuild);
     // Threads share the parent channel's org selection — do not key by thread id.
     const channelOrgKey = resolveChannelOrgKey(parentChannelId, userId, isGuild);

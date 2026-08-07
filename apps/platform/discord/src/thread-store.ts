@@ -42,6 +42,16 @@ export class ThreadStore {
     return this.map[lookupKey];
   }
 
+  /** True when this thread id was created/tracked by the Discord agent. */
+  hasThreadId(threadId: string): boolean {
+    for (const stored of Object.values(this.map)) {
+      if (stored === threadId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   set(lookupKey: string, threadId: string): void {
     this.map[lookupKey] = threadId;
   }

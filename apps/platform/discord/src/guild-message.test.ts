@@ -74,17 +74,18 @@ describe("explainGuildMessageHandling", () => {
     expect(decision.reason).toBe("reply-to-bot");
   });
 
-  test("handles thread messages without mention", () => {
+  test("handles messages in bot-owned threads without mention", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({ content: "continue here", thread: true }),
       BOT_INFO,
+      { botOwnsThread: true },
     );
 
     expect(decision.shouldHandle).toBe(true);
     expect(decision.reason).toBe("in-thread");
   });
 
-  test("handles thread messages that also mention the bot as in-thread", () => {
+  test("handles messages in bot-owned threads that also mention the bot as in-thread", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({
         content: "<@999000111222333444> still in thread",
@@ -92,10 +93,37 @@ describe("explainGuildMessageHandling", () => {
         thread: true,
       }),
       BOT_INFO,
+      { botOwnsThread: true },
     );
 
     expect(decision.shouldHandle).toBe(true);
     expect(decision.reason).toBe("in-thread");
+  });
+
+  test("ignores messages in threads the agent did not start", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({ content: "continue here", thread: true }),
+      BOT_INFO,
+      { botOwnsThread: false },
+    );
+
+    expect(decision.shouldHandle).toBe(false);
+    expect(decision.reason).toBe("foreign-thread");
+  });
+
+  test("ignores mentions inside threads the agent did not start", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        content: "<@999000111222333444> please join",
+        mentionsBot: true,
+        thread: true,
+      }),
+      BOT_INFO,
+      { botOwnsThread: false },
+    );
+
+    expect(decision.shouldHandle).toBe(false);
+    expect(decision.reason).toBe("foreign-thread");
   });
 
   test("still requires a trigger in plain channels", () => {

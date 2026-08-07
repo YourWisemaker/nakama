@@ -518,15 +518,18 @@ describe("createChatHandler guild thread routing", () => {
     });
   });
 
-  test("thread message without mention is answered in the thread", async () => {
+  test("thread message without mention is answered in a bot-owned thread", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
-      const { handleMessage } = await createPairedHandler(homeDir, {
+      const { handleMessage, threadStore } = await createPairedHandler(homeDir, {
         onSendStream: async (input) => {
           streamedInputs.push(input);
           return "In-thread answer";
         },
       });
+
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_42");
+      await threadStore.save();
 
       const guild = createGuildChatMessage({
         content: "keep going",
@@ -542,10 +545,36 @@ describe("createChatHandler guild thread routing", () => {
     });
   });
 
+  test("ignores messages in threads the agent did not start", async () => {
+    await withTempHome(async (homeDir) => {
+      const streamedInputs: unknown[] = [];
+      const { handleMessage } = await createPairedHandler(homeDir, {
+        onSendStream: async (input) => {
+          streamedInputs.push(input);
+          return "Should not reply";
+        },
+      });
+
+      const guild = createGuildChatMessage({
+        content: "<@bot_id> please join this thread",
+        mentionsBot: true,
+        inThread: true,
+        threadId: "user_thread_9",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(guild.message);
+
+      expect(guild.startThreadCalls).toBe(0);
+      expect(guild.threadSentMessages).toHaveLength(0);
+      expect(guild.channelSentMessages).toHaveLength(0);
+      expect(streamedInputs).toHaveLength(0);
+    });
+  });
+
   test("thread messages reuse the parent channel org selection", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
-      const { handleMessage, orgStore } = await createPairedHandler(homeDir, {
+      const { handleMessage, orgStore, threadStore } = await createPairedHandler(homeDir, {
         orgs: createMultiTestOrgs(),
         onSendStream: async (input) => {
           streamedInputs.push(input);
@@ -555,6 +584,8 @@ describe("createChatHandler guild thread routing", () => {
 
       orgStore.set("g:guild_channel_1", "org_a");
       await orgStore.save();
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_42");
+      await threadStore.save();
 
       const guild = createGuildChatMessage({
         content: "keep going",
