@@ -12,6 +12,7 @@ export interface GuildMessageHandlingDecision {
     | "missing-bot-info"
     | "in-thread"
     | "foreign-thread"
+    | "claim-thread"
     | "reply-to-bot"
     | "bot-mention"
     | "no-text"
@@ -102,12 +103,18 @@ export function explainGuildMessageHandling(
     return { shouldHandle: false, reason: "missing-bot-info" };
   }
 
-  // Only continue conversations in threads the agent started — ignore user-created threads.
+  // Bot-owned threads continue without a mention. Foreign threads stay quiet
+  // unless the user @mentions the bot or replies to it — then we claim the thread.
   if (message.channel.isThread()) {
-    if (!options?.botOwnsThread) {
-      return { shouldHandle: false, reason: "foreign-thread" };
+    if (options?.botOwnsThread) {
+      return { shouldHandle: true, reason: "in-thread" };
     }
-    return { shouldHandle: true, reason: "in-thread" };
+
+    if (isReplyToBot(message, botInfo.id) || hasBotMention(message, botInfo)) {
+      return { shouldHandle: true, reason: "claim-thread" };
+    }
+
+    return { shouldHandle: false, reason: "foreign-thread" };
   }
 
   if (isReplyToBot(message, botInfo.id)) {

@@ -110,7 +110,7 @@ describe("explainGuildMessageHandling", () => {
     expect(decision.reason).toBe("foreign-thread");
   });
 
-  test("ignores mentions inside threads the agent did not start", () => {
+  test("claims a foreign thread when the bot is @mentioned", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({
         content: "<@999000111222333444> please join",
@@ -121,8 +121,23 @@ describe("explainGuildMessageHandling", () => {
       { botOwnsThread: false },
     );
 
-    expect(decision.shouldHandle).toBe(false);
-    expect(decision.reason).toBe("foreign-thread");
+    expect(decision.shouldHandle).toBe(true);
+    expect(decision.reason).toBe("claim-thread");
+  });
+
+  test("claims a foreign thread when the user replies to the bot", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        content: "please join",
+        replyToBot: true,
+        thread: true,
+      }),
+      BOT_INFO,
+      { botOwnsThread: false },
+    );
+
+    expect(decision.shouldHandle).toBe(true);
+    expect(decision.reason).toBe("claim-thread");
   });
 
   test("still requires a trigger in plain channels", () => {
