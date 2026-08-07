@@ -978,6 +978,32 @@ export interface TranscribeAudioResponse {
   text: string;
 }
 
+export interface ImageGenerationSettings {
+  model: string | null;
+}
+
+export interface ImageGenerationSettingsResponse {
+  imageGeneration: ImageGenerationSettings;
+}
+
+export interface UpdateImageGenerationRequest {
+  model: string | null;
+}
+
+export interface GenerateImageRequest {
+  prompt: string;
+  size?: string;
+}
+
+export interface GenerateImageResponse {
+  model: string;
+  mediaType: string;
+  size: string;
+  sizeBytes: number;
+  data: string;
+  revisedPrompt?: string;
+}
+
 export interface RotateLocalAuthTokenResponse {
   token: string;
 }

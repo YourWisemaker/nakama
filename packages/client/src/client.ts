@@ -93,6 +93,11 @@ import type {
   TranscribeAudioResponse,
   TranscriptionSettings,
   TranscriptionSettingsResponse,
+  UpdateImageGenerationRequest,
+  GenerateImageRequest,
+  GenerateImageResponse,
+  ImageGenerationSettings,
+  ImageGenerationSettingsResponse,
   UpdateTelegramSettingsRequest,
   UpdateDiscordSettingsRequest,
   UpdateComposioSettingsRequest,
@@ -1214,6 +1219,31 @@ export class NakamaClient {
     return this.request<TranscribeAudioResponse>("/v1/audio/transcribe", {
       method: "POST",
       body: JSON.stringify(input satisfies TranscribeAudioRequest),
+    });
+  }
+
+  async getImageGenerationSettings(): Promise<ImageGenerationSettings> {
+    const response = await this.request<ImageGenerationSettingsResponse>(
+      "/v1/settings/image-generation",
+    );
+    return response.imageGeneration;
+  }
+
+  async setImageGenerationSettings(model: string | null): Promise<ImageGenerationSettings> {
+    const response = await this.request<ImageGenerationSettingsResponse>(
+      "/v1/settings/image-generation",
+      {
+        method: "PUT",
+        body: JSON.stringify({ model } satisfies UpdateImageGenerationRequest),
+      },
+    );
+    return response.imageGeneration;
+  }
+
+  async generateImage(input: GenerateImageRequest): Promise<GenerateImageResponse> {
+    return this.request<GenerateImageResponse>("/v1/images/generate", {
+      method: "POST",
+      body: JSON.stringify(input satisfies GenerateImageRequest),
     });
   }
 

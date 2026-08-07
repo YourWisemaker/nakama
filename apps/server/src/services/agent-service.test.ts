@@ -307,6 +307,7 @@ describe("AgentService coding delegation context", () => {
       id: WORKSPACE_SETTINGS_ID,
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-opencode",
@@ -338,6 +339,7 @@ describe("AgentService coding delegation context", () => {
       id: WORKSPACE_SETTINGS_ID,
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [],
       selectedCodingAgentHarness: null,
       updatedAt: new Date().toISOString(),
@@ -366,6 +368,7 @@ describe("AgentService coding delegation context", () => {
       id: WORKSPACE_SETTINGS_ID,
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-opencode",

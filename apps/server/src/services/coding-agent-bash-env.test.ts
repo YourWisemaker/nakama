@@ -26,6 +26,7 @@ describe("enrichCodingAgentBashInput", () => {
       id: "workspace-settings",
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-claude-code",
@@ -71,6 +72,7 @@ describe("enrichCodingAgentBashInput", () => {
       id: "workspace-settings",
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-claude-code",
@@ -124,6 +126,7 @@ describe("enrichCodingAgentBashInput", () => {
       id: "workspace-settings",
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-claude-code",
@@ -157,6 +160,7 @@ describe("enrichCodingAgentBashInput", () => {
       id: "workspace-settings",
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-cursor-agent",

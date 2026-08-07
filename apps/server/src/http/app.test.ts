@@ -113,6 +113,17 @@ function createServerOptions() {
       setVisionSettings: async (_body: unknown) => ({ vision: { model: null } }),
       getTranscriptionSettings: async () => ({ transcription: { model: null } }),
       setTranscriptionSettings: async (_body: unknown) => ({ transcription: { model: null } }),
+      getImageGenerationSettings: async () => ({ imageGeneration: { model: null } }),
+      setImageGenerationSettings: async (_body: unknown) => ({
+        imageGeneration: { model: null },
+      }),
+      generateImage: async (_body: unknown) => ({
+        model: "gpt-image-2",
+        mediaType: "image/png",
+        size: "1024x1024",
+        sizeBytes: 1,
+        data: "AA==",
+      }),
       transcribeAudio: async (_body: unknown) => ({ text: "hello" }),
       getTelegramSettings: async () => ({ enabled: false }),
       setTelegramSettings: async (_body: unknown) => ({ enabled: false }),

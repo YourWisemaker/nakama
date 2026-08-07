@@ -83,6 +83,7 @@ const agent = new AgentService(userConfig, provider, database.adapter, llmUsageT
 registerSubAgentTool(createSubAgentTool(agent));
 await agent.ensureVisionSettingsLoaded();
 await agent.ensureTranscriptionSettingsLoaded();
+await agent.ensureImageGenerationSettingsLoaded();
 const mcpClientManager = new McpClientManager();
 const mcpService = new McpService(database.adapter, mcpClientManager);
 const composioService = new ComposioService(database.adapter, authService);
