@@ -10,6 +10,7 @@ export interface GuildMessageHandlingDecision {
   reason:
     | "slash-command"
     | "missing-bot-info"
+    | "in-thread"
     | "reply-to-bot"
     | "bot-mention"
     | "no-text"
@@ -38,6 +39,11 @@ export function resolveConversationKey(message: Message, channelId: string, isGu
   }
 
   return channelId;
+}
+
+/** Persisted mapping key: one chat thread per user in a parent guild channel. */
+export function resolveThreadLookupKey(channelId: string, userId: string): string {
+  return `g:${channelId}:u:${userId}`;
 }
 
 export function isDiscordThreadMessage(message: Message): boolean {
@@ -78,6 +84,11 @@ export function explainGuildMessageHandling(
 
   if (!botInfo) {
     return { shouldHandle: false, reason: "missing-bot-info" };
+  }
+
+  // Inside a bot-owned conversation thread, any message is handled — no mention required.
+  if (message.channel.isThread()) {
+    return { shouldHandle: true, reason: "in-thread" };
   }
 
   if (isReplyToBot(message, botInfo.id)) {

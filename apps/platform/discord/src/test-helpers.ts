@@ -196,6 +196,234 @@ export function createDmMessage(options: {
   };
 }
 
+export interface MockGuildChatMessage {
+  message: Message;
+  channelSentMessages: string[];
+  threadSentMessages: string[];
+  startThreadCalls: number;
+  createdThreadId: string | null;
+  channelFileSendCalls: number;
+  threadFileSendCalls: number;
+  lastThreadName: string | null;
+}
+
+export function createGuildChatMessage(options: {
+  userId?: string;
+  channelId?: string;
+  threadId?: string;
+  parentId?: string;
+  content?: string;
+  mentionsBot?: boolean;
+  replyToBot?: boolean;
+  inThread?: boolean;
+  startThreadError?: Error;
+  existingThreads?: Map<
+    string,
+    {
+      id: string;
+      archived?: boolean;
+      parentId?: string;
+    }
+  >;
+}): MockGuildChatMessage {
+  const channelSentMessages: string[] = [];
+  const threadSentMessages: string[] = [];
+  let startThreadCalls = 0;
+  let createdThreadId: string | null = null;
+  let lastThreadName: string | null = null;
+  let channelFileSendCalls = 0;
+  let threadFileSendCalls = 0;
+
+  const userId = options.userId ?? "424242424242424242";
+  const channelId = options.channelId ?? "guild_channel_1";
+  const threadId = options.threadId ?? "thread_1";
+  const parentId = options.parentId ?? channelId;
+  const botId = "bot_id";
+  const existingThreads = options.existingThreads ?? new Map();
+
+  const messages = new Map<string, { author: { id: string } }>();
+  if (options.replyToBot) {
+    messages.set("reply_1", { author: { id: botId } });
+  }
+
+  function createThreadChannel(id: string, parent: string, archived = false) {
+    return {
+      id,
+      parentId: parent,
+      archived,
+      isDMBased: () => false,
+      isTextBased: () => true,
+      isThread: () => true,
+      setArchived: async (value: boolean) => {
+        archived = value;
+        return createThreadChannel(id, parent, archived);
+      },
+      send: async (payload: string | { files: unknown[] }) => {
+        if (typeof payload === "string") {
+          threadSentMessages.push(payload);
+          return { id: `tmsg_${threadSentMessages.length}` };
+        }
+
+        threadFileSendCalls += 1;
+        return { id: `tfile_${threadFileSendCalls}` };
+      },
+      sendTyping: async () => {},
+      messages: {
+        cache: messages,
+        fetch: async () => ({
+          edit: async () => {},
+        }),
+      },
+    };
+  }
+
+  const parentChannel = {
+    id: channelId,
+    parentId: null as string | null,
+    isDMBased: () => false,
+    isTextBased: () => true,
+    isThread: () => false,
+    send: async (payload: string | { files: unknown[] }) => {
+      if (typeof payload === "string") {
+        channelSentMessages.push(payload);
+        return { id: `cmsg_${channelSentMessages.length}` };
+      }
+
+      channelFileSendCalls += 1;
+      return { id: `cfile_${channelFileSendCalls}` };
+    },
+    sendTyping: async () => {},
+    messages: {
+      cache: messages,
+      fetch: async () => ({
+        edit: async () => {},
+      }),
+    },
+  };
+
+  const channel = options.inThread
+    ? createThreadChannel(threadId, parentId, false)
+    : parentChannel;
+
+  const clientChannels = {
+    fetch: async (id: string) => {
+      const known = existingThreads.get(id);
+      if (known) {
+        return createThreadChannel(known.id, known.parentId ?? parentId, known.archived ?? false);
+      }
+
+      if (createdThreadId && id === createdThreadId) {
+        return createThreadChannel(createdThreadId, channelId, false);
+      }
+
+      throw new Error(`Unknown channel ${id}`);
+    },
+  };
+
+  const message = {
+    author: { id: userId, bot: false },
+    content: options.content ?? "",
+    mentions: {
+      users: {
+        has: (id: string) => (options.mentionsBot ? id === botId : false),
+      },
+    },
+    reference: options.replyToBot ? { messageId: "reply_1" } : null,
+    channel,
+    client: {
+      user: { id: botId, username: "nakamabot" },
+      channels: clientChannels,
+    },
+    startThread: async ({ name }: { name: string }) => {
+      startThreadCalls += 1;
+      lastThreadName = name;
+      if (options.startThreadError) {
+        throw options.startThreadError;
+      }
+
+      createdThreadId = `created_thread_${startThreadCalls}`;
+      const thread = createThreadChannel(createdThreadId, channelId, false);
+      existingThreads.set(createdThreadId, {
+        id: createdThreadId,
+        parentId: channelId,
+        archived: false,
+      });
+      return thread;
+    },
+  } as unknown as Message;
+
+  return {
+    message,
+    channelSentMessages,
+    threadSentMessages,
+    get startThreadCalls() {
+      return startThreadCalls;
+    },
+    get createdThreadId() {
+      return createdThreadId;
+    },
+    get lastThreadName() {
+      return lastThreadName;
+    },
+    get channelFileSendCalls() {
+      return channelFileSendCalls;
+    },
+    get threadFileSendCalls() {
+      return threadFileSendCalls;
+    },
+  };
+}
+
+export function createSlashInteraction(options: {
+  userId?: string;
+  channelId?: string;
+  commandName: string;
+  inThread?: boolean;
+  parentId?: string;
+  threadId?: string;
+}): {
+  interaction: import("discord.js").ChatInputCommandInteraction;
+  replies: string[];
+} {
+  const replies: string[] = [];
+  const userId = options.userId ?? "424242424242424242";
+  const channelId = options.channelId ?? "guild_channel_1";
+  const threadId = options.threadId ?? "thread_1";
+  const parentId = options.parentId ?? channelId;
+
+  const channel = options.inThread
+    ? {
+        id: threadId,
+        parentId,
+        isDMBased: () => false,
+        isThread: () => true,
+      }
+    : {
+        id: channelId,
+        parentId: null,
+        isDMBased: () => false,
+        isThread: () => false,
+      };
+
+  const interaction = {
+    user: { id: userId },
+    channelId: options.inThread ? threadId : channelId,
+    channel,
+    commandName: options.commandName,
+    reply: async ({ content }: { content: string }) => {
+      replies.push(content);
+    },
+    followUp: async ({ content }: { content: string }) => {
+      replies.push(content);
+    },
+    editReply: async ({ content }: { content: string }) => {
+      replies.push(content);
+    },
+  } as unknown as import("discord.js").ChatInputCommandInteraction;
+
+  return { interaction, replies };
+}
+
 export async function writeDiscordConfigIni(
   homeDir: string,
   config: {

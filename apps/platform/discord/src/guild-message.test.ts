@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   explainGuildMessageHandling,
   resolveConversationKey,
+  resolveThreadLookupKey,
   stripBotMention,
 } from "./guild-message";
 
@@ -71,6 +72,40 @@ describe("explainGuildMessageHandling", () => {
     expect(decision.shouldHandle).toBe(true);
     expect(decision.reason).toBe("reply-to-bot");
   });
+
+  test("handles thread messages without mention", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({ content: "continue here", thread: true }),
+      BOT_INFO,
+    );
+
+    expect(decision.shouldHandle).toBe(true);
+    expect(decision.reason).toBe("in-thread");
+  });
+
+  test("handles thread messages that also mention the bot as in-thread", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        content: "<@999000111222333444> still in thread",
+        mentionsBot: true,
+        thread: true,
+      }),
+      BOT_INFO,
+    );
+
+    expect(decision.shouldHandle).toBe(true);
+    expect(decision.reason).toBe("in-thread");
+  });
+
+  test("still requires a trigger in plain channels", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({ content: "" }),
+      BOT_INFO,
+    );
+
+    expect(decision.shouldHandle).toBe(false);
+    expect(decision.reason).toBe("no-text");
+  });
 });
 
 describe("resolveConversationKey", () => {
@@ -82,6 +117,12 @@ describe("resolveConversationKey", () => {
     );
 
     expect(key).toBe("g:parent_1:t:thread_1");
+  });
+});
+
+describe("resolveThreadLookupKey", () => {
+  test("maps channel and user to a stable lookup key", () => {
+    expect(resolveThreadLookupKey("channel_1", "user_1")).toBe("g:channel_1:u:user_1");
   });
 });
 
