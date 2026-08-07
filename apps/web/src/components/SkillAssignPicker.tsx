@@ -441,7 +441,7 @@ export function SkillAssignPicker({
     );
   }
 
-  function isCommandItemDisabled(skill: SkillSummary): boolean {
+  function isCommandItemDisabled(): boolean {
     if (disabled) {
       return true;
     }
@@ -618,7 +618,7 @@ export function SkillAssignPicker({
                           skill={skill}
                           disabled={disabled}
                           agentBrowserDisabled={isAgentBrowserDisabled(skill)}
-                          commandItemDisabled={isCommandItemDisabled(skill)}
+                          commandItemDisabled={isCommandItemDisabled()}
                           skillDisabled={isSkillDisabled(skill)}
                           rowAction={agentBrowserRowAction(skill)}
                           assigningBash={assigningBash}
