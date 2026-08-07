@@ -348,7 +348,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           pendingQuestionnaires.delete(conversationKey);
           const session = await resolveSession(conversationKey);
           await session.clear();
-          clearSessionArtifactState(conversationKey);
+          await clearSessionArtifactState(conversationKey);
           await messenger.send("History cleared.");
           return;
         }
@@ -914,7 +914,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     return pickProfileForOrg(profiles, config.profileId).id;
   }
 
-  function clearSessionArtifactState(conversationKey: string): void {
+  async function clearSessionArtifactState(conversationKey: string): Promise<void> {
     const existing = sessionStore.get(conversationKey);
     if (!existing) {
       return;
@@ -925,7 +925,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       profileId: existing.profileId,
       updatedAt: new Date().toISOString(),
     });
-    void sessionStore.save();
+    await sessionStore.save();
   }
 }
 

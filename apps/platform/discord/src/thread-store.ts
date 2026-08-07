@@ -1,6 +1,6 @@
 import { readTextOrNull, writePrivateTextFile } from "@nakama/core/fs";
 import { getDiscordConfigDir } from "@nakama/core/discord-config";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 type ThreadMap = Record<string, string>;
 
@@ -52,7 +52,7 @@ export class ThreadStore {
 
   async save(): Promise<void> {
     await writePrivateTextFile(this.path, `${JSON.stringify(this.map, null, 2)}\n`, {
-      ensureDir: getDiscordConfigDir(),
+      ensureDir: dirname(this.path),
     });
   }
 }

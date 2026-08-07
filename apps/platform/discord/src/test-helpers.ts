@@ -1,7 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import path from "node:path";
-import { spyOn } from "bun:test";
 import type { AgentQuestionnaire, ChatMessage } from "@nakama/core/contract";
 import type { UserOrgSummary } from "@nakama/core/contract";
 import {
@@ -475,14 +474,33 @@ export function createTestOrgStore(homeDir: string): ChannelOrgStore {
   return new ChannelOrgStore(path.join(homeDir, ".nakama", "discord", "org-selection.json"));
 }
 
+let tempHomeChain: Promise<void> = Promise.resolve();
+
 export async function withTempHome<T>(run: (homeDir: string) => Promise<T>): Promise<T> {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const previous = tempHomeChain;
+  tempHomeChain = previous.then(() => gate);
+
+  await previous;
+
   const homeDir = await mkdtemp(path.join(os.tmpdir(), "nakama-discord-home-"));
-  const homedirSpy = spyOn(os, "homedir").mockReturnValue(homeDir);
+  const configDir = path.join(homeDir, ".nakama");
+  const previousConfigDir = process.env.NAKAMA_CONFIG_DIR;
+  process.env.NAKAMA_CONFIG_DIR = configDir;
 
   try {
     return await run(homeDir);
   } finally {
-    homedirSpy.mockRestore();
+    if (previousConfigDir === undefined) {
+      delete process.env.NAKAMA_CONFIG_DIR;
+    } else {
+      process.env.NAKAMA_CONFIG_DIR = previousConfigDir;
+    }
+
     await rm(homeDir, { recursive: true, force: true });
+    release();
   }
 }
