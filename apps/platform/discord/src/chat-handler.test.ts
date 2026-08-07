@@ -9,6 +9,7 @@ import {
   createDmMessage,
   createGuildChatMessage,
   createMockClient,
+  createMultiTestOrgs,
   createSlashInteraction,
   createTestOrgStore,
   withTempHome,
@@ -21,6 +22,7 @@ async function createPairedHandler(
     messages?: ChatMessage[];
     onSendStream?: Parameters<typeof createMockClient>[0]["onSendStream"];
     questionnaire?: Parameters<typeof createMockClient>[0]["questionnaire"];
+    orgs?: Parameters<typeof createMockClient>[0]["orgs"];
   } = {},
 ) {
   await writeDiscordConfigIni(homeDir, {
@@ -429,6 +431,61 @@ describe("createChatHandler guild thread routing", () => {
       expect(guild.startThreadCalls).toBe(0);
       expect(guild.threadSentMessages).toContain("In-thread answer");
       expect(streamedInputs[0]).toEqual({ message: "keep going" });
+    });
+  });
+
+  test("thread messages reuse the parent channel org selection", async () => {
+    await withTempHome(async (homeDir) => {
+      const streamedInputs: unknown[] = [];
+      const { handleMessage, orgStore } = await createPairedHandler(homeDir, {
+        orgs: createMultiTestOrgs(),
+        onSendStream: async (input) => {
+          streamedInputs.push(input);
+          return "In-thread answer";
+        },
+      });
+
+      orgStore.set("g:guild_channel_1", "org_a");
+      await orgStore.save();
+
+      const guild = createGuildChatMessage({
+        content: "keep going",
+        inThread: true,
+        threadId: "thread_42",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(guild.message);
+
+      expect(guild.threadSentMessages.some((text) => text.includes("Choose an organization"))).toBe(
+        false,
+      );
+      expect(guild.threadSentMessages).toContain("In-thread answer");
+      expect(streamedInputs).toHaveLength(1);
+      expect(orgStore.get("g:thread_42")).toBeUndefined();
+      expect(orgStore.get("g:guild_channel_1")?.orgId).toBe("org_a");
+    });
+  });
+
+  test("slash commands in threads reuse the parent channel org selection", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleSlashCommand, orgStore } = await createPairedHandler(homeDir, {
+        orgs: createMultiTestOrgs(),
+      });
+
+      orgStore.set("g:guild_channel_1", "org_b");
+      await orgStore.save();
+
+      const clearCmd = createSlashInteraction({
+        commandName: "clear",
+        inThread: true,
+        threadId: "thread_1",
+        parentId: "guild_channel_1",
+      });
+      await handleSlashCommand(clearCmd.interaction);
+
+      expect(clearCmd.replies.some((text) => text.includes("Choose an organization"))).toBe(false);
+      expect(clearCmd.replies).toContain("History cleared.");
+      expect(orgStore.get("g:thread_1")).toBeUndefined();
     });
   });
 

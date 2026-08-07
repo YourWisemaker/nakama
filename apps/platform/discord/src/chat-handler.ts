@@ -48,6 +48,7 @@ import {
   resolveBotInfo,
   resolveChannelOrgKey,
   resolveConversationKey,
+  resolveOrgChannelId,
   resolveThreadLookupKey,
   stripBotMention,
   type DiscordBotInfo,
@@ -132,13 +133,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       return;
     }
 
-    const channelOrgKey = resolveChannelOrgKey(channelId, userId, isGuild);
-    const conversationKey = resolveConversationKey(message, channelId, isGuild);
     const isThread = isDiscordThreadMessage(message);
-    const parentChannelId =
-      isGuild && isThread
-        ? (message.channel.isThread() ? (message.channel.parentId ?? channelId) : channelId)
-        : channelId;
+    const parentChannelId = resolveOrgChannelId(message, channelId, isGuild);
+    // Threads share the parent channel's org selection — do not key by thread id.
+    const channelOrgKey = resolveChannelOrgKey(parentChannelId, userId, isGuild);
+    const conversationKey = resolveConversationKey(message, channelId, isGuild);
     // Serialize per user+parent channel so thread create/reuse and in-thread chat don't race.
     const lockKey = isGuild
       ? resolveThreadLookupKey(parentChannelId, userId)
@@ -288,7 +287,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const userId = interaction.user.id;
     const channelId = interaction.channelId;
     const isGuild = !interaction.channel?.isDMBased();
-    const channelOrgKey = resolveChannelOrgKey(channelId, userId, isGuild);
+    const orgChannelId =
+      isGuild && interaction.channel?.isThread()
+        ? (interaction.channel.parentId ?? channelId)
+        : channelId;
+    const channelOrgKey = resolveChannelOrgKey(orgChannelId, userId, isGuild);
     const conversationKey = isGuild
       ? interaction.channel?.isThread()
         ? `g:${interaction.channel.parentId ?? channelId}:t:${interaction.channel.id}`

@@ -27,6 +27,28 @@ export function createDefaultTestOrgs(): UserOrgSummary[] {
   ];
 }
 
+export function createMultiTestOrgs(): UserOrgSummary[] {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: "org_a",
+      name: "Personal",
+      slug: "helipod",
+      role: "admin",
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "org_b",
+      name: "Tinyclaw",
+      slug: "tinyclaw",
+      role: "member",
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+}
+
 export function createMockClient(
   options: {
     messages?: ChatMessage[];

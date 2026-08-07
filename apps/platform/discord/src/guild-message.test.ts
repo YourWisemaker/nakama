@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   explainGuildMessageHandling,
   resolveConversationKey,
+  resolveOrgChannelId,
   resolveThreadLookupKey,
   stripBotMention,
 } from "./guild-message";
@@ -112,11 +113,23 @@ describe("resolveConversationKey", () => {
   test("uses thread suffix for thread channels", () => {
     const key = resolveConversationKey(
       createGuildMessage({ thread: true, parentId: "parent_1" }),
-      "parent_1",
+      "thread_1",
       true,
     );
 
     expect(key).toBe("g:parent_1:t:thread_1");
+  });
+});
+
+describe("resolveOrgChannelId", () => {
+  test("uses parent channel id for guild threads", () => {
+    const message = createGuildMessage({ thread: true, parentId: "parent_1" });
+    expect(resolveOrgChannelId(message, "thread_1", true)).toBe("parent_1");
+  });
+
+  test("uses channel id for plain guild channels", () => {
+    const message = createGuildMessage({ content: "hi" });
+    expect(resolveOrgChannelId(message, "channel_1", true)).toBe("channel_1");
   });
 });
 

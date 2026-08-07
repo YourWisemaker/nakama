@@ -29,6 +29,19 @@ export function resolveChannelOrgKey(
   return isGuild ? `g:${channelId}` : `u:${userId}`;
 }
 
+/** Parent guild channel for org selection — threads inherit the parent's org. */
+export function resolveOrgChannelId(message: Message, channelId: string, isGuild: boolean): string {
+  if (!isGuild) {
+    return channelId;
+  }
+
+  if (message.channel.isThread()) {
+    return message.channel.parentId ?? channelId;
+  }
+
+  return channelId;
+}
+
 export function resolveConversationKey(message: Message, channelId: string, isGuild: boolean): string {
   if (!isGuild) {
     return channelId;
