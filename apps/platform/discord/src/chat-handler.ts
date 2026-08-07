@@ -23,7 +23,12 @@ import {
   resolveProfileInScopes,
   type ProfileScope,
 } from "@nakama/core/profiles";
-import type { ChatInputCommandInteraction, Message, TextBasedChannel } from "discord.js";
+import type {
+  ChatInputCommandInteraction,
+  Message,
+  TextBasedChannel,
+  ThreadChannel,
+} from "discord.js";
 import {
   clearActiveStream,
   isAbortError,
@@ -43,6 +48,8 @@ import {
   resolveBotInfo,
   resolveChannelOrgKey,
   resolveConversationKey,
+  resolveOrgChannelId,
+  resolveThreadLookupKey,
   stripBotMention,
   type DiscordBotInfo,
 } from "./guild-message";
@@ -59,6 +66,7 @@ import {
 } from "./channel-artifact-flow";
 import { DiscordQuestionnaireMessage } from "./questionnaire-message";
 import type { SessionStore } from "./session-store";
+import type { ThreadStore } from "./thread-store";
 import { DiscordTodoStatusMessage } from "./todo-status-message";
 import { createTypingLoop } from "./typing-indicator";
 
@@ -89,13 +97,21 @@ export interface ChatHandlerDeps {
   config: DiscordBridgeConfig;
   authStore: DiscordAuthStore;
   sessionStore: SessionStore;
+  threadStore: ThreadStore;
   orgStore: ChannelOrgStore;
   getBotInfo?: () => DiscordBotInfo | undefined;
 }
 
 export function createChatHandler(deps: ChatHandlerDeps) {
-  const { client, config, authStore, sessionStore, orgStore, getBotInfo = () => undefined } =
-    deps;
+  const {
+    client,
+    config,
+    authStore,
+    sessionStore,
+    threadStore,
+    orgStore,
+    getBotInfo = () => undefined,
+  } = deps;
 
   return {
     handleMessage,
@@ -120,11 +136,17 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       return;
     }
 
-    const channelOrgKey = resolveChannelOrgKey(channelId, userId, isGuild);
-    const conversationKey = resolveConversationKey(message, channelId, isGuild);
     const isThread = isDiscordThreadMessage(message);
+    const parentChannelId = resolveOrgChannelId(message, channelId, isGuild);
+    // Threads share the parent channel's org selection — do not key by thread id.
+    const channelOrgKey = resolveChannelOrgKey(parentChannelId, userId, isGuild);
+    const conversationKey = resolveConversationKey(message, channelId, isGuild);
+    // Serialize per user+parent channel so thread create/reuse and in-thread chat don't race.
+    const lockKey = isGuild
+      ? resolveThreadLookupKey(parentChannelId, userId)
+      : conversationKey;
 
-    await withChatLock(conversationKey, async () => {
+    await withChatLock(lockKey, async () => {
       await authStore.reload();
       const isAuthorized = authStore.isAuthorized(userId);
 
@@ -181,14 +203,84 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         return;
       }
 
+      let replyChannel = channel;
+      let replyConversationKey = conversationKey;
+      let replyMessenger = messenger;
+      let replyIsThread = isThread;
+
+      const shouldRouteToThread =
+        isGuild &&
+        !isThread &&
+        (groupDecision?.reason === "bot-mention" || groupDecision?.reason === "reply-to-bot");
+
+      if (shouldRouteToThread) {
+        const thread = await resolveOrCreateGuildThread(
+          message,
+          channelId,
+          userId,
+          messageText,
+        );
+
+        if (thread) {
+          replyChannel = thread;
+          replyConversationKey = `g:${channelId}:t:${thread.id}`;
+          replyMessenger = createDiscordMessenger(thread);
+          replyIsThread = true;
+        }
+      }
+
       await handleChatMessage(
-        channel,
-        conversationKey,
-        messenger,
+        replyChannel,
+        replyConversationKey,
+        replyMessenger,
         messageText,
         isGuild,
+        replyIsThread,
       );
     });
+  }
+
+  async function resolveOrCreateGuildThread(
+    message: Message,
+    parentChannelId: string,
+    userId: string,
+    messageText: string,
+  ): Promise<ThreadChannel | null> {
+    const lookupKey = resolveThreadLookupKey(parentChannelId, userId);
+    // Re-check after the chat lock so concurrent mentions do not create duplicate threads.
+    const existingThreadId = threadStore.get(lookupKey);
+
+    if (existingThreadId) {
+      try {
+        const fetched = await message.client.channels.fetch(existingThreadId);
+
+        if (fetched?.isThread()) {
+          if (fetched.archived) {
+            await fetched.setArchived(false);
+          }
+
+          return fetched;
+        }
+      } catch (error) {
+        console.warn(
+          `Stored Discord thread ${existingThreadId} is unavailable; creating a new one.`,
+          error,
+        );
+      }
+    }
+
+    try {
+      const thread = await message.startThread({
+        name: deriveThreadName(messageText),
+        autoArchiveDuration: 1440,
+      });
+      threadStore.set(lookupKey, thread.id);
+      await threadStore.save();
+      return thread;
+    } catch (error) {
+      console.error("Failed to create Discord thread; falling back to channel reply:", error);
+      return null;
+    }
   }
 
   async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -198,7 +290,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const userId = interaction.user.id;
     const channelId = interaction.channelId;
     const isGuild = !interaction.channel?.isDMBased();
-    const channelOrgKey = resolveChannelOrgKey(channelId, userId, isGuild);
+    const orgChannelId =
+      isGuild && interaction.channel?.isThread()
+        ? (interaction.channel.parentId ?? channelId)
+        : channelId;
+    const channelOrgKey = resolveChannelOrgKey(orgChannelId, userId, isGuild);
     const conversationKey = isGuild
       ? interaction.channel?.isThread()
         ? `g:${interaction.channel.parentId ?? channelId}:t:${interaction.channel.id}`
@@ -362,6 +458,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     messenger: DiscordMessenger,
     attachUserText: string,
     isGuild: boolean,
+    isThread: boolean,
   ): Promise<void> {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
@@ -383,6 +480,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       session,
       attachUserText,
       isGuild,
+      isThread,
       messenger,
     );
 
@@ -497,12 +595,13 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     session: RemoteChatSession,
     userText: string,
     isGuild: boolean,
+    isThread: boolean,
     messenger: DiscordMessenger,
   ): Promise<SendMessageInput | null> {
     const pending = await resolvePendingQuestionnaire(conversationKey, session);
 
     if (!pending) {
-      return withGroupContext({ message: userText }, isGuild);
+      return withGroupContext({ message: userText }, isGuild, isThread);
     }
 
     const answers = tryParseChannelQuestionnaireAnswers(pending, userText);
@@ -517,6 +616,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     return withGroupContext(
       { message: formatAgentQuestionnaireAnswersMessage(answers) },
       isGuild,
+      isThread,
     );
   }
 
@@ -829,8 +929,13 @@ export function createChatHandler(deps: ChatHandlerDeps) {
   }
 }
 
-function withGroupContext(input: SendMessageInput, isGroup: boolean): SendMessageInput {
-  if (!isGroup) {
+function withGroupContext(
+  input: SendMessageInput,
+  isGuild: boolean,
+  isThread: boolean,
+): SendMessageInput {
+  // Threads are a private-ish conversation surface — skip the public-channel warning.
+  if (!isGuild || isThread) {
     return input;
   }
 
@@ -841,6 +946,28 @@ function withGroupContext(input: SendMessageInput, isGroup: boolean): SendMessag
   }
 
   return { ...input, message: GROUP_MESSAGE_PREFIX.trim() };
+}
+
+function deriveThreadName(messageText: string): string {
+  const cleaned = messageText.replace(/\s+/g, " ").trim();
+
+  if (!cleaned) {
+    return "Nakama chat";
+  }
+
+  // Discord thread names are capped at 100 characters.
+  if (cleaned.length <= 100) {
+    return cleaned;
+  }
+
+  const sliced = cleaned.slice(0, 100);
+  const lastSpace = sliced.lastIndexOf(" ");
+
+  if (lastSpace > 40) {
+    return sliced.slice(0, lastSpace);
+  }
+
+  return sliced;
 }
 
 function getOrgSelection(
