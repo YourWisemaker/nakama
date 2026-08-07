@@ -275,9 +275,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     stopActiveStream(conversationKey);
     pendingQuestionnaires.delete(conversationKey);
 
-    if (threadStore.deleteByThreadId(channel.id)) {
-      await threadStore.save();
-    }
+    await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
+      if (threadStore.deleteByThreadId(channel.id)) {
+        await threadStore.save();
+      }
+    });
 
     await messenger.send("Thread closed.");
 
