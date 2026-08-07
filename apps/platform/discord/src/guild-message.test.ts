@@ -3,7 +3,6 @@ import {
   explainGuildMessageHandling,
   resolveConversationKey,
   resolveOrgChannelId,
-  resolveThreadLookupKey,
   stripBotMention,
 } from "./guild-message";
 
@@ -158,12 +157,6 @@ describe("resolveOrgChannelId", () => {
   test("uses channel id for plain guild channels", () => {
     const message = createGuildMessage({ content: "hi" });
     expect(resolveOrgChannelId(message, "channel_1", true)).toBe("channel_1");
-  });
-});
-
-describe("resolveThreadLookupKey", () => {
-  test("maps channel and user to a stable lookup key", () => {
-    expect(resolveThreadLookupKey("channel_1", "user_1")).toBe("g:channel_1:u:user_1");
   });
 });
 

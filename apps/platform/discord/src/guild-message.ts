@@ -60,11 +60,6 @@ export function resolveConversationKey(message: Message, channelId: string, isGu
   return channelId;
 }
 
-/** Persisted mapping key: one chat thread per user in a parent guild channel. */
-export function resolveThreadLookupKey(channelId: string, userId: string): string {
-  return `g:${channelId}:u:${userId}`;
-}
-
 export function isDiscordThreadMessage(message: Message): boolean {
   return message.channel.isThread();
 }
