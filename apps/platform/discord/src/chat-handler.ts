@@ -1,5 +1,11 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
-import type { SendMessageInput } from "@nakama/core/contract";
+import {
+  formatAgentQuestionnaireAnswersMessage,
+  formatAgentQuestionnaireMessage,
+  hasActiveAgentQuestionnaire,
+  tryParseChannelQuestionnaireAnswers,
+} from "@nakama/core/agent-questionnaire";
+import type { AgentQuestionnaire, SendMessageInput } from "@nakama/core/contract";
 import {
   findOrgBySelectionInput,
   formatOrgSelectionPrompt,
@@ -51,11 +57,13 @@ import {
   deliverDiscordTurnArtifactShares,
   maybeSendRequestedDiscordArtifactAttachment,
 } from "./channel-artifact-flow";
+import { DiscordQuestionnaireMessage } from "./questionnaire-message";
 import type { SessionStore } from "./session-store";
 import { DiscordTodoStatusMessage } from "./todo-status-message";
 import { createTypingLoop } from "./typing-indicator";
 
 const chatLocks = new Map<string, Promise<void>>();
+const pendingQuestionnaires = new Map<string, AgentQuestionnaire>();
 
 const GROUP_MESSAGE_PREFIX =
   "[Discord channel — your reply is visible to everyone in this channel.]\n";
@@ -172,10 +180,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
       await handleChatMessage(
         channel,
-        withGroupContext({ message: messageText }, isGuild),
         conversationKey,
         messenger,
         messageText,
+        isGuild,
       );
     });
   }
@@ -238,6 +246,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       switch (interaction.commandName) {
         case "clear": {
           stopActiveStream(conversationKey);
+          pendingQuestionnaires.delete(conversationKey);
           const session = await resolveSession(conversationKey);
           await session.clear();
           clearSessionArtifactState(conversationKey);
@@ -255,6 +264,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         }
         case "new": {
           stopActiveStream(conversationKey);
+          pendingQuestionnaires.delete(conversationKey);
           await createAndBindSession(conversationKey);
           await messenger.send("Started a new conversation.");
           return;
@@ -345,10 +355,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
   async function handleChatMessage(
     channel: TextBasedChannel,
-    input: SendMessageInput,
     conversationKey: string,
     messenger: DiscordMessenger,
     attachUserText: string,
+    isGuild: boolean,
   ): Promise<void> {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
@@ -365,16 +375,30 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       });
     }
 
+    const streamInput = await resolveQuestionnaireStreamInput(
+      conversationKey,
+      session,
+      attachUserText,
+      isGuild,
+      messenger,
+    );
+
+    if (!streamInput) {
+      return;
+    }
+
     const signal = registerActiveStream(conversationKey);
     const typingLoop = createTypingLoop(messenger);
     const todoStatus = new DiscordTodoStatusMessage(messenger);
+    const questionnaireStatus = new DiscordQuestionnaireMessage(messenger);
     typingLoop.start();
 
     let reply = "";
+    let postedQuestionnaire = false;
 
     try {
       reply = await session.sendStream(
-        input,
+        streamInput,
         {
           onThinking: () => {
             typingLoop.ping();
@@ -391,6 +415,17 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           onTodosUpdated: (todos) => {
             typingLoop.ping();
             void todoStatus.update(todos);
+          },
+          onQuestionnaireUpdated: (questionnaire) => {
+            typingLoop.ping();
+            if (hasActiveAgentQuestionnaire(questionnaire)) {
+              postedQuestionnaire = true;
+              pendingQuestionnaires.set(conversationKey, questionnaire!);
+              void questionnaireStatus.update(questionnaire);
+            } else {
+              pendingQuestionnaires.delete(conversationKey);
+              questionnaireStatus.clear();
+            }
           },
         },
         { signal },
@@ -427,7 +462,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
     if (reply.trim()) {
       await replyAsChat(messenger, reply);
-    } else {
+    } else if (!postedQuestionnaire) {
       await messenger.send("(empty reply)");
     }
 
@@ -441,6 +476,59 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         messenger,
       });
     }
+  }
+
+  async function resolveQuestionnaireStreamInput(
+    conversationKey: string,
+    session: RemoteChatSession,
+    userText: string,
+    isGuild: boolean,
+    messenger: DiscordMessenger,
+  ): Promise<SendMessageInput | null> {
+    const pending = await resolvePendingQuestionnaire(conversationKey, session);
+
+    if (!pending) {
+      return withGroupContext({ message: userText }, isGuild);
+    }
+
+    const answers = tryParseChannelQuestionnaireAnswers(pending, userText);
+
+    if (!answers) {
+      await messenger.send(formatAgentQuestionnaireMessage(pending));
+      await messenger.send("Couldn't parse that. Reply using the format above.");
+      return null;
+    }
+
+    pendingQuestionnaires.delete(conversationKey);
+    return withGroupContext(
+      { message: formatAgentQuestionnaireAnswersMessage(answers) },
+      isGuild,
+    );
+  }
+
+  async function resolvePendingQuestionnaire(
+    conversationKey: string,
+    session: RemoteChatSession,
+  ): Promise<AgentQuestionnaire | null> {
+    const cached = pendingQuestionnaires.get(conversationKey);
+
+    if (hasActiveAgentQuestionnaire(cached)) {
+      return cached ?? null;
+    }
+
+    try {
+      const { questionnaire } = await client.getSessionMessages(session.id);
+
+      if (hasActiveAgentQuestionnaire(questionnaire)) {
+        pendingQuestionnaires.set(conversationKey, questionnaire!);
+        return questionnaire;
+      }
+    } catch {
+      // Best-effort; continue without a pending questionnaire.
+    }
+
+    pendingQuestionnaires.delete(conversationKey);
+    return null;
   }
 
   async function ensureOrgReady(
@@ -514,6 +602,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     client.setOrgId(picked.id);
 
     if (previousOrgId && previousOrgId !== picked.id) {
+      pendingQuestionnaires.delete(conversationKey);
       sessionStore.delete(conversationKey);
       await sessionStore.save();
     }
@@ -585,6 +674,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const { scope, profile: picked } = resolved;
 
     if (scope.orgId !== currentOrgId) {
+      pendingQuestionnaires.delete(conversationKey);
       orgStore.set(channelOrgKey, scope.orgId);
       await orgStore.save();
       client.setOrgId(scope.orgId);
@@ -679,6 +769,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     chatId: string,
     profileId?: string,
   ): Promise<RemoteChatSession> {
+    pendingQuestionnaires.delete(chatId);
     const resolvedProfileId = profileId ?? (await resolveSessionProfileId(chatId));
     const session = await client.createSession("discord", {
       profileId: resolvedProfileId,
