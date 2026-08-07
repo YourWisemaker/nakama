@@ -18,6 +18,13 @@ interface WriteFileResult {
   error?: string;
 }
 
+interface GenerateImageResult {
+  path?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  error?: string;
+}
+
 function parseToolResult(content: string): unknown {
   try {
     return JSON.parse(content) as unknown;
@@ -28,6 +35,10 @@ function parseToolResult(content: string): unknown {
 
 function isWriteFileToolName(name: string): boolean {
   return name === "write_file" || name === "write_docx";
+}
+
+function isGenerateImageToolName(name: string): boolean {
+  return name === "generate_image";
 }
 
 function getWriteFileResult(message: Extract<ChatMessage, { role: "tool" }>): WriteFileResult | null {
@@ -192,6 +203,59 @@ function buildToolInputMap(messages: ChatMessage[]): Map<string, Record<string, 
   return toolInputs;
 }
 
+function getGenerateImageResult(
+  message: Extract<ChatMessage, { role: "tool" }>,
+): GenerateImageResult | null {
+  const parsed = parseToolResult(message.content);
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return null;
+  }
+
+  return parsed as GenerateImageResult;
+}
+
+function artifactRefFromGenerateImage(
+  message: Extract<ChatMessage, { role: "tool" }>,
+): ChannelArtifactRef | null {
+  if (!isGenerateImageToolName(message.name)) {
+    return null;
+  }
+
+  const result = getGenerateImageResult(message);
+  if (!result || typeof result.error === "string") {
+    return null;
+  }
+
+  if (typeof result.path !== "string" || !result.path.trim()) {
+    return null;
+  }
+
+  const mimeType = typeof result.mimeType === "string" ? result.mimeType.trim() : "";
+  if (!mimeType) {
+    return null;
+  }
+
+  if (
+    typeof result.sizeBytes !== "number" ||
+    !Number.isInteger(result.sizeBytes) ||
+    result.sizeBytes < 0
+  ) {
+    return null;
+  }
+
+  const relativePath = toArtifactsRelativePath(result.path.trim());
+  if (!relativePath || isArtifactMetaRelativePath(relativePath)) {
+    return null;
+  }
+
+  return buildArtifactRef(relativePath, {
+    mimeType,
+    sizeBytes: result.sizeBytes,
+    savedAt: "",
+  });
+}
+
 /** Messages belonging to the latest user turn (from last user message through end). */
 export function extractLatestTurnMessages(messages: ChatMessage[]): ChatMessage[] {
   let lastUserIndex = -1;
@@ -264,6 +328,19 @@ export function extractPairedTurnArtifacts(messages: ChatMessage[]): ChannelArti
     }
 
     artifactsByPath.set(contentWrite.relativePath, buildArtifactRef(contentWrite.relativePath, meta));
+  }
+
+  for (const message of turnMessages) {
+    if (message.role !== "tool") {
+      continue;
+    }
+
+    const generated = artifactRefFromGenerateImage(message);
+    if (!generated) {
+      continue;
+    }
+
+    artifactsByPath.set(generated.path, generated);
   }
 
   return [...artifactsByPath.values()];
