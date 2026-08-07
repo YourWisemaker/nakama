@@ -42,12 +42,34 @@ export class ThreadStore {
     return this.map[lookupKey];
   }
 
+  /** True when this thread id was created/tracked by the Discord agent. */
+  hasThreadId(threadId: string): boolean {
+    for (const stored of Object.values(this.map)) {
+      if (stored === threadId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   set(lookupKey: string, threadId: string): void {
     this.map[lookupKey] = threadId;
   }
 
   delete(lookupKey: string): void {
     delete this.map[lookupKey];
+  }
+
+  /** Drop every mapping that points at this Discord thread id. */
+  deleteByThreadId(threadId: string): boolean {
+    let removed = false;
+    for (const [key, value] of Object.entries(this.map)) {
+      if (value === threadId) {
+        delete this.map[key];
+        removed = true;
+      }
+    }
+    return removed;
   }
 
   async save(): Promise<void> {

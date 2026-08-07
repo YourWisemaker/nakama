@@ -422,7 +422,7 @@ describe("createChatHandler questionnaire delivery", () => {
     });
   });
 
-  test("maps the next Discord reply into Answers for the pending questionnaire", async () => {
+  test("forwards the next Discord reply to the agent without parsing questionnaire answers", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
       const { handleMessage, sessionStore } = await createPairedHandler(homeDir, {
@@ -445,15 +445,9 @@ describe("createChatHandler questionnaire delivery", () => {
       });
       await handleMessage(message);
 
-      expect(streamedInputs[0]).toEqual({
-        message: [
-          "Answers",
-          "",
-          "Q: How should I run this?",
-          "A: Build Playwright e2e",
-        ].join("\n"),
-      });
+      expect(streamedInputs[0]).toEqual({ message: "a" });
       expect(sentMessages).toContain("Got it.");
+      expect(sentMessages.some((reply) => reply.includes("Couldn't parse that"))).toBe(false);
     });
   });
 });
@@ -518,15 +512,18 @@ describe("createChatHandler guild thread routing", () => {
     });
   });
 
-  test("thread message without mention is answered in the thread", async () => {
+  test("thread message without mention is answered in a bot-owned thread", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
-      const { handleMessage } = await createPairedHandler(homeDir, {
+      const { handleMessage, threadStore } = await createPairedHandler(homeDir, {
         onSendStream: async (input) => {
           streamedInputs.push(input);
           return "In-thread answer";
         },
       });
+
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_42");
+      await threadStore.save();
 
       const guild = createGuildChatMessage({
         content: "keep going",
@@ -542,10 +539,36 @@ describe("createChatHandler guild thread routing", () => {
     });
   });
 
+  test("ignores messages in threads the agent did not start", async () => {
+    await withTempHome(async (homeDir) => {
+      const streamedInputs: unknown[] = [];
+      const { handleMessage } = await createPairedHandler(homeDir, {
+        onSendStream: async (input) => {
+          streamedInputs.push(input);
+          return "Should not reply";
+        },
+      });
+
+      const guild = createGuildChatMessage({
+        content: "<@bot_id> please join this thread",
+        mentionsBot: true,
+        inThread: true,
+        threadId: "user_thread_9",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(guild.message);
+
+      expect(guild.startThreadCalls).toBe(0);
+      expect(guild.threadSentMessages).toHaveLength(0);
+      expect(guild.channelSentMessages).toHaveLength(0);
+      expect(streamedInputs).toHaveLength(0);
+    });
+  });
+
   test("thread messages reuse the parent channel org selection", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
-      const { handleMessage, orgStore } = await createPairedHandler(homeDir, {
+      const { handleMessage, orgStore, threadStore } = await createPairedHandler(homeDir, {
         orgs: createMultiTestOrgs(),
         onSendStream: async (input) => {
           streamedInputs.push(input);
@@ -555,6 +578,8 @@ describe("createChatHandler guild thread routing", () => {
 
       orgStore.set("g:guild_channel_1", "org_a");
       await orgStore.save();
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_42");
+      await threadStore.save();
 
       const guild = createGuildChatMessage({
         content: "keep going",
@@ -660,6 +685,52 @@ describe("createChatHandler guild thread routing", () => {
       });
       await handleSlashCommand(stopCmd.interaction);
       expect(stopCmd.replies).toContain("Nothing to stop.");
+    });
+  });
+
+  test("close archives a bot-owned thread and clears the mapping", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleSlashCommand, threadStore } = await createPairedHandler(homeDir);
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_1");
+      await threadStore.save();
+
+      const closeCmd = createSlashInteraction({
+        commandName: "close",
+        inThread: true,
+        threadId: "thread_1",
+        parentId: "guild_channel_1",
+      });
+      await handleSlashCommand(closeCmd.interaction);
+
+      expect(closeCmd.replies).toContain("Thread closed.");
+      expect((closeCmd.interaction.channel as { archived?: boolean }).archived).toBe(true);
+      expect(threadStore.get("g:guild_channel_1:u:424242424242424242")).toBeUndefined();
+      expect(threadStore.hasThreadId("thread_1")).toBe(false);
+    });
+  });
+
+  test("close rejects non-thread channels and foreign threads", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleSlashCommand, threadStore } = await createPairedHandler(homeDir);
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_owned");
+      await threadStore.save();
+
+      const channelClose = createSlashInteraction({
+        commandName: "close",
+        channelId: "guild_channel_1",
+      });
+      await handleSlashCommand(channelClose.interaction);
+      expect(channelClose.replies).toContain("Use /close inside a bot conversation thread.");
+
+      const foreignClose = createSlashInteraction({
+        commandName: "close",
+        inThread: true,
+        threadId: "user_thread_9",
+        parentId: "guild_channel_1",
+      });
+      await handleSlashCommand(foreignClose.interaction);
+      expect(foreignClose.replies).toContain("I can only close threads I started.");
+      expect(threadStore.hasThreadId("thread_owned")).toBe(true);
     });
   });
 });

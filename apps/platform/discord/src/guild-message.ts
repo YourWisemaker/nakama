@@ -11,10 +11,16 @@ export interface GuildMessageHandlingDecision {
     | "slash-command"
     | "missing-bot-info"
     | "in-thread"
+    | "foreign-thread"
     | "reply-to-bot"
     | "bot-mention"
     | "no-text"
     | "no-trigger";
+}
+
+export interface GuildMessageHandlingOptions {
+  /** True when the message is in a thread the Discord agent started and tracks. */
+  botOwnsThread?: boolean;
 }
 
 export function isDiscordGuildMessage(message: Message): boolean {
@@ -80,13 +86,15 @@ export function resolveBotInfo(
 export function shouldHandleGuildMessage(
   message: Message,
   storedBotInfo?: DiscordBotInfo,
+  options?: GuildMessageHandlingOptions,
 ): boolean {
-  return explainGuildMessageHandling(message, storedBotInfo).shouldHandle;
+  return explainGuildMessageHandling(message, storedBotInfo, options).shouldHandle;
 }
 
 export function explainGuildMessageHandling(
   message: Message,
   storedBotInfo?: DiscordBotInfo,
+  options?: GuildMessageHandlingOptions,
 ): GuildMessageHandlingDecision {
   const text = message.content?.trim() ?? "";
   const botInfo = resolveBotInfo(message, storedBotInfo);
@@ -99,8 +107,11 @@ export function explainGuildMessageHandling(
     return { shouldHandle: false, reason: "missing-bot-info" };
   }
 
-  // Inside a bot-owned conversation thread, any message is handled — no mention required.
+  // Only continue conversations in threads the agent started — ignore user-created threads.
   if (message.channel.isThread()) {
+    if (!options?.botOwnsThread) {
+      return { shouldHandle: false, reason: "foreign-thread" };
+    }
     return { shouldHandle: true, reason: "in-thread" };
   }
 

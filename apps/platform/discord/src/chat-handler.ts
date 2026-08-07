@@ -1,10 +1,5 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
-import {
-  formatAgentQuestionnaireAnswersMessage,
-  formatAgentQuestionnaireMessage,
-  hasActiveAgentQuestionnaire,
-  tryParseChannelQuestionnaireAnswers,
-} from "@nakama/core/agent-questionnaire";
+import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import type { AgentQuestionnaire, SendMessageInput } from "@nakama/core/contract";
 import {
   findOrgBySelectionInput,
@@ -129,14 +124,16 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const channelId = message.channel.id;
     const text = message.content?.trim();
     const isGuild = isDiscordGuildMessage(message);
+    const isThread = isDiscordThreadMessage(message);
     const botInfo = resolveBotInfo(message, getBotInfo());
-    const groupDecision = isGuild ? explainGuildMessageHandling(message, botInfo) : null;
+    const botOwnsThread = isThread ? threadStore.hasThreadId(channelId) : false;
+    const groupDecision = isGuild
+      ? explainGuildMessageHandling(message, botInfo, { botOwnsThread })
+      : null;
 
     if (groupDecision && !groupDecision.shouldHandle) {
       return;
     }
-
-    const isThread = isDiscordThreadMessage(message);
     const parentChannelId = resolveOrgChannelId(message, channelId, isGuild);
     // Threads share the parent channel's org selection — do not key by thread id.
     const channelOrgKey = resolveChannelOrgKey(parentChannelId, userId, isGuild);
@@ -283,6 +280,42 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
   }
 
+  async function handleCloseThread(
+    interaction: ChatInputCommandInteraction,
+    conversationKey: string,
+    messenger: DiscordMessenger,
+  ): Promise<void> {
+    const channel = interaction.channel;
+
+    if (!channel?.isThread()) {
+      await messenger.send("Use /close inside a bot conversation thread.");
+      return;
+    }
+
+    if (!threadStore.hasThreadId(channel.id)) {
+      await messenger.send("I can only close threads I started.");
+      return;
+    }
+
+    stopActiveStream(conversationKey);
+    pendingQuestionnaires.delete(conversationKey);
+
+    if (threadStore.deleteByThreadId(channel.id)) {
+      await threadStore.save();
+    }
+
+    await messenger.send("Thread closed.");
+
+    try {
+      if (!channel.archived) {
+        await channel.setArchived(true);
+      }
+    } catch (error) {
+      console.error("Failed to archive Discord thread after /close:", error);
+      await messenger.send("Couldn't archive the thread. Check the bot's Manage Threads permission.");
+    }
+  }
+
   async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     // Caller (bot.ts) already deferred — do not wait on withChatLock here.
     // Agent replies hold that lock for a long time and would leave commands stuck.
@@ -334,6 +367,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         } else {
           await messenger.send("Stopping…");
         }
+        return;
+      }
+
+      if (interaction.commandName === "close") {
+        await handleCloseThread(interaction, conversationKey, messenger);
         return;
       }
 
@@ -475,18 +513,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       });
     }
 
-    const streamInput = await resolveQuestionnaireStreamInput(
-      conversationKey,
-      session,
-      attachUserText,
-      isGuild,
-      isThread,
-      messenger,
-    );
-
-    if (!streamInput) {
-      return;
-    }
+    // Forward free text to the agent — do not gate Discord replies on questionnaire parsing.
+    const streamInput = withGroupContext({ message: attachUserText }, isGuild, isThread);
 
     const signal = registerActiveStream(conversationKey);
     const typingLoop = createTypingLoop(messenger);
@@ -588,61 +616,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         messenger,
       });
     }
-  }
-
-  async function resolveQuestionnaireStreamInput(
-    conversationKey: string,
-    session: RemoteChatSession,
-    userText: string,
-    isGuild: boolean,
-    isThread: boolean,
-    messenger: DiscordMessenger,
-  ): Promise<SendMessageInput | null> {
-    const pending = await resolvePendingQuestionnaire(conversationKey, session);
-
-    if (!pending) {
-      return withGroupContext({ message: userText }, isGuild, isThread);
-    }
-
-    const answers = tryParseChannelQuestionnaireAnswers(pending, userText);
-
-    if (!answers) {
-      await messenger.send(formatAgentQuestionnaireMessage(pending));
-      await messenger.send("Couldn't parse that. Reply using the format above.");
-      return null;
-    }
-
-    pendingQuestionnaires.delete(conversationKey);
-    return withGroupContext(
-      { message: formatAgentQuestionnaireAnswersMessage(answers) },
-      isGuild,
-      isThread,
-    );
-  }
-
-  async function resolvePendingQuestionnaire(
-    conversationKey: string,
-    session: RemoteChatSession,
-  ): Promise<AgentQuestionnaire | null> {
-    const cached = pendingQuestionnaires.get(conversationKey);
-
-    if (hasActiveAgentQuestionnaire(cached)) {
-      return cached ?? null;
-    }
-
-    try {
-      const { questionnaire } = await client.getSessionMessages(session.id);
-
-      if (hasActiveAgentQuestionnaire(questionnaire)) {
-        pendingQuestionnaires.set(conversationKey, questionnaire!);
-        return questionnaire;
-      }
-    } catch {
-      // Best-effort; continue without a pending questionnaire.
-    }
-
-    pendingQuestionnaires.delete(conversationKey);
-    return null;
   }
 
   async function ensureOrgReady(
