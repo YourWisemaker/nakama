@@ -13,7 +13,7 @@ function createGuildMessage(options: {
   mentionsBot?: boolean;
   replyToBot?: boolean;
   thread?: boolean;
-  parentId?: string;
+  parentId?: string | null;
 }) {
   const channelId = "channel_1";
   const messages = new Map<string, { author: { id: string } }>();
@@ -36,7 +36,10 @@ function createGuildMessage(options: {
       id: options.thread ? "thread_1" : channelId,
       isDMBased: () => false,
       isThread: () => options.thread === true,
-      parentId: options.parentId ?? channelId,
+      parentId:
+        options.parentId === null
+          ? null
+          : (options.parentId ?? channelId),
       messages: { cache: messages },
     },
   } as never;
@@ -161,6 +164,17 @@ describe("resolveConversationKey", () => {
 
     expect(key).toBe("g:parent_1:t:thread_1");
   });
+
+  test("uses hydrated parent when partial thread lacks parentId", () => {
+    const key = resolveConversationKey(
+      createGuildMessage({ thread: true, parentId: null }),
+      "thread_1",
+      true,
+      { parentChannelId: "parent_hydrated" },
+    );
+
+    expect(key).toBe("g:parent_hydrated:t:thread_1");
+  });
 });
 
 describe("resolveOrgChannelId", () => {
@@ -172,6 +186,14 @@ describe("resolveOrgChannelId", () => {
   test("uses channel id for plain guild channels", () => {
     const message = createGuildMessage({ content: "hi" });
     expect(resolveOrgChannelId(message, "channel_1", true)).toBe("channel_1");
+  });
+
+  test("prefers resolved parent over thread id when parentId is missing", () => {
+    const message = createGuildMessage({ thread: true, parentId: null });
+    expect(resolveOrgChannelId(message, "thread_1", true)).toBe("thread_1");
+    expect(
+      resolveOrgChannelId(message, "thread_1", true, { parentChannelId: "parent_1" }),
+    ).toBe("parent_1");
   });
 });
 

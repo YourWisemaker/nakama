@@ -68,6 +68,15 @@ const chatLocks = new Map<string, Promise<void>>();
 const pendingQuestionnaires = new Map<string, AgentQuestionnaire>();
 const THREAD_OWNERSHIP_LOCK_KEY = "__discord_thread_ownership__";
 
+/**
+ * Max time a queued message waits for the previous agent run on the same key.
+ * Long enough for legitimate multi-minute tool/LLM turns; short enough that a
+ * wedged run cannot silence a thread forever. Slash commands bypass this lock.
+ */
+export const chatLockOptions = {
+  waitMs: 15 * 60 * 1000,
+};
+
 const GROUP_MESSAGE_PREFIX =
   "[Discord channel — your reply is visible to everyone in this channel.]\n";
 
@@ -126,6 +135,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const isGuild = isDiscordGuildMessage(message);
     const isThread = isDiscordThreadMessage(message);
     const botInfo = resolveBotInfo(message, getBotInfo());
+    // Ownership is by thread id alone — partial parentId cannot flip this to foreign.
     const botOwnsThread = isThread ? threadStore.hasThreadId(channelId) : false;
     const groupDecision = isGuild
       ? explainGuildMessageHandling(message, botInfo, { botOwnsThread })
@@ -143,17 +153,18 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
 
     if (isThread && groupDecision?.reason === "claim-thread") {
-      await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
-        threadStore.add(channelId);
-        await threadStore.save();
-      });
+      await trackOwnedThread(channelId);
       console.log("[discord] claimed thread", channelId);
     }
 
-    const parentChannelId = resolveOrgChannelId(message, channelId, isGuild);
+    const resolvedParentId = isThread
+      ? await resolveThreadParentChannelId(message)
+      : undefined;
+    const parentResolution = resolvedParentId ? { parentChannelId: resolvedParentId } : undefined;
+    const parentChannelId = resolveOrgChannelId(message, channelId, isGuild, parentResolution);
     // Threads share the parent channel's org selection — do not key by thread id.
     const channelOrgKey = resolveChannelOrgKey(parentChannelId, userId, isGuild);
-    const conversationKey = resolveConversationKey(message, channelId, isGuild);
+    const conversationKey = resolveConversationKey(message, channelId, isGuild, parentResolution);
 
     // Auth/org/thread-create run without the agent-stream lock so parallel parent mentions
     // can each open a thread. Agent work locks per conversation/thread key below.
@@ -263,21 +274,38 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     message: Message,
     messageText: string,
   ): Promise<ThreadChannel | null> {
+    let thread: ThreadChannel;
     try {
-      const thread = await message.startThread({
+      thread = await message.startThread({
         name: deriveThreadName(messageText),
         autoArchiveDuration: 1440,
       });
-      // Brief lock so concurrent ownership saves do not drop a newly created id.
-      await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
-        threadStore.add(thread.id);
-        await threadStore.save();
-      });
-      return thread;
     } catch (error) {
       console.error("Failed to create Discord thread; falling back to channel reply:", error);
       return null;
     }
+
+    await trackOwnedThread(thread.id);
+    return thread;
+  }
+
+  /**
+   * Register ownership in memory first, then persist. Save failures must not
+   * leave a live Discord thread untracked (that yields permanent foreign-thread drops).
+   */
+  async function trackOwnedThread(threadId: string): Promise<void> {
+    // Brief lock so concurrent ownership saves do not drop a newly created id.
+    await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
+      threadStore.add(threadId);
+      try {
+        await threadStore.save();
+      } catch (error) {
+        console.error(
+          `Failed to persist Discord thread ownership for ${threadId}; keeping in-memory tracking:`,
+          error,
+        );
+      }
+    });
   }
 
   async function handleCloseThread(
@@ -325,14 +353,19 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const userId = interaction.user.id;
     const channelId = interaction.channelId;
     const isGuild = !interaction.channel?.isDMBased();
-    const orgChannelId =
-      isGuild && interaction.channel?.isThread()
-        ? (interaction.channel.parentId ?? channelId)
-        : channelId;
+    const isThread = Boolean(interaction.channel?.isThread());
+    let threadParentId =
+      isGuild && isThread && interaction.channel && "parentId" in interaction.channel
+        ? (interaction.channel.parentId ?? undefined)
+        : undefined;
+    if (isGuild && isThread && !threadParentId && interaction.channel) {
+      threadParentId = await hydrateThreadParentId(interaction.channel);
+    }
+    const orgChannelId = isGuild && isThread ? (threadParentId ?? channelId) : channelId;
     const channelOrgKey = resolveChannelOrgKey(orgChannelId, userId, isGuild);
     const conversationKey = isGuild
-      ? interaction.channel?.isThread()
-        ? `g:${interaction.channel.parentId ?? channelId}:t:${interaction.channel.id}`
+      ? isThread
+        ? `g:${threadParentId ?? channelId}:t:${interaction.channel!.id}`
         : channelId
       : channelId;
 
@@ -964,7 +997,52 @@ async function replyChunks(messenger: DiscordMessenger, text: string): Promise<v
   }
 }
 
-async function withChatLock(chatId: string, fn: () => Promise<void>): Promise<void> {
+/**
+ * Hydrate parent guild channel id for thread messages when Discord delivers a
+ * partial channel (`Partials.Channel`) without `parentId`. Ownership checks use
+ * the thread id alone; this only protects org + conversation keys.
+ */
+async function resolveThreadParentChannelId(message: Message): Promise<string | undefined> {
+  if (!message.channel.isThread()) {
+    return undefined;
+  }
+
+  if (message.channel.parentId) {
+    return message.channel.parentId;
+  }
+
+  return hydrateThreadParentId(message.channel);
+}
+
+async function hydrateThreadParentId(
+  channel: TextBasedChannel | { fetch?: () => Promise<unknown>; id?: string },
+): Promise<string | undefined> {
+  if (typeof channel.fetch !== "function") {
+    return undefined;
+  }
+
+  try {
+    const fetched = await channel.fetch();
+    if (fetched && typeof fetched === "object" && "isThread" in fetched) {
+      const thread = fetched as ThreadChannel;
+      if (typeof thread.isThread === "function" && thread.isThread() && thread.parentId) {
+        return thread.parentId;
+      }
+    }
+  } catch (error) {
+    const id = "id" in channel ? String(channel.id) : "unknown";
+    console.warn(`Failed to hydrate Discord thread parentId for ${id}:`, error);
+  }
+
+  return undefined;
+}
+
+/**
+ * Serialize work per conversation key. Waiting for a prior run is bounded so a
+ * hung agent turn cannot queue follow-ups forever; after the wait budget the
+ * next message proceeds (concurrent with the wedged run).
+ */
+export async function withChatLock(chatId: string, fn: () => Promise<void>): Promise<void> {
   const previous = chatLocks.get(chatId) ?? Promise.resolve();
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -972,11 +1050,39 @@ async function withChatLock(chatId: string, fn: () => Promise<void>): Promise<vo
   });
   chatLocks.set(chatId, gate);
 
-  await previous.catch(() => undefined);
+  const waitMs = chatLockOptions.waitMs;
+  let timedOut = false;
+  if (waitMs > 0) {
+    timedOut = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(true), waitMs);
+      previous
+        .then(() => {
+          clearTimeout(timer);
+          resolve(false);
+        })
+        .catch(() => {
+          clearTimeout(timer);
+          resolve(false);
+        });
+    });
+  } else {
+    await previous.catch(() => undefined);
+  }
+
+  if (timedOut) {
+    console.warn(
+      `Chat lock for ${chatId} exceeded ${waitMs}ms wait; proceeding to recover from a wedged run.`,
+    );
+  }
 
   try {
     await fn();
   } finally {
     release();
   }
+}
+
+/** @internal Test helper — clears the in-process chat lock map. */
+export function resetChatLocksForTests(): void {
+  chatLocks.clear();
 }

@@ -36,26 +36,46 @@ export function resolveChannelOrgKey(
   return isGuild ? `g:${channelId}` : `u:${userId}`;
 }
 
+/**
+ * Optional overrides when Discord delivers a partial thread (`parentId` missing).
+ * Callers should hydrate via `channel.fetch()` first.
+ */
+export interface ThreadParentResolution {
+  /** Known parent guild channel id when `message.channel.parentId` is unset. */
+  parentChannelId?: string;
+}
+
 /** Parent guild channel for org selection — threads inherit the parent's org. */
-export function resolveOrgChannelId(message: Message, channelId: string, isGuild: boolean): string {
+export function resolveOrgChannelId(
+  message: Message,
+  channelId: string,
+  isGuild: boolean,
+  options?: ThreadParentResolution,
+): string {
   if (!isGuild) {
     return channelId;
   }
 
   if (message.channel.isThread()) {
-    return message.channel.parentId ?? channelId;
+    return message.channel.parentId ?? options?.parentChannelId ?? channelId;
   }
 
   return channelId;
 }
 
-export function resolveConversationKey(message: Message, channelId: string, isGuild: boolean): string {
+export function resolveConversationKey(
+  message: Message,
+  channelId: string,
+  isGuild: boolean,
+  options?: ThreadParentResolution,
+): string {
   if (!isGuild) {
     return channelId;
   }
 
   if (message.channel.isThread()) {
-    return `g:${message.channel.parentId ?? channelId}:t:${message.channel.id}`;
+    const parentId = message.channel.parentId ?? options?.parentChannelId ?? channelId;
+    return `g:${parentId}:t:${message.channel.id}`;
   }
 
   return channelId;
