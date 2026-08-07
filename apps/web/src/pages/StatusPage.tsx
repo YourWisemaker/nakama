@@ -483,26 +483,39 @@ function SummaryStrip({
 }) {
   return (
     <div
-      className="flex flex-wrap items-start gap-3 border-b border-border px-5 py-4 sm:gap-4"
+      className={cn(
+        "flex flex-wrap items-start gap-3 border-b border-border px-5 py-4 sm:gap-4",
+        summary.tone === "warn" && "bg-amber-500/[0.04] dark:bg-amber-400/[0.05]",
+        summary.tone === "bad" && "bg-destructive/5",
+      )}
     >
-      <div className={cn(iconTileClass, "bg-background/70")}>
+      <div
+        className={cn(
+          iconTileClass,
+          summary.tone === "ok" && "bg-background/70",
+          summary.tone === "warn" && "border-amber-500/25 bg-amber-500/10",
+          summary.tone === "bad" && "border-destructive/25 bg-destructive/10",
+        )}
+      >
         <ToneIcon tone={summary.tone} className="size-5" />
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-sm font-semibold text-foreground">{summary.title}</p>
-        <p className="text-sm text-muted-foreground">{summary.description}</p>
-        {summary.tone === "warn" ? (
+        <p className="text-sm font-semibold text-balance text-foreground">{summary.title}</p>
+        <p className="text-sm text-pretty text-muted-foreground">{summary.description}</p>
+        {summary.action ? (
           <Link
-            to={PAGE_PATHS.settings}
-            className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+            to={summary.action.to}
+            className="inline-flex min-h-10 items-center text-sm font-medium text-primary underline-offset-4 outline-none hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            Open Settings
+            {summary.action.label}
           </Link>
         ) : null}
       </div>
-      <div className="flex items-center gap-1.5 text-xs leading-none text-muted-foreground">
+      <div className="ml-auto flex basis-full items-center justify-end gap-1.5 text-xs leading-none text-muted-foreground sm:basis-auto">
         <ClockIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-        <span title={formatDate(status.checkedAt)}>Updated {formatRelativeTime(status.checkedAt)}</span>
+        <span title={formatDate(status.checkedAt)}>
+          Updated <span className="tabular-nums">{formatRelativeTime(status.checkedAt)}</span>
+        </span>
       </div>
     </div>
   );
