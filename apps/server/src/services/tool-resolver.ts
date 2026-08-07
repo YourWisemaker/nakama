@@ -7,9 +7,14 @@ import { bashTool, runBash } from "../tools/bash";
 import { loadJavascriptTool } from "./javascript-tool-loader";
 
 let registeredSubAgentTool: ToolDefinition | null = null;
+let registeredGenerateImageTool: ToolDefinition | null = null;
 
 export function registerSubAgentTool(tool: ToolDefinition): void {
   registeredSubAgentTool = tool;
+}
+
+export function registerGenerateImageTool(tool: ToolDefinition | null): void {
+  registeredGenerateImageTool = tool;
 }
 
 export function omitUnavailableBuiltinTools(
@@ -76,6 +81,10 @@ async function resolveStoredTool(
     return serverTools.get(record.name) ?? null;
   }
 
+  if (record.handlerType === "generate_image") {
+    return serverTools.get(record.name) ?? null;
+  }
+
   if (record.handlerType === "javascript") {
     return loadJavascriptTool(record);
   }
@@ -92,6 +101,10 @@ function buildServerTools(
 
   if (registeredSubAgentTool) {
     map.set(registeredSubAgentTool.name, registeredSubAgentTool);
+  }
+
+  if (registeredGenerateImageTool) {
+    map.set(registeredGenerateImageTool.name, registeredGenerateImageTool);
   }
 
   return map;

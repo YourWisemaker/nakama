@@ -174,6 +174,12 @@ export function buildChatSystemPrompt(
         "When the user asks for a Word document, use write_docx with Markdown content. Never write HTML or WordprocessingML to a .docx or .doc path with write_file — those formats are archives, not text, and Word will show the markup as raw text.",
       );
     }
+
+    if (tools.some((tool) => tool.name === "generate_image")) {
+      sections.push(
+        "When the user asks you to create or generate an image, use generate_image. Do not invent image URLs or pretend binary image data is attached in text.",
+      );
+    }
   }
 
   if (isMessagingChannel(options.channel)) {
