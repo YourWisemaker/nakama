@@ -622,7 +622,7 @@ describe("createChatHandler guild thread routing", () => {
     });
   });
 
-  test("ignores messages in threads the agent did not start", async () => {
+  test("ignores unmentioned messages in threads the agent did not start", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
       const { handleMessage } = await createPairedHandler(homeDir, {
@@ -631,6 +631,29 @@ describe("createChatHandler guild thread routing", () => {
           return "Should not reply";
         },
       });
+
+      const guild = createGuildChatMessage({
+        content: "please join this thread",
+        inThread: true,
+        threadId: "user_thread_9",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(guild.message);
+
+      expect(guild.startThreadCalls).toBe(0);
+      expect(guild.threadSentMessages).toHaveLength(0);
+      expect(guild.channelSentMessages).toHaveLength(0);
+      expect(streamedInputs).toHaveLength(0);
+    });
+  });
+
+  test("claims a foreign thread on @mention and replies inside it", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, threadStore } = await createPairedHandler(homeDir, {
+        onSendStream: async () => "Joined the thread",
+      });
+
+      expect(threadStore.hasThreadId("user_thread_9")).toBe(false);
 
       const guild = createGuildChatMessage({
         content: "<@bot_id> please join this thread",
@@ -642,9 +665,19 @@ describe("createChatHandler guild thread routing", () => {
       await handleMessage(guild.message);
 
       expect(guild.startThreadCalls).toBe(0);
-      expect(guild.threadSentMessages).toHaveLength(0);
+      expect(threadStore.hasThreadId("user_thread_9")).toBe(true);
+      expect(guild.threadSentMessages).toContain("Joined the thread");
       expect(guild.channelSentMessages).toHaveLength(0);
-      expect(streamedInputs).toHaveLength(0);
+
+      const followUp = createGuildChatMessage({
+        content: "keep going",
+        inThread: true,
+        threadId: "user_thread_9",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(followUp.message);
+
+      expect(followUp.threadSentMessages.length).toBeGreaterThan(0);
     });
   });
 

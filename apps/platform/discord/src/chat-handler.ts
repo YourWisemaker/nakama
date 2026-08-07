@@ -131,9 +131,25 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       ? explainGuildMessageHandling(message, botInfo, { botOwnsThread })
       : null;
 
+    console.log(
+      "[discord] handle",
+      groupDecision?.reason ?? (isGuild ? "none" : "dm"),
+      { channelId, isThread, botOwnsThread, botId: botInfo?.id },
+    );
+
     if (groupDecision && !groupDecision.shouldHandle) {
+      console.log("[discord] skip", groupDecision.reason);
       return;
     }
+
+    if (isThread && groupDecision?.reason === "claim-thread") {
+      await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
+        threadStore.add(channelId);
+        await threadStore.save();
+      });
+      console.log("[discord] claimed thread", channelId);
+    }
+
     const parentChannelId = resolveOrgChannelId(message, channelId, isGuild);
     // Threads share the parent channel's org selection — do not key by thread id.
     const channelOrgKey = resolveChannelOrgKey(parentChannelId, userId, isGuild);
@@ -145,6 +161,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const isAuthorized = authStore.isAuthorized(userId);
 
     if (!isAuthorized) {
+      console.log("[discord] unauthorized", userId);
       if (isGuild) {
         await messenger.send(LINK_IN_PRIVATE_REPLY);
         return;
@@ -174,6 +191,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         isGuild && text && botInfo ? stripBotMention(text, botInfo) : text;
       const orgReady = await ensureOrgReady(messenger, channelOrgKey, orgGateText);
       if (!orgReady) {
+        console.log("[discord] skip org-gate", channelOrgKey);
         return;
       }
     }
@@ -219,8 +237,13 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         replyConversationKey = `g:${channelId}:t:${thread.id}`;
         replyMessenger = createDiscordMessenger(thread);
         replyIsThread = true;
+        console.log("[discord] thread created", thread.id);
+      } else {
+        console.log("[discord] thread create failed, falling back to channel");
       }
     }
+
+    console.log("[discord] chat start", replyConversationKey, messageText.slice(0, 80));
 
     await withChatLock(replyConversationKey, async () => {
       await handleChatMessage(
@@ -232,6 +255,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         replyIsThread,
       );
     });
+
+    console.log("[discord] chat done", replyConversationKey);
   }
 
   async function createGuildThread(
