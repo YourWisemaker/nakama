@@ -375,6 +375,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         return;
       }
 
+      if (interaction.commandName === "close") {
+        await handleCloseThread(interaction, conversationKey, messenger);
+        return;
+      }
+
       const orgReady = await ensureOrgReady(messenger, channelOrgKey, undefined);
       if (!orgReady) {
         return;
@@ -404,10 +409,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           pendingQuestionnaires.delete(conversationKey);
           await createAndBindSession(conversationKey);
           await messenger.send("Started a new conversation.");
-          return;
-        }
-        case "close": {
-          await handleCloseThread(interaction, conversationKey, messenger);
           return;
         }
         case "status":

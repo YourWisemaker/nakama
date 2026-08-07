@@ -693,4 +693,50 @@ describe("createChatHandler guild thread routing", () => {
       expect(stopCmd.replies).toContain("Nothing to stop.");
     });
   });
+
+  test("close archives a bot-owned thread and clears the mapping", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleSlashCommand, threadStore } = await createPairedHandler(homeDir);
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_1");
+      await threadStore.save();
+
+      const closeCmd = createSlashInteraction({
+        commandName: "close",
+        inThread: true,
+        threadId: "thread_1",
+        parentId: "guild_channel_1",
+      });
+      await handleSlashCommand(closeCmd.interaction);
+
+      expect(closeCmd.replies).toContain("Thread closed.");
+      expect((closeCmd.interaction.channel as { archived?: boolean }).archived).toBe(true);
+      expect(threadStore.get("g:guild_channel_1:u:424242424242424242")).toBeUndefined();
+      expect(threadStore.hasThreadId("thread_1")).toBe(false);
+    });
+  });
+
+  test("close rejects non-thread channels and foreign threads", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleSlashCommand, threadStore } = await createPairedHandler(homeDir);
+      threadStore.set("g:guild_channel_1:u:424242424242424242", "thread_owned");
+      await threadStore.save();
+
+      const channelClose = createSlashInteraction({
+        commandName: "close",
+        channelId: "guild_channel_1",
+      });
+      await handleSlashCommand(channelClose.interaction);
+      expect(channelClose.replies).toContain("Use /close inside a bot conversation thread.");
+
+      const foreignClose = createSlashInteraction({
+        commandName: "close",
+        inThread: true,
+        threadId: "user_thread_9",
+        parentId: "guild_channel_1",
+      });
+      await handleSlashCommand(foreignClose.interaction);
+      expect(foreignClose.replies).toContain("I can only close threads I started.");
+      expect(threadStore.hasThreadId("thread_owned")).toBe(true);
+    });
+  });
 });
