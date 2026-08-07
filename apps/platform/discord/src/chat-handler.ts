@@ -1,10 +1,5 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
-import {
-  formatAgentQuestionnaireAnswersMessage,
-  formatAgentQuestionnaireMessage,
-  hasActiveAgentQuestionnaire,
-  tryParseChannelQuestionnaireAnswers,
-} from "@nakama/core/agent-questionnaire";
+import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import type { AgentQuestionnaire, SendMessageInput } from "@nakama/core/contract";
 import {
   findOrgBySelectionInput,
@@ -518,18 +513,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       });
     }
 
-    const streamInput = await resolveQuestionnaireStreamInput(
-      conversationKey,
-      session,
-      attachUserText,
-      isGuild,
-      isThread,
-      messenger,
-    );
-
-    if (!streamInput) {
-      return;
-    }
+    // Forward free text to the agent — do not gate Discord replies on questionnaire parsing.
+    const streamInput = withGroupContext({ message: attachUserText }, isGuild, isThread);
 
     const signal = registerActiveStream(conversationKey);
     const typingLoop = createTypingLoop(messenger);
@@ -631,61 +616,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         messenger,
       });
     }
-  }
-
-  async function resolveQuestionnaireStreamInput(
-    conversationKey: string,
-    session: RemoteChatSession,
-    userText: string,
-    isGuild: boolean,
-    isThread: boolean,
-    messenger: DiscordMessenger,
-  ): Promise<SendMessageInput | null> {
-    const pending = await resolvePendingQuestionnaire(conversationKey, session);
-
-    if (!pending) {
-      return withGroupContext({ message: userText }, isGuild, isThread);
-    }
-
-    const answers = tryParseChannelQuestionnaireAnswers(pending, userText);
-
-    if (!answers) {
-      await messenger.send(formatAgentQuestionnaireMessage(pending));
-      await messenger.send("Couldn't parse that. Reply using the format above.");
-      return null;
-    }
-
-    pendingQuestionnaires.delete(conversationKey);
-    return withGroupContext(
-      { message: formatAgentQuestionnaireAnswersMessage(answers) },
-      isGuild,
-      isThread,
-    );
-  }
-
-  async function resolvePendingQuestionnaire(
-    conversationKey: string,
-    session: RemoteChatSession,
-  ): Promise<AgentQuestionnaire | null> {
-    const cached = pendingQuestionnaires.get(conversationKey);
-
-    if (hasActiveAgentQuestionnaire(cached)) {
-      return cached ?? null;
-    }
-
-    try {
-      const { questionnaire } = await client.getSessionMessages(session.id);
-
-      if (hasActiveAgentQuestionnaire(questionnaire)) {
-        pendingQuestionnaires.set(conversationKey, questionnaire!);
-        return questionnaire;
-      }
-    } catch {
-      // Best-effort; continue without a pending questionnaire.
-    }
-
-    pendingQuestionnaires.delete(conversationKey);
-    return null;
   }
 
   async function ensureOrgReady(

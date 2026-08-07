@@ -38,11 +38,9 @@ export function formatAgentQuestionnaireMessage(questionnaire: AgentQuestionnair
   });
 
   if (questionnaire.questions.length === 1) {
-    lines.push("Reply with a letter/number, a choice label, or your answer.");
+    lines.push("Reply with your answer in chat.");
   } else {
-    lines.push("Reply with one line per question, e.g.:");
-    lines.push("1. a");
-    lines.push("2. your answer");
+    lines.push("Reply with your answers in chat.");
   }
 
   return lines.join("\n").trimEnd();

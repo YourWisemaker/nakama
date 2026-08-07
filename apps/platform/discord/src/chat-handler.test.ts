@@ -422,7 +422,7 @@ describe("createChatHandler questionnaire delivery", () => {
     });
   });
 
-  test("maps the next Discord reply into Answers for the pending questionnaire", async () => {
+  test("forwards the next Discord reply to the agent without parsing questionnaire answers", async () => {
     await withTempHome(async (homeDir) => {
       const streamedInputs: unknown[] = [];
       const { handleMessage, sessionStore } = await createPairedHandler(homeDir, {
@@ -445,15 +445,9 @@ describe("createChatHandler questionnaire delivery", () => {
       });
       await handleMessage(message);
 
-      expect(streamedInputs[0]).toEqual({
-        message: [
-          "Answers",
-          "",
-          "Q: How should I run this?",
-          "A: Build Playwright e2e",
-        ].join("\n"),
-      });
+      expect(streamedInputs[0]).toEqual({ message: "a" });
       expect(sentMessages).toContain("Got it.");
+      expect(sentMessages.some((reply) => reply.includes("Couldn't parse that"))).toBe(false);
     });
   });
 });

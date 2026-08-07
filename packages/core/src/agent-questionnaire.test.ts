@@ -53,7 +53,7 @@ describe("formatAgentQuestionnaireMessage", () => {
     expect(text).toContain("a) Build Playwright e2e");
     expect(text).toContain("b) Manual steps only");
     expect(text).toContain("Or reply with your own answer.");
-    expect(text).toContain("Reply with a letter/number");
+    expect(text).toContain("Reply with your answer in chat.");
   });
 });
 
