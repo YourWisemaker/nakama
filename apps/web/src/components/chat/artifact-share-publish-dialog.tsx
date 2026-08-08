@@ -244,11 +244,11 @@ function ArtifactShareConfirmView({
             ? "Update shared snapshot?"
             : "Publish artifact link?"}
         </DialogTitle>
-        <DialogDescription>
+        <DialogDescription className="min-w-0 max-w-full break-words">
           {publishIntent === "refresh" ? (
             <>
               Replace the published snapshot with the current contents of{" "}
-              <span className="font-medium text-foreground">
+              <span className="break-all font-medium text-foreground">
                 {artifactPath}
               </span>
               . The share link stays the same.
@@ -256,7 +256,7 @@ function ArtifactShareConfirmView({
           ) : (
             <>
               Create a public snapshot of{" "}
-              <span className="font-medium text-foreground">
+              <span className="break-all font-medium text-foreground">
                 {artifactPath}
               </span>{" "}
               that anyone can open without logging in. Later edits to the live
