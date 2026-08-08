@@ -47,8 +47,17 @@ const ATTACH_INTENT_PATTERNS = [
     String.raw`\b(?:send|attach|share)\s+(?:me\s+)?(?:the\s+)?(?:${ATTACH_NOUN})\b`,
     "i"
   ),
+  // "send the pitch deck pdf file" — allow a few words between determiner and noun
+  new RegExp(
+    String.raw`\b(?:send|attach|share)\s+(?:me\s+)?(?:the\s+)?(?:\S+\s+){1,6}(?:${ATTACH_NOUN})\b`,
+    "i"
+  ),
   new RegExp(
     String.raw`\b(?:download|get)\s+(?:me\s+)?(?:the\s+)?(?:${ATTACH_NOUN})\b`,
+    "i"
+  ),
+  new RegExp(
+    String.raw`\b(?:download|get)\s+(?:me\s+)?(?:the\s+)?(?:\S+\s+){1,6}(?:${ATTACH_NOUN})\b`,
     "i"
   ),
   new RegExp(

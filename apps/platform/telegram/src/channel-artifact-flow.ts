@@ -22,9 +22,9 @@ export async function maybeSendRequestedTelegramArtifactAttachment(input: {
   attachUserText: string;
   sessionStore: SessionStore;
   messenger: TelegramRichMessenger;
-}): Promise<void> {
+}): Promise<boolean> {
   if (!isAttachIntent(input.attachUserText)) {
-    return;
+    return false;
   }
 
   const registry = input.sessionStore.getDeliverableArtifacts(
@@ -54,7 +54,7 @@ export async function maybeSendRequestedTelegramArtifactAttachment(input: {
 
   if (!artifact) {
     await input.messenger.sendPlain(formatMissingAttachArtifactMessage());
-    return;
+    return false;
   }
 
   if (!registry.some((entry) => entry.path === artifact.path)) {
@@ -77,13 +77,17 @@ export async function maybeSendRequestedTelegramArtifactAttachment(input: {
 
     if (!result.ok && result.error) {
       await input.messenger.sendPlain(result.error);
+      return false;
     }
+
+    return result.ok;
   } catch (error) {
     await input.messenger.sendPlain(
       error instanceof Error
         ? error.message
         : "Failed to read the artifact for attachment."
     );
+    return false;
   }
 }
 

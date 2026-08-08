@@ -451,8 +451,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
 
+    let attached = false;
     if (profileId) {
-      await maybeSendRequestedTelegramArtifactAttachment({
+      attached = await maybeSendRequestedTelegramArtifactAttachment({
         attachUserText,
         client,
         conversationKey,
@@ -463,7 +464,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       });
     }
 
-    if (isAttachOnlyCommand(attachUserText)) {
+    if (attached || isAttachOnlyCommand(attachUserText)) {
       return;
     }
 

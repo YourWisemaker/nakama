@@ -20,6 +20,10 @@ describe("isAttachIntent", () => {
     expect(isAttachIntent("send nakama-pitch-deck.pdf")).toBe(true);
     expect(isAttachIntent("can you send it here")).toBe(true);
     expect(isAttachIntent("send it")).toBe(true);
+    expect(isAttachIntent("can you send the pitch deck pdf file to me")).toBe(
+      true
+    );
+    expect(isAttachIntent("send the pitch deck pdf")).toBe(true);
   });
 
   test("does not match unrelated text", () => {

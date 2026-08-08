@@ -617,8 +617,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
 
+    let attached = false;
     if (profileId) {
-      await maybeSendRequestedDiscordArtifactAttachment({
+      attached = await maybeSendRequestedDiscordArtifactAttachment({
         attachUserText,
         channel,
         client,
@@ -629,7 +630,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       });
     }
 
-    if (isAttachOnlyCommand(attachUserText)) {
+    // Platform owns Discord file delivery — skip the model so it cannot claim
+    // attachments are impossible after we already uploaded (or for /attach).
+    if (attached || isAttachOnlyCommand(attachUserText)) {
       return;
     }
 

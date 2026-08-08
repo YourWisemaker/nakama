@@ -448,7 +448,7 @@ describe("createChatHandler artifact delivery", () => {
 
   test("sends a document when the user asks to attach a saved artifact", async () => {
     await withTempHome(async (homeDir) => {
-      const { handleMessage, sessionStore } =
+      const { calls, handleMessage, sessionStore } =
         await createPairedHandler(homeDir);
       sessionStore.set("dm_channel_1", {
         deliverableArtifacts: [
@@ -475,12 +475,13 @@ describe("createChatHandler artifact delivery", () => {
       await handleMessage(dm.message);
 
       expect(dm.fileSendCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
     });
   });
 
   test("sends a PDF when the user asks to send the pdf", async () => {
     await withTempHome(async (homeDir) => {
-      const { handleMessage, sessionStore } = await createPairedHandler(
+      const { calls, handleMessage, sessionStore } = await createPairedHandler(
         homeDir,
         {
           artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
@@ -511,6 +512,46 @@ describe("createChatHandler artifact delivery", () => {
       await handleMessage(dm.message);
 
       expect(dm.fileSendCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
+    });
+  });
+
+  test("attaches a named pitch-deck pdf without running the agent", async () => {
+    await withTempHome(async (homeDir) => {
+      const { calls, handleMessage, sessionStore } = await createPairedHandler(
+        homeDir,
+        {
+          artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+          listedArtifacts: [
+            {
+              filename: "nakama-pitch-deck.pdf",
+              mimeType: "application/pdf",
+              path: "/tmp/artifacts/nakama-pitch-deck.pdf",
+              sizeBytes: 8,
+              updatedAt: "2026-08-08T12:51:00.000Z",
+            },
+          ],
+        }
+      );
+      sessionStore.set("dm_channel_1", {
+        profileId: "default",
+        sessionId: "session_test",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        content: "can you send the pitch deck pdf file to me",
+        userId: "424242424242424242",
+      });
+      await handleMessage(dm.message);
+
+      expect(calls.listProfileArtifacts).toBe(1);
+      expect(dm.fileSendCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
+      expect(
+        dm.sentMessages.some((reply) => /can't attach files/i.test(reply))
+      ).toBe(false);
     });
   });
 
@@ -586,6 +627,7 @@ describe("createChatHandler artifact delivery", () => {
       expect(calls.listProfileArtifacts).toBe(1);
       expect(calls.readProfileArtifactContent).toBe(1);
       expect(dm.fileSendCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
       expect(
         sessionStore.getDeliverableArtifacts("dm_channel_1").map((a) => a.path)
       ).toEqual(["nakama-pitch-deck.pdf"]);

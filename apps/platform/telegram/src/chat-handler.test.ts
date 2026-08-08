@@ -2229,6 +2229,7 @@ describe("createChatHandler artifact delivery", () => {
 
       expect(calls.readProfileArtifactContent).toBe(1);
       expect(sendDocumentCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
     });
   });
 });
