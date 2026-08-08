@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   BASH_TOOL_ID,
+  GENERATE_IMAGE_TOOL_ID,
   BUILTIN_TOOL_IDS,
 } from "@nakama/core/tools/protected";
 import { createInMemoryDatabaseAdapter } from "./adapters/in-memory";
@@ -116,6 +117,7 @@ describe("seedOrgSuperBotProfile", () => {
     }
 
     expect(toolIds).toContain(BASH_TOOL_ID);
+    expect(toolIds).not.toContain(GENERATE_IMAGE_TOOL_ID);
   });
 
   test("assigns super bot bundled skills", async () => {

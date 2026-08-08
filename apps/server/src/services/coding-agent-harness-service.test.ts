@@ -52,6 +52,7 @@ describe("coding-agent harness resolution", () => {
       id: "workspace-settings",
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-cursor-agent",
@@ -79,6 +80,7 @@ describe("coding-agent harness resolution", () => {
       id: "workspace-settings",
       visionModel: null,
       transcriptionModel: null,
+      imageModel: null,
       codingAgentHarnesses: [
         {
           id: "coding-harness-codex",

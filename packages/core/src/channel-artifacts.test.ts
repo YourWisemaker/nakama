@@ -202,6 +202,198 @@ describe("extractPairedTurnArtifacts", () => {
       "b.md",
     ]);
   });
+
+  test("extracts successful generate_image tool results without write_file pairs", () => {
+    expect(
+      extractPairedTurnArtifacts([
+        { role: "user", content: "draw a cat" },
+        assistantWithToolCalls([
+          {
+            id: "tool_img",
+            name: "generate_image",
+            arguments: { prompt: "a cat" },
+          },
+        ]),
+        toolMessage({
+          id: "tool_img",
+          name: "generate_image",
+          input: { prompt: "a cat" },
+          result: {
+            path: "artifacts/cat.png",
+            mimeType: "image/png",
+            sizeBytes: 2048,
+            attachmentId: "att_1",
+            model: "gpt-image-2",
+          },
+        }),
+        { role: "assistant", content: "Here is your cat." },
+      ]),
+    ).toEqual([
+      {
+        filename: "cat.png",
+        path: "cat.png",
+        mimeType: "image/png",
+        sizeBytes: 2048,
+        savedAt: "",
+      },
+    ]);
+  });
+
+  test("ignores failed generate_image tool results", () => {
+    expect(
+      extractPairedTurnArtifacts([
+        { role: "user", content: "draw" },
+        assistantWithToolCalls([
+          {
+            id: "tool_img",
+            name: "generate_image",
+            arguments: { prompt: "a cat" },
+          },
+        ]),
+        toolMessage({
+          id: "tool_img",
+          name: "generate_image",
+          input: { prompt: "a cat" },
+          result: { error: "Image model is not configured." },
+        }),
+      ]),
+    ).toEqual([]);
+  });
+
+  test("rejects generate_image results missing mimeType", () => {
+    expect(
+      extractPairedTurnArtifacts([
+        { role: "user", content: "draw" },
+        assistantWithToolCalls([
+          {
+            id: "tool_img",
+            name: "generate_image",
+            arguments: { prompt: "a cat" },
+          },
+        ]),
+        toolMessage({
+          id: "tool_img",
+          name: "generate_image",
+          input: { prompt: "a cat" },
+          result: {
+            path: "artifacts/cat.png",
+            sizeBytes: 2048,
+          },
+        }),
+      ]),
+    ).toEqual([]);
+  });
+
+  test("rejects generate_image paths outside artifacts/", () => {
+    expect(
+      extractPairedTurnArtifacts([
+        { role: "user", content: "draw" },
+        assistantWithToolCalls([
+          {
+            id: "tool_img",
+            name: "generate_image",
+            arguments: { prompt: "a cat" },
+          },
+        ]),
+        toolMessage({
+          id: "tool_img",
+          name: "generate_image",
+          input: { prompt: "a cat" },
+          result: {
+            path: "tmp/cat.png",
+            mimeType: "image/png",
+            sizeBytes: 2048,
+          },
+        }),
+      ]),
+    ).toEqual([]);
+  });
+
+  test("keeps oversized generate_image refs with their sizeBytes for channel policy", () => {
+    const oversized = 6 * 1024 * 1024;
+    expect(
+      extractPairedTurnArtifacts([
+        { role: "user", content: "draw" },
+        assistantWithToolCalls([
+          {
+            id: "tool_img",
+            name: "generate_image",
+            arguments: { prompt: "huge" },
+          },
+        ]),
+        toolMessage({
+          id: "tool_img",
+          name: "generate_image",
+          input: { prompt: "huge" },
+          result: {
+            path: "artifacts/huge.png",
+            mimeType: "image/png",
+            sizeBytes: oversized,
+          },
+        }),
+      ]),
+    ).toEqual([
+      {
+        filename: "huge.png",
+        path: "huge.png",
+        mimeType: "image/png",
+        sizeBytes: oversized,
+        savedAt: "",
+      },
+    ]);
+  });
+
+  test("extracts write_file pairs and generate_image together in one turn", () => {
+    const messages: ChatMessage[] = [
+      { role: "user", content: "save and draw" },
+      assistantWithToolCalls([
+        {
+          id: "tool_1",
+          name: "write_file",
+          arguments: { path: "artifacts/a.md", content: "a" },
+        },
+        {
+          id: "tool_2",
+          name: "write_file",
+          arguments: { path: "artifacts/a.md.nakama-meta.json", content: metaJson },
+        },
+        {
+          id: "tool_img",
+          name: "generate_image",
+          arguments: { prompt: "a cat" },
+        },
+      ]),
+      toolMessage({
+        id: "tool_1",
+        name: "write_file",
+        input: { path: "artifacts/a.md", content: "a" },
+        result: { path: `${ARTIFACTS_ROOT}/a.md`, bytesWritten: 1 },
+      }),
+      toolMessage({
+        id: "tool_2",
+        name: "write_file",
+        input: { path: "artifacts/a.md.nakama-meta.json", content: metaJson },
+        result: { path: `${ARTIFACTS_ROOT}/a.md.nakama-meta.json`, bytesWritten: metaJson.length },
+      }),
+      toolMessage({
+        id: "tool_img",
+        name: "generate_image",
+        input: { prompt: "a cat" },
+        result: {
+          path: "artifacts/cat.png",
+          mimeType: "image/png",
+          sizeBytes: 2048,
+          attachmentId: "att_1",
+          model: "gpt-image-2",
+        },
+      }),
+    ];
+
+    expect(extractPairedTurnArtifacts(messages).map((artifact) => artifact.path)).toEqual([
+      "a.md",
+      "cat.png",
+    ]);
+  });
 });
 
 describe("extractLatestTurnMessages", () => {

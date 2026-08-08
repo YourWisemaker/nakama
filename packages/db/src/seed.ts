@@ -2,7 +2,11 @@ import { builtinTools } from "@nakama/core";
 import { preinstalledMcpServers } from "@nakama/core/mcp/preinstalled";
 import { BUILTIN_TOOL_IDS, SUB_AGENT_TOOL_ID } from "@nakama/core/tools/protected";
 import { ensureLocalClientAccess } from "./local-client";
-import { ensureBashToolDefinition, ensureOrgSuperBotProfiles } from "./org-profiles";
+import {
+  ensureBashToolDefinition,
+  ensureGenerateImageToolDefinition,
+  ensureOrgSuperBotProfiles,
+} from "./org-profiles";
 import type { DatabaseAdapter } from "./types";
 
 const LEGACY_BUILTIN_TOOL_NAMES = new Set(["echo", "log", "delay", "search_workspace"]);
@@ -13,7 +17,13 @@ const DEPRECATED_BUILTIN_TOOL_NAMES = new Set([
   "create_skill",
 ]);
 const DEPRECATED_SERVER_TOOL_NAMES = new Set(["delegate_coding_task"]);
-const SUPPORTED_TOOL_HANDLER_TYPES = new Set(["builtin", "bash", "javascript", "sub_agent"]);
+const SUPPORTED_TOOL_HANDLER_TYPES = new Set([
+  "builtin",
+  "bash",
+  "javascript",
+  "sub_agent",
+  "generate_image",
+]);
 
 export async function seedDatabase(db: DatabaseAdapter): Promise<void> {
   await removeLegacyBuiltinTools(db);
@@ -23,6 +33,7 @@ export async function seedDatabase(db: DatabaseAdapter): Promise<void> {
   await ensureBuiltinToolDefinitions(db);
   await ensureSubAgentToolDefinition(db);
   await ensureBashToolDefinition(db);
+  await ensureGenerateImageToolDefinition(db);
   await ensurePreinstalledMcpServers(db);
   await ensureLocalClientAccess(db);
   await ensureOrgSuperBotProfiles(db);

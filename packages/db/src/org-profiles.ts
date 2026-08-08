@@ -6,6 +6,7 @@ import {
 import {
   BASH_TOOL_ID,
   BUILTIN_TOOL_IDS,
+  GENERATE_IMAGE_TOOL_ID,
 } from "@nakama/core/tools/protected";
 import { SUPER_BOT_SYSTEM_PROMPT } from "./constants";
 import type { DatabaseAdapter, StoredProfileRecord } from "./types";
@@ -149,6 +150,22 @@ export async function ensureBashToolDefinition(db: DatabaseAdapter): Promise<voi
     description:
       "Run a shell command in the profile workspace and return stdout, stderr, and exit code.",
     handlerType: "bash",
+    handlerConfig: {},
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  });
+}
+
+export async function ensureGenerateImageToolDefinition(db: DatabaseAdapter): Promise<void> {
+  const now = new Date().toISOString();
+  const existing = await db.getTool(GENERATE_IMAGE_TOOL_ID);
+
+  await db.upsertTool({
+    id: GENERATE_IMAGE_TOOL_ID,
+    name: "generate_image",
+    description:
+      "Generate an image from a text prompt using the workspace image model (OpenAI gpt-image-2). Saves under artifacts/ with a metadata sidecar.",
+    handlerType: "generate_image",
     handlerConfig: {},
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

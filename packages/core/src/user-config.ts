@@ -56,6 +56,7 @@ export interface UserConfig {
   thinkingEffort?: ThinkingEffort;
   visionModel?: string | null;
   transcriptionModel?: string | null;
+  imageModel?: string | null;
   localAuthTokenHash?: string;
   localAuthToken?: string;
 }
@@ -248,6 +249,7 @@ export async function loadUserConfig(): Promise<UserConfig | null> {
     thinkingEffort: thinking.effort,
     visionModel: readVisionModel(parsed.global),
     transcriptionModel: readTranscriptionModel(parsed.global),
+    imageModel: readImageModel(parsed.global),
     ...(parsed.global.local_auth_token_hash?.trim()
       ? { localAuthTokenHash: parsed.global.local_auth_token_hash.trim() }
       : {}),
@@ -274,6 +276,11 @@ function readVisionModel(global: Record<string, string>): string | null {
 
 function readTranscriptionModel(global: Record<string, string>): string | null {
   const trimmed = global.transcription_model?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function readImageModel(global: Record<string, string>): string | null {
+  const trimmed = global.image_model?.trim();
   return trimmed ? trimmed : null;
 }
 
@@ -472,6 +479,7 @@ export async function saveUserConfig(config: UserConfig): Promise<void> {
     thinking_effort: thinking.effort,
     vision_model: config.visionModel ?? "",
     transcription_model: config.transcriptionModel ?? "",
+    image_model: config.imageModel ?? "",
     local_auth_token_hash: config.localAuthTokenHash,
   };
 

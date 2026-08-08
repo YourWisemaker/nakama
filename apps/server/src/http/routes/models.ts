@@ -32,6 +32,10 @@ import {
   type TranscribeAudioRequest,
   type TranscribeAudioResponse,
   type TranscriptionSettingsResponse,
+  type UpdateImageGenerationRequest,
+  type GenerateImageRequest,
+  type GenerateImageResponse,
+  type ImageGenerationSettingsResponse,
   type UpdateWhatsAppSettingsRequest,
   type VisionSettingsResponse,
   type WhatsAppSettingsResponse,
@@ -69,6 +73,18 @@ export function registerModelRoutes(app: HonoApp, options: ServerOptions): void 
     .object({})
     .passthrough()
     .openapi("TranscriptionSettingsResponse");
+  const imageGenerationSettingsSchema = z
+    .object({})
+    .passthrough()
+    .openapi("ImageGenerationSettingsResponse");
+  const generateImageRequestSchema = z
+    .object({})
+    .passthrough()
+    .openapi("GenerateImageRequest");
+  const generateImageResponseSchema = z
+    .object({})
+    .passthrough()
+    .openapi("GenerateImageResponse");
   const transcribeAudioRequestSchema = z
     .object({})
     .passthrough()
@@ -311,6 +327,63 @@ export function registerModelRoutes(app: HonoApp, options: ServerOptions): void 
       200: {
         description: "Transcription result",
         content: { "application/json": { schema: transcribeAudioResponseSchema } },
+      },
+      400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+      502: { description: "Upstream error", content: { "application/json": { schema: errorSchema } } },
+    },
+  }));
+  const updateImageGenerationRequestSchema = z
+    .object({ model: z.string().nullable() })
+    .openapi("UpdateImageGenerationRequest");
+  app.openAPIRegistry.registerPath(createRoute({
+    method: "get",
+    path: "/v1/settings/image-generation",
+    tags: ["Models"],
+    summary: "Get image generation settings",
+    operationId: "getImageGenerationSettings",
+    responses: {
+      200: {
+        description: "Image generation settings",
+        content: { "application/json": { schema: imageGenerationSettingsSchema } },
+      },
+    },
+  }));
+  app.openAPIRegistry.registerPath(createRoute({
+    method: "put",
+    path: "/v1/settings/image-generation",
+    tags: ["Models"],
+    summary: "Update image generation settings",
+    operationId: "setImageGenerationSettings",
+    request: {
+      body: {
+        required: true,
+        content: { "application/json": { schema: updateImageGenerationRequestSchema } },
+      },
+    },
+    responses: {
+      200: {
+        description: "Image generation settings",
+        content: { "application/json": { schema: imageGenerationSettingsSchema } },
+      },
+      400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
+    },
+  }));
+  app.openAPIRegistry.registerPath(createRoute({
+    method: "post",
+    path: "/v1/images/generate",
+    tags: ["Models"],
+    summary: "Generate an image with configured gpt-image-2 model",
+    operationId: "generateImage",
+    request: {
+      body: {
+        required: true,
+        content: { "application/json": { schema: generateImageRequestSchema } },
+      },
+    },
+    responses: {
+      200: {
+        description: "Generated image",
+        content: { "application/json": { schema: generateImageResponseSchema } },
       },
       400: { description: "Error", content: { "application/json": { schema: errorSchema } } },
       502: { description: "Upstream error", content: { "application/json": { schema: errorSchema } } },
@@ -604,6 +677,45 @@ export function registerModelRoutes(app: HonoApp, options: ServerOptions): void 
 
     try {
       return json<TranscribeAudioResponse>(await agent.transcribeAudio(body));
+    } catch (error) {
+      if (error instanceof NakamaApiError) {
+        return errorResponse(error.message, error.status);
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      return errorResponse(message, 400);
+    }
+  });
+
+  app.get("/v1/settings/image-generation", async (c) => {
+    getRequestAuth(c);
+    return json<ImageGenerationSettingsResponse>(await agent.getImageGenerationSettings());
+  });
+
+  app.put("/v1/settings/image-generation", async (c) => {
+    getRequestAuth(c);
+    const body = await readJson<UpdateImageGenerationRequest>(c.req.raw);
+
+    try {
+      return json<ImageGenerationSettingsResponse>(
+        await agent.setImageGenerationSettings(body),
+      );
+    } catch (error) {
+      if (error instanceof NakamaApiError) {
+        return errorResponse(error.message, error.status);
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      return errorResponse(message, 400);
+    }
+  });
+
+  app.post("/v1/images/generate", async (c) => {
+    getRequestAuth(c);
+    const body = await readJson<GenerateImageRequest>(c.req.raw);
+
+    try {
+      return json<GenerateImageResponse>(await agent.generateImage(body));
     } catch (error) {
       if (error instanceof NakamaApiError) {
         return errorResponse(error.message, error.status);

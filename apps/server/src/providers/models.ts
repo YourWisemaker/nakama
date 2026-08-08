@@ -617,3 +617,28 @@ export function modelSupportsTranscription(
 
   return TRANSCRIPTION_MODEL_IDS.has(modelId.trim());
 }
+
+/** Sole v1 image-generation model id (OpenAI Images API). */
+export const IMAGE_GENERATION_MODEL_ID = "gpt-image-2";
+
+/** Sole allowlisted workspace selection: provider type + model id. */
+export const IMAGE_GENERATION_SELECTION = `openai::${IMAGE_GENERATION_MODEL_ID}`;
+
+export const IMAGE_GENERATION_MODEL_IDS = new Set([IMAGE_GENERATION_MODEL_ID]);
+
+export function modelSupportsImageGeneration(
+  modelId: string,
+  provider: ProviderName,
+): boolean {
+  if (provider !== "openai") {
+    return false;
+  }
+
+  return IMAGE_GENERATION_MODEL_IDS.has(modelId.trim());
+}
+
+export function isAllowedImageGenerationSelection(
+  value: string | null | undefined,
+): boolean {
+  return value?.trim() === IMAGE_GENERATION_SELECTION;
+}

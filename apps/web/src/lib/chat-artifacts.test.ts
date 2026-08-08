@@ -275,6 +275,108 @@ describe("extractTurnArtifacts", () => {
     expect(artifact?.path).toBe("weekly/report.md");
     expect(artifact?.path.startsWith("/")).toBe(false);
   });
+
+  test("extracts successful generate_image tool results without write_file pairs", () => {
+    expect(
+      extractTurnArtifacts([
+        {
+          id: "tool-img",
+          role: "tool",
+          content: "",
+          toolCallId: "img_1",
+          tool: "generate_image",
+          toolStatus: "done",
+          toolInput: { prompt: "a cat" },
+          toolResult: {
+            path: "artifacts/cat.png",
+            mimeType: "image/png",
+            sizeBytes: 2048,
+            attachmentId: "att_1",
+            model: "gpt-image-2",
+          },
+        },
+      ]),
+    ).toEqual([
+      {
+        filename: "cat.png",
+        path: "cat.png",
+        mimeType: "image/png",
+        sizeBytes: 2048,
+        savedAt: "",
+      },
+    ]);
+  });
+
+  test("ignores failed generate_image tool results", () => {
+    expect(
+      extractTurnArtifacts([
+        {
+          id: "tool-img",
+          role: "tool",
+          content: "",
+          toolCallId: "img_1",
+          tool: "generate_image",
+          toolStatus: "done",
+          toolInput: { prompt: "a cat" },
+          toolResult: { error: "Image model is not configured." },
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  test("rejects generate_image results missing mimeType", () => {
+    expect(
+      extractTurnArtifacts([
+        {
+          id: "tool-img",
+          role: "tool",
+          content: "",
+          toolCallId: "img_1",
+          tool: "generate_image",
+          toolStatus: "done",
+          toolInput: { prompt: "a cat" },
+          toolResult: {
+            path: "artifacts/cat.png",
+            sizeBytes: 2048,
+          },
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  test("extracts write_file pairs and generate_image together in one turn", () => {
+    const messages: ChatListItem[] = [
+      writeFileTool("1", { path: "artifacts/a.md", content: "a" }, {
+        path: `${ARTIFACTS_ROOT}/a.md`,
+        bytesWritten: 1,
+      }),
+      writeFileTool("2", { path: "artifacts/a.md.nakama-meta.json", content: metaJson }, {
+        path: `${ARTIFACTS_ROOT}/a.md.nakama-meta.json`,
+        bytesWritten: metaJson.length,
+      }),
+      {
+        id: "tool-img",
+        role: "tool",
+        content: "",
+        toolCallId: "img_1",
+        tool: "generate_image",
+        toolStatus: "done",
+        toolInput: { prompt: "a cat" },
+        toolResult: {
+          path: "artifacts/cat.png",
+          mimeType: "image/png",
+          sizeBytes: 2048,
+          attachmentId: "att_1",
+          model: "gpt-image-2",
+        },
+      },
+    ];
+
+    expect(extractTurnArtifacts(messages).map((artifact) => artifact.path).sort()).toEqual([
+      "a.md",
+      "cat.png",
+    ]);
+  });
 });
 
 describe("toArtifactsRelativePath", () => {

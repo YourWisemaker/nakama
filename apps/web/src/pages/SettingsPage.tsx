@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DataPortabilityPanel } from "@/components/settings/DataPortabilityPanel";
 import { ProviderSettingsCard } from "@/components/settings/ProviderSettingsCard";
 import { VisionSettingsCard } from "@/components/settings/VisionSettingsCard";
+import { ImageGenerationSettingsCard } from "@/components/settings/ImageGenerationSettingsCard";
 import { TranscriptionSettingsCard } from "@/components/settings/TranscriptionSettingsCard";
 import { WebPublicUrlSettingsRow } from "@/components/settings/WebPublicUrlSettingsRow";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -119,6 +120,7 @@ export function SettingsPage() {
             <CardContent className="divide-y divide-border p-0">
               <VisionSettingsCard />
               <TranscriptionSettingsCard />
+              <ImageGenerationSettingsCard />
             </CardContent>
           </Card>
 

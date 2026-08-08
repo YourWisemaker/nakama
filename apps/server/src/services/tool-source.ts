@@ -52,6 +52,11 @@ const SUB_AGENT_SOURCE = {
   displayPath: "apps/server/src/tools/sub-agent-tool.ts",
 };
 
+const GENERATE_IMAGE_SOURCE = {
+  filePath: path.join(serverSrcDir, "tools/generate-image-tool.ts"),
+  displayPath: "apps/server/src/tools/generate-image-tool.ts",
+};
+
 export async function readToolSource(record: StoredToolRecord): Promise<ToolSourceResponse> {
   if (record.handlerType === "javascript") {
     return readJavascriptToolSource(record);
@@ -63,6 +68,10 @@ export async function readToolSource(record: StoredToolRecord): Promise<ToolSour
 
   if (record.handlerType === "sub_agent") {
     return readFixedToolSource(SUB_AGENT_SOURCE, "typescript");
+  }
+
+  if (record.handlerType === "generate_image") {
+    return readFixedToolSource(GENERATE_IMAGE_SOURCE, "typescript");
   }
 
   if (record.handlerType === "builtin") {

@@ -57,6 +57,7 @@ export const queryKeys = {
   thinkingSettings: ["thinking", "settings"] as const,
   visionSettings: ["vision", "settings"] as const,
   transcriptionSettings: ["transcription", "settings"] as const,
+  imageGenerationSettings: ["imageGeneration", "settings"] as const,
   telegram: {
     settings: ["telegram", "settings"] as const,
   },

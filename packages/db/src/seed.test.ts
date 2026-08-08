@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { BUILTIN_TOOL_IDS } from "@nakama/core/tools/protected";
+import { BUILTIN_TOOL_IDS, GENERATE_IMAGE_TOOL_ID } from "@nakama/core/tools/protected";
 import { createInMemoryDatabaseAdapter } from "./adapters/in-memory";
+import { ensureGenerateImageToolDefinition } from "./org-profiles";
 import {
   ensureBuiltinToolDefinitions,
   ensurePreinstalledMcpServers,
@@ -193,6 +194,18 @@ describe("seed built-in tools", () => {
 
     expect(profiles.map((profile) => profile.id)).toEqual(["profile_custom"]);
     expect(await db.getTool(BUILTIN_TOOL_IDS.web_search)).not.toBeNull();
+    expect(await db.getTool(GENERATE_IMAGE_TOOL_ID)).not.toBeNull();
+  });
+
+  test("retains generate_image through unsupported-handler cleanup", async () => {
+    const db = createInMemoryDatabaseAdapter();
+
+    await ensureGenerateImageToolDefinition(db);
+    await removeUnsupportedTools(db);
+
+    const tool = await db.getTool(GENERATE_IMAGE_TOOL_ID);
+    expect(tool).not.toBeNull();
+    expect(tool?.handlerType).toBe("generate_image");
   });
 
   test("ensureBuiltinToolDefinitions upserts built-in tools idempotently", async () => {

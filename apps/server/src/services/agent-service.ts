@@ -81,6 +81,11 @@ import type {
   TranscriptionSettingsResponse,
   TranscribeAudioRequest,
   TranscribeAudioResponse,
+  UpdateImageGenerationRequest,
+  ImageGenerationSettings,
+  ImageGenerationSettingsResponse,
+  GenerateImageRequest,
+  GenerateImageResponse,
   UploadKnowledgeBaseRequest,
   UploadKnowledgeBaseResponse,
   ProviderChatOptions,
@@ -262,6 +267,12 @@ import {
   TRANSCRIPTION_MODEL_REQUIRED_MESSAGE,
 } from "./audio-transcription";
 import {
+  generateImageWithOpenAI,
+  IMAGE_MODEL_REQUIRED_MESSAGE,
+  resolveImageGenerationSelection,
+} from "./image-generation";
+import { isAllowedImageGenerationSelection } from "../providers/models";
+import {
   createAttachmentLoader,
   createAttachmentSaver,
 } from "./attachment-service";
@@ -309,6 +320,7 @@ export class AgentService {
   private _providerConfigured: boolean;
   private visionSettingsPromise: Promise<void> | null = null;
   private transcriptionSettingsPromise: Promise<void> | null = null;
+  private imageGenerationSettingsPromise: Promise<void> | null = null;
 
   constructor(
     userConfig: UserConfig | null,
@@ -555,6 +567,7 @@ export class AgentService {
       id: WORKSPACE_SETTINGS_ID,
       visionModel: model,
       transcriptionModel: existing?.transcriptionModel ?? this.userConfig?.transcriptionModel ?? null,
+      imageModel: existing?.imageModel ?? this.userConfig?.imageModel ?? null,
       codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
       updatedAt: new Date().toISOString(),
@@ -606,6 +619,7 @@ export class AgentService {
       id: WORKSPACE_SETTINGS_ID,
       visionModel: existing?.visionModel ?? this.userConfig?.visionModel ?? null,
       transcriptionModel: model,
+      imageModel: existing?.imageModel ?? this.userConfig?.imageModel ?? null,
       codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
       updatedAt: new Date().toISOString(),
@@ -679,6 +693,8 @@ export class AgentService {
         this.userConfig = {
           ...this.userConfig,
           transcriptionModel: stored.transcriptionModel,
+          imageModel: stored.imageModel ?? this.userConfig.imageModel,
+          visionModel: stored.visionModel ?? this.userConfig.visionModel,
         };
       }
       return;
@@ -693,6 +709,7 @@ export class AgentService {
       id: WORKSPACE_SETTINGS_ID,
       visionModel: this.userConfig?.visionModel ?? null,
       transcriptionModel: legacyModel,
+      imageModel: this.userConfig?.imageModel ?? null,
       codingAgentHarnesses: stored?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: stored?.selectedCodingAgentHarness ?? null,
       updatedAt: new Date().toISOString(),
@@ -705,6 +722,129 @@ export class AgentService {
 
   private async resolveTranscriptionSettings(): Promise<TranscriptionSettings> {
     return { model: this.userConfig?.transcriptionModel ?? null };
+  }
+
+  async getImageGenerationSettings(): Promise<ImageGenerationSettingsResponse> {
+    await this.ensureImageGenerationSettingsLoaded();
+    const imageGeneration = await this.resolveImageGenerationSettings();
+    return { imageGeneration };
+  }
+
+  async setImageGenerationSettings(
+    input: UpdateImageGenerationRequest,
+  ): Promise<ImageGenerationSettingsResponse> {
+    await this.ensureImageGenerationSettingsLoaded();
+    const model = input.model?.trim() || null;
+
+    if (model && !isAllowedImageGenerationSelection(model)) {
+      throw new NakamaApiError(
+        "Only openai::gpt-image-2 is supported for image generation.",
+        400,
+      );
+    }
+
+    const imageGeneration: ImageGenerationSettings = { model };
+    const existing = await this.db.getWorkspaceSettings();
+    await this.db.upsertWorkspaceSettings({
+      id: WORKSPACE_SETTINGS_ID,
+      visionModel: existing?.visionModel ?? this.userConfig?.visionModel ?? null,
+      transcriptionModel:
+        existing?.transcriptionModel ?? this.userConfig?.transcriptionModel ?? null,
+      imageModel: model,
+      codingAgentHarnesses: existing?.codingAgentHarnesses ?? [],
+      selectedCodingAgentHarness: existing?.selectedCodingAgentHarness ?? null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (this.userConfig) {
+      this.userConfig = {
+        ...this.userConfig,
+        imageModel: model,
+      };
+    }
+
+    return { imageGeneration };
+  }
+
+  async generateImage(input: GenerateImageRequest): Promise<GenerateImageResponse> {
+    await this.ensureImageGenerationSettingsLoaded();
+
+    const prompt = input.prompt?.trim();
+    if (!prompt) {
+      throw new NakamaApiError("Image prompt is required.", 400);
+    }
+
+    const selection = resolveImageGenerationSelection(this.userConfig);
+
+    if (!selection) {
+      throw new NakamaApiError(IMAGE_MODEL_REQUIRED_MESSAGE, 400);
+    }
+
+    const result = await generateImageWithOpenAI({
+      prompt,
+      size: input.size,
+      apiKey: selection.apiKey,
+      model: selection.model,
+    });
+
+    const usage = result.usage ?? {
+      inputTokens: 0,
+      outputTokens: 0,
+    };
+    this.llmUsageTracker?.record(result.model, usage.inputTokens, usage.outputTokens);
+
+    return {
+      model: result.model,
+      mediaType: result.mediaType,
+      size: result.size,
+      sizeBytes: result.data.byteLength,
+      data: Buffer.from(result.data).toString("base64"),
+      ...(result.revisedPrompt ? { revisedPrompt: result.revisedPrompt } : {}),
+    };
+  }
+
+  async ensureImageGenerationSettingsLoaded(): Promise<void> {
+    if (!this.imageGenerationSettingsPromise) {
+      this.imageGenerationSettingsPromise = this.loadImageGenerationSettingsFromDatabase();
+    }
+
+    await this.imageGenerationSettingsPromise;
+  }
+
+  private async loadImageGenerationSettingsFromDatabase(): Promise<void> {
+    const stored = await this.db.getWorkspaceSettings();
+
+    if (stored) {
+      if (this.userConfig) {
+        this.userConfig = {
+          ...this.userConfig,
+          imageModel: stored.imageModel,
+          transcriptionModel: stored.transcriptionModel ?? this.userConfig.transcriptionModel,
+          visionModel: stored.visionModel ?? this.userConfig.visionModel,
+        };
+      }
+      return;
+    }
+
+    const legacyModel = this.userConfig?.imageModel ?? null;
+
+    await this.db.upsertWorkspaceSettings({
+      id: WORKSPACE_SETTINGS_ID,
+      visionModel: this.userConfig?.visionModel ?? null,
+      transcriptionModel: this.userConfig?.transcriptionModel ?? null,
+      imageModel: legacyModel,
+      codingAgentHarnesses: [],
+      selectedCodingAgentHarness: null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (this.userConfig) {
+      this.userConfig = { ...this.userConfig, imageModel: legacyModel };
+    }
+  }
+
+  private async resolveImageGenerationSettings(): Promise<ImageGenerationSettings> {
+    return { model: this.userConfig?.imageModel ?? null };
   }
 
   async ensureVisionSettingsLoaded(): Promise<void> {
@@ -724,6 +864,7 @@ export class AgentService {
           ...this.userConfig,
           visionModel: stored.visionModel,
           transcriptionModel: stored.transcriptionModel,
+          imageModel: stored.imageModel,
         };
       }
       return;
@@ -735,11 +876,13 @@ export class AgentService {
       this.userConfig?.transcriptionModel ??
       (await loadUserTranscriptionSettings()).model ??
       null;
+    const legacyImageModel = this.userConfig?.imageModel ?? null;
 
     await this.db.upsertWorkspaceSettings({
       id: WORKSPACE_SETTINGS_ID,
       visionModel: legacyVisionModel,
       transcriptionModel: legacyTranscriptionModel,
+      imageModel: legacyImageModel,
       codingAgentHarnesses: stored?.codingAgentHarnesses ?? [],
       selectedCodingAgentHarness: stored?.selectedCodingAgentHarness ?? null,
       updatedAt: new Date().toISOString(),
@@ -750,6 +893,7 @@ export class AgentService {
         ...this.userConfig,
         visionModel: legacyVisionModel,
         transcriptionModel: legacyTranscriptionModel,
+        imageModel: legacyImageModel,
       };
     }
   }

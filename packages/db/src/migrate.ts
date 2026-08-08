@@ -860,6 +860,7 @@ function migrateWorkspaceSettingsTable(db: Database): void {
       id TEXT PRIMARY KEY NOT NULL,
       vision_model TEXT,
       transcription_model TEXT,
+      image_model TEXT,
       coding_agent_harnesses TEXT NOT NULL DEFAULT '[]',
       selected_coding_agent_harness TEXT,
       updated_at TEXT NOT NULL
@@ -874,6 +875,12 @@ function migrateWorkspaceSettingsTable(db: Database): void {
   if (!columnNames.has("transcription_model")) {
     db.exec(`
       ALTER TABLE workspace_settings ADD COLUMN transcription_model TEXT;
+    `);
+  }
+
+  if (!columnNames.has("image_model")) {
+    db.exec(`
+      ALTER TABLE workspace_settings ADD COLUMN image_model TEXT;
     `);
   }
 

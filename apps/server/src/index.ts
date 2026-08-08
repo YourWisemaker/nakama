@@ -36,7 +36,8 @@ import {
   createAutomationTools,
 } from "./tools/automation-tools";
 import { createSubAgentTool } from "./tools/sub-agent-tool";
-import { registerSubAgentTool } from "./services/tool-resolver";
+import { createGenerateImageTool } from "./tools/generate-image-tool";
+import { registerGenerateImageTool, registerSubAgentTool } from "./services/tool-resolver";
 import { NAKAMA_API_VERSION } from "@nakama/core";
 import {
   DEFAULT_SERVER_HOST,
@@ -81,8 +82,19 @@ const authService = new AuthService();
 const llmUsageTracker = await LlmUsageTracker.create(database.adapter);
 const agent = new AgentService(userConfig, provider, database.adapter, llmUsageTracker);
 registerSubAgentTool(createSubAgentTool(agent));
+registerGenerateImageTool(
+  createGenerateImageTool({
+    db: database.adapter,
+    getUserConfig: () => agent.getUserConfig(),
+    ensureSettingsLoaded: () => agent.ensureImageGenerationSettingsLoaded(),
+    recordUsage: (modelId, inputTokens, outputTokens) => {
+      llmUsageTracker.record(modelId, inputTokens, outputTokens);
+    },
+  }),
+);
 await agent.ensureVisionSettingsLoaded();
 await agent.ensureTranscriptionSettingsLoaded();
+await agent.ensureImageGenerationSettingsLoaded();
 const mcpClientManager = new McpClientManager();
 const mcpService = new McpService(database.adapter, mcpClientManager);
 const composioService = new ComposioService(database.adapter, authService);
