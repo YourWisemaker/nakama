@@ -40,7 +40,7 @@ export function getDiscordConfigPath(): string {
 }
 
 const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
-const DISCORD_INVITE_PERMISSIONS = 68_608;
+const DISCORD_INVITE_PERMISSIONS = 101_376; // 68608 | 32768 (Attach Files)
 const DISCORD_INVITE_SCOPES = "bot applications.commands";
 
 const discordApplicationIdCache = new Map<string, string>();
