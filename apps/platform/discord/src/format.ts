@@ -13,7 +13,10 @@ export function prepareDiscordReply(text: string): string {
   return text.trim();
 }
 
-export function splitDiscordMessage(text: string, maxLen = DISCORD_MAX_MESSAGE_LENGTH): string[] {
+export function splitDiscordMessage(
+  text: string,
+  maxLen = DISCORD_MAX_MESSAGE_LENGTH
+): string[] {
   const trimmed = prepareDiscordReply(text);
 
   if (!trimmed) {
@@ -86,7 +89,7 @@ function hardSplit(text: string, maxLen: number): string[] {
 
 export function renderDiscordTodoStatus(
   todos: AgentTodo[],
-  state: DiscordTodoRunState,
+  state: DiscordTodoRunState
 ): string {
   const header =
     state === "completed"

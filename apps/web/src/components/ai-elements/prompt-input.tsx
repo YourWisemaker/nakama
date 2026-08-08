@@ -1,5 +1,36 @@
 "use client";
 
+import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
+import { CornerDownLeftIcon, SquareIcon, XIcon } from "lucide-react";
+import { nanoid } from "nanoid";
+import type {
+  ChangeEvent,
+  ClipboardEventHandler,
+  ComponentProps,
+  FormEvent,
+  FormEventHandler,
+  HTMLAttributes,
+  KeyboardEventHandler,
+  PropsWithChildren,
+  RefObject,
+} from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
+import {
+  type AttachmentsContext,
+  LocalAttachmentsContext,
+  PromptInputController,
+  type PromptInputControllerProps,
+  ProviderAttachmentsContext,
+  useOptionalPromptInputController,
+  useOptionalProviderAttachments,
+} from "@/components/ai-elements/prompt-input-context";
+import { PromptInputForm } from "@/components/ai-elements/prompt-input-form";
+import { convertBlobUrlToDataUrl } from "@/components/ai-elements/prompt-input-media";
+import {
+  LocalReferencedSourcesContext,
+  type ReferencedSourcesContext,
+} from "@/components/ai-elements/prompt-input-referenced-sources-context";
+import { usePromptInputFileState } from "@/components/ai-elements/use-prompt-input-file-state";
 import {
   InputGroupAddon,
   InputGroupButton,
@@ -13,52 +44,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+import {
+  countWords,
+  createPastedTextFile,
+  normalizePastedText,
+} from "@/lib/pasted-text";
 import { readFileAsDataUrl } from "@/lib/read-file-as-data-url";
-import { countWords, createPastedTextFile, normalizePastedText } from "@/lib/pasted-text";
-import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
-import {
-  CornerDownLeftIcon,
-  SquareIcon,
-  XIcon,
-} from "lucide-react";
-import { nanoid } from "nanoid";
-import type {
-  ChangeEvent,
-  ClipboardEventHandler,
-  ComponentProps,
-  FormEvent,
-  FormEventHandler,
-  HTMLAttributes,
-  KeyboardEventHandler,
-  PropsWithChildren,
-  RefObject,
-} from "react";
-import {
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  convertBlobUrlToDataUrl,
-} from "@/components/ai-elements/prompt-input-media";
-import {
-  LocalAttachmentsContext,
-  ProviderAttachmentsContext,
-  PromptInputController,
-  type AttachmentsContext,
-  type PromptInputControllerProps,
-  useOptionalPromptInputController,
-  useOptionalProviderAttachments,
-} from "@/components/ai-elements/prompt-input-context";
-import { PromptInputForm } from "@/components/ai-elements/prompt-input-form";
-import {
-  LocalReferencedSourcesContext,
-  type ReferencedSourcesContext,
-} from "@/components/ai-elements/prompt-input-referenced-sources-context";
-import { usePromptInputFileState } from "@/components/ai-elements/use-prompt-input-file-state";
+import { cn } from "@/lib/utils";
 
 export type {
   AttachmentsContext,
@@ -106,7 +98,7 @@ export const PromptInputProvider = ({
           mediaType: file.type,
           type: "file" as const,
           url: await readFileAsDataUrl(file),
-        })),
+        }))
       );
 
       setAttachmentFiles((prev) => [...prev, ...nextAttachments]);
@@ -185,8 +177,8 @@ export const usePromptInputAttachments = () => {
 };
 
 export interface PromptInputMessage {
-  text: string;
   files: FileUIPart[];
+  text: string;
 }
 
 export type PromptInputProps = Omit<
@@ -246,11 +238,11 @@ export const PromptInput = ({
   } = usePromptInputFileState({
     accept,
     globalDrop,
-    syncHiddenInput,
-    maxFiles,
     maxFileSize,
-    prepareFiles,
+    maxFiles,
     onError,
+    prepareFiles,
+    syncHiddenInput,
   });
 
   const [referencedSources, setReferencedSources] = useState<
@@ -259,7 +251,7 @@ export const PromptInput = ({
 
   const clearReferencedSources = useCallback(
     () => setReferencedSources([]),
-    [],
+    []
   );
 
   const clear = useCallback(() => {
@@ -282,7 +274,7 @@ export const PromptInput = ({
       },
       sources: referencedSources,
     }),
-    [referencedSources, clearReferencedSources],
+    [referencedSources, clearReferencedSources]
   );
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
@@ -312,7 +304,7 @@ export const PromptInput = ({
               };
             }
             return item;
-          }),
+          })
         );
 
         const result = onSubmit({ files: convertedFiles, text }, event);
@@ -337,22 +329,22 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     },
-    [usingProvider, controller, files, onSubmit, clear],
+    [usingProvider, controller, files, onSubmit, clear]
   );
 
   return (
     <LocalAttachmentsContext.Provider value={attachmentsCtx}>
       <LocalReferencedSourcesContext.Provider value={refsCtx}>
         <PromptInputForm
-          className={className}
           accept={accept}
-          multiple={multiple}
-          inputGroupClassName={inputGroupClassName}
-          rimActive={rimActive}
-          inputRef={inputRef}
+          className={className}
           formRef={formRef}
+          inputGroupClassName={inputGroupClassName}
+          inputRef={inputRef}
+          multiple={multiple}
           onFileChange={handleChange}
           onSubmit={handleSubmit}
+          rimActive={rimActive}
           {...props}
         >
           {children}

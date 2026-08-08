@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { NakamaApiError, type UserConfig } from "@nakama/core";
-import { createInMemoryDatabaseAdapter, WORKSPACE_SETTINGS_ID } from "@nakama/db";
+import {
+  createInMemoryDatabaseAdapter,
+  WORKSPACE_SETTINGS_ID,
+} from "@nakama/db";
 import { IMAGE_GENERATION_SELECTION } from "../providers/models";
 import { estimateUsageCostUsd } from "../providers/pricing";
 import { withMswCassette } from "../testing/llm-msw-cassette";
@@ -18,11 +21,11 @@ const openaiConfig = (overrides?: Partial<UserConfig>): UserConfig => ({
   defaultProviderId: "p-openai",
   providers: [
     {
-      id: "p-openai",
-      type: "openai",
-      label: "OpenAI",
       apiKey: "test-key",
       createdAt: "2026-01-01T00:00:00.000Z",
+      id: "p-openai",
+      label: "OpenAI",
+      type: "openai",
     },
   ],
   ...overrides,
@@ -37,7 +40,7 @@ describe("resolveImageGenerationSelection", () => {
 
   test("resolves allowlisted openai::gpt-image-2 selection", () => {
     const resolved = resolveImageGenerationSelection(
-      openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION })
     );
     expect(resolved?.model).toBe("gpt-image-2");
     expect(resolved?.selection).toBe(IMAGE_GENERATION_SELECTION);
@@ -48,8 +51,8 @@ describe("resolveImageGenerationSelection", () => {
   test("rejects non-allowlisted selection", () => {
     expect(() =>
       resolveImageGenerationSelection(
-        openaiConfig({ imageModel: "openai::dall-e-3" }),
-      ),
+        openaiConfig({ imageModel: "openai::dall-e-3" })
+      )
     ).toThrow(NakamaApiError);
   });
 
@@ -60,16 +63,16 @@ describe("resolveImageGenerationSelection", () => {
           imageModel: IMAGE_GENERATION_SELECTION,
           providers: [
             {
-              id: "p-openai",
-              type: "openai",
-              label: "OpenAI",
               apiKey: "",
               createdAt: "2026-01-01T00:00:00.000Z",
+              id: "p-openai",
+              label: "OpenAI",
+              type: "openai",
             },
           ],
         }),
-        {},
-      ),
+        {}
+      )
     ).toThrow(NakamaApiError);
   });
 });
@@ -77,7 +80,9 @@ describe("resolveImageGenerationSelection", () => {
 describe("normalizeImageGenerationSize / token helpers", () => {
   test("defaults size and rejects unknown sizes", () => {
     expect(normalizeImageGenerationSize(undefined)).toBe("1024x1024");
-    expect(() => normalizeImageGenerationSize("512x512")).toThrow(NakamaApiError);
+    expect(() => normalizeImageGenerationSize("512x512")).toThrow(
+      NakamaApiError
+    );
   });
 
   test("maps API usage tokens when present", () => {
@@ -85,7 +90,7 @@ describe("normalizeImageGenerationSize / token helpers", () => {
       resolveImageGenerationTokens("hello", "1024x1024", {
         input_tokens: 12,
         output_tokens: 200,
-      }),
+      })
     ).toEqual({ inputTokens: 12, outputTokens: 200 });
   });
 
@@ -94,7 +99,7 @@ describe("normalizeImageGenerationSize / token helpers", () => {
     expect(fallback.inputTokens).toBe(1);
     expect(fallback.outputTokens).toBe(200);
     expect(
-      resolveImageGenerationTokens("abcd", "1024x1024", undefined),
+      resolveImageGenerationTokens("abcd", "1024x1024", undefined)
     ).toEqual(fallback);
   });
 });
@@ -102,17 +107,17 @@ describe("normalizeImageGenerationSize / token helpers", () => {
 describe("generateImageWithOpenAI", () => {
   test("rejects empty prompt before fetch", async () => {
     await expect(
-      generateImageWithOpenAI({ prompt: "  ", apiKey: "test-key" }),
+      generateImageWithOpenAI({ apiKey: "test-key", prompt: "  " })
     ).rejects.toThrow(NakamaApiError);
   });
 
   test("rejects non-gpt-image-2 model before fetch", async () => {
     await expect(
       generateImageWithOpenAI({
-        prompt: "a cat",
         apiKey: "test-key",
         model: "dall-e-3",
-      }),
+        prompt: "a cat",
+      })
     ).rejects.toThrow(NakamaApiError);
   });
 });
@@ -143,23 +148,23 @@ describe("AgentService image generation settings", () => {
   test("rejects non-allowlisted PUT and leaves stored model unchanged (AE1)", async () => {
     const db = createInMemoryDatabaseAdapter();
     await db.upsertWorkspaceSettings({
-      id: WORKSPACE_SETTINGS_ID,
-      visionModel: null,
-      transcriptionModel: null,
-      imageModel: IMAGE_GENERATION_SELECTION,
       codingAgentHarnesses: [],
+      id: WORKSPACE_SETTINGS_ID,
+      imageModel: IMAGE_GENERATION_SELECTION,
       selectedCodingAgentHarness: null,
+      transcriptionModel: null,
       updatedAt: new Date().toISOString(),
+      visionModel: null,
     });
 
     const service = new AgentService(
       openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
       null,
-      db,
+      db
     );
 
     await expect(
-      service.setImageGenerationSettings({ model: "openai::dall-e-3" }),
+      service.setImageGenerationSettings({ model: "openai::dall-e-3" })
     ).rejects.toThrow(NakamaApiError);
 
     expect(await db.getWorkspaceSettings()).toMatchObject({
@@ -179,7 +184,7 @@ describe("AgentService image generation usage (AE5)", () => {
       openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
       null,
       db,
-      tracker,
+      tracker
     );
 
     await withMswCassette(
@@ -190,21 +195,23 @@ describe("AgentService image generation usage (AE5)", () => {
           size: "1024x1024",
         });
       },
-      { url: imagesUrl, mode: "replay" },
+      { mode: "replay", url: imagesUrl }
     );
 
     const stats = tracker.getStats();
     expect(stats.requestCount).toBe(1);
     expect(stats.inputTokens).toBe(16);
     expect(stats.outputTokens).toBe(200);
-    expect(stats.estimatedCostUsd).toBe(estimateUsageCostUsd("gpt-image-2", 16, 200));
+    expect(stats.estimatedCostUsd).toBe(
+      estimateUsageCostUsd("gpt-image-2", 16, 200)
+    );
     expect(stats.estimatedCostUsd).toBeGreaterThan(0);
     expect(tracker.getStatsByModel()).toEqual([
       expect.objectContaining({
-        modelId: "gpt-image-2",
-        requestCount: 1,
         inputTokens: 16,
+        modelId: "gpt-image-2",
         outputTokens: 200,
+        requestCount: 1,
       }),
     ]);
   });
@@ -216,7 +223,7 @@ describe("AgentService image generation usage (AE5)", () => {
       openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
       null,
       db,
-      tracker,
+      tracker
     );
 
     await expect(
@@ -227,8 +234,8 @@ describe("AgentService image generation usage (AE5)", () => {
             prompt: "should fail",
             size: "1024x1024",
           }),
-        { url: imagesUrl, mode: "replay" },
-      ),
+        { mode: "replay", url: imagesUrl }
+      )
     ).rejects.toBeTruthy();
 
     expect(tracker.getStats().requestCount).toBe(0);
@@ -242,7 +249,7 @@ describe("AgentService image generation usage (AE5)", () => {
       openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
       null,
       db,
-      tracker,
+      tracker
     );
 
     await withMswCassette(
@@ -253,7 +260,7 @@ describe("AgentService image generation usage (AE5)", () => {
           size: "1024x1024",
         });
       },
-      { url: imagesUrl, mode: "replay" },
+      { mode: "replay", url: imagesUrl }
     );
 
     const fallback = fallbackImageGenerationTokens("abcd", "1024x1024");
@@ -262,7 +269,11 @@ describe("AgentService image generation usage (AE5)", () => {
     expect(stats.inputTokens).toBe(fallback.inputTokens);
     expect(stats.outputTokens).toBe(fallback.outputTokens);
     expect(stats.estimatedCostUsd).toBe(
-      estimateUsageCostUsd("gpt-image-2", fallback.inputTokens, fallback.outputTokens),
+      estimateUsageCostUsd(
+        "gpt-image-2",
+        fallback.inputTokens,
+        fallback.outputTokens
+      )
     );
     expect(stats.estimatedCostUsd).toBeGreaterThan(0);
   });

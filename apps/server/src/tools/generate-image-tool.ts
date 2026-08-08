@@ -1,9 +1,9 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  getProfileSoulDir,
   MAX_IMAGE_BYTES,
   NakamaApiError,
-  getProfileSoulDir,
   pathExists,
   type ToolContext,
   type ToolDefinition,
@@ -12,9 +12,9 @@ import {
 import type { DatabaseAdapter } from "@nakama/db";
 import { createAttachmentSaver } from "../services/attachment-service";
 import {
+  generateImageWithOpenAI,
   IMAGE_GENERATION_SIZES,
   IMAGE_MODEL_REQUIRED_MESSAGE,
-  generateImageWithOpenAI,
   normalizeImageGenerationSize,
   resolveImageGenerationSelection,
 } from "../services/image-generation";
@@ -25,59 +25,67 @@ const ARTIFACT_META_SUFFIX = ".nakama-meta.json";
 const DEFAULT_FILENAME = "generated-image.png";
 
 export interface GenerateImageToolInput {
+  filename?: string;
   prompt: string;
   size?: string;
-  filename?: string;
 }
 
 export interface GenerateImageToolSuccess {
-  path: string;
-  mimeType: string;
-  sizeBytes: number;
   attachmentId: string | null;
+  mimeType: string;
   model: string;
+  path: string;
+  sizeBytes: number;
 }
 
 export interface GenerateImageToolFailure {
   error: string;
 }
 
-export type GenerateImageToolOutput = GenerateImageToolSuccess | GenerateImageToolFailure;
+export type GenerateImageToolOutput =
+  | GenerateImageToolSuccess
+  | GenerateImageToolFailure;
 
 export interface GenerateImageToolDeps {
   db: DatabaseAdapter;
-  getUserConfig: () => UserConfig | null | undefined;
   ensureSettingsLoaded: () => Promise<void>;
-  recordUsage?: (modelId: string, inputTokens: number, outputTokens: number) => void;
   /** Test seam — defaults to live OpenAI Images call. */
   generateImage?: typeof generateImageWithOpenAI;
+  getUserConfig: () => UserConfig | null | undefined;
+  recordUsage?: (
+    modelId: string,
+    inputTokens: number,
+    outputTokens: number
+  ) => void;
 }
 
-export function createGenerateImageTool(deps: GenerateImageToolDeps): ToolDefinition {
+export function createGenerateImageTool(
+  deps: GenerateImageToolDeps
+): ToolDefinition {
   return {
-    name: GENERATE_IMAGE_TOOL_NAME,
     description:
       "Generate an image from a text prompt using the workspace image model (OpenAI gpt-image-2). Saves a PNG under artifacts/ with a metadata sidecar and session attachment when available. Model is configured in Settings — do not pass a model name.",
+    name: GENERATE_IMAGE_TOOL_NAME,
     parallelSafe: false,
     parameters: {
-      type: "object",
+      additionalProperties: false,
       properties: {
-        prompt: {
-          type: "string",
-          description: "Text description of the image to generate.",
-        },
-        size: {
-          type: "string",
-          description: `Optional image size. Allowed: ${IMAGE_GENERATION_SIZES.join(", ")}.`,
-        },
         filename: {
-          type: "string",
           description:
             "Optional output filename under artifacts/ (defaults to a generated .png name).",
+          type: "string",
+        },
+        prompt: {
+          description: "Text description of the image to generate.",
+          type: "string",
+        },
+        size: {
+          description: `Optional image size. Allowed: ${IMAGE_GENERATION_SIZES.join(", ")}.`,
+          type: "string",
         },
       },
       required: ["prompt"],
-      additionalProperties: false,
+      type: "object",
     },
     async run(input, context) {
       return runGenerateImageTool(input, context, deps);
@@ -88,7 +96,7 @@ export function createGenerateImageTool(deps: GenerateImageToolDeps): ToolDefini
 export async function runGenerateImageTool(
   input: unknown,
   context: ToolContext,
-  deps: GenerateImageToolDeps,
+  deps: GenerateImageToolDeps
 ): Promise<GenerateImageToolOutput> {
   const prompt = readString(input, "prompt")?.trim();
   if (!prompt) {
@@ -96,12 +104,15 @@ export async function runGenerateImageTool(
   }
 
   if (hasOwnKey(input, "model")) {
-    return { error: "model is not a generate_image parameter; configure it in Settings." };
+    return {
+      error:
+        "model is not a generate_image parameter; configure it in Settings.",
+    };
   }
 
   const orgId = context.orgId?.trim();
   const profileId = context.profileId?.trim();
-  if (!orgId || !profileId) {
+  if (!(orgId && profileId)) {
     return { error: "orgId and profileId are required." };
   }
 
@@ -132,10 +143,10 @@ export async function runGenerateImageTool(
   let result;
   try {
     result = await generate({
-      prompt,
-      size,
       apiKey: selection.apiKey,
       model: selection.model,
+      prompt,
+      size,
     });
   } catch (error) {
     return { error: errorMessage(error) };
@@ -155,8 +166,12 @@ export async function runGenerateImageTool(
     context.workspaceRoot?.trim() || getProfileSoulDir(orgId, profileId);
   const artifactsDir = path.join(workspaceRoot, "artifacts");
   const outputName = resolveOutputFilename(filenameHint, result.mediaType);
-  const targetPath = await uniqueArtifactPath(path.join(artifactsDir, outputName));
-  const relativePath = normalizeRelativePath(path.relative(workspaceRoot, targetPath));
+  const targetPath = await uniqueArtifactPath(
+    path.join(artifactsDir, outputName)
+  );
+  const relativePath = normalizeRelativePath(
+    path.relative(workspaceRoot, targetPath)
+  );
   const metaPath = `${targetPath}${ARTIFACT_META_SUFFIX}`;
   const savedAt = new Date().toISOString();
   const sizeBytes = result.data.byteLength;
@@ -174,9 +189,9 @@ export async function runGenerateImageTool(
           sizeBytes,
         },
         null,
-        2,
+        2
       ),
-      "utf8",
+      "utf8"
     );
   } catch (error) {
     await cleanupArtifactPair(targetPath, metaPath);
@@ -190,16 +205,16 @@ export async function runGenerateImageTool(
   if (sessionId && channel) {
     try {
       const save = createAttachmentSaver(deps.db, {
+        channel,
         orgId,
         profileId,
         sessionId,
-        channel,
       });
       const saved = await save({
+        bytes: Buffer.from(result.data),
+        filename: path.basename(targetPath),
         kind: "image",
         mediaType: result.mediaType,
-        filename: path.basename(targetPath),
-        bytes: Buffer.from(result.data),
       });
       attachmentId = saved.attachmentId;
     } catch (error) {
@@ -209,15 +224,19 @@ export async function runGenerateImageTool(
   }
 
   if (result.usage && deps.recordUsage) {
-    deps.recordUsage(result.model, result.usage.inputTokens, result.usage.outputTokens);
+    deps.recordUsage(
+      result.model,
+      result.usage.inputTokens,
+      result.usage.outputTokens
+    );
   }
 
   return {
-    path: relativePath,
-    mimeType: result.mediaType,
-    sizeBytes,
     attachmentId,
+    mimeType: result.mediaType,
     model: result.model,
+    path: relativePath,
+    sizeBytes,
   };
 }
 
@@ -244,10 +263,14 @@ async function uniqueArtifactPath(filePath: string): Promise<string> {
 
 function resolveOutputFilename(
   filename: string | null | undefined,
-  mediaType: string,
+  mediaType: string
 ): string {
   const extension =
-    mediaType === "image/jpeg" ? ".jpg" : mediaType === "image/webp" ? ".webp" : ".png";
+    mediaType === "image/jpeg"
+      ? ".jpg"
+      : mediaType === "image/webp"
+        ? ".webp"
+        : ".png";
   const raw = filename?.trim() || DEFAULT_FILENAME;
   let base = path.basename(raw.replace(/\\/g, "/"));
 
@@ -266,16 +289,17 @@ function normalizeRelativePath(relativePath: string): string {
   return relativePath.replace(/\\/g, "/");
 }
 
-async function cleanupArtifactPair(filePath: string, metaPath: string): Promise<void> {
+async function cleanupArtifactPair(
+  filePath: string,
+  metaPath: string
+): Promise<void> {
   await unlink(filePath).catch(() => undefined);
   await unlink(metaPath).catch(() => undefined);
 }
 
 function hasOwnKey(input: unknown, key: string): boolean {
   return (
-    typeof input === "object" &&
-    input !== null &&
-    Object.prototype.hasOwnProperty.call(input, key)
+    typeof input === "object" && input !== null && Object.hasOwn(input, key)
   );
 }
 

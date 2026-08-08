@@ -1,9 +1,17 @@
-import type { DatabaseAdapter, StoredToolRecord } from "@nakama/db";
-import { builtinTools, type ToolContext, type ToolDefinition, type UserConfig } from "@nakama/core";
-import { isEmailConfigComplete, loadEmailConfig } from "@nakama/core/email-config";
+import {
+  builtinTools,
+  type ToolContext,
+  type ToolDefinition,
+  type UserConfig,
+} from "@nakama/core";
+import {
+  isEmailConfigComplete,
+  loadEmailConfig,
+} from "@nakama/core/email-config";
 import { emailTool } from "@nakama/core/tools/email";
-import { enrichCodingAgentBashInput } from "./coding-agent-bash-env";
+import type { DatabaseAdapter, StoredToolRecord } from "@nakama/db";
 import { bashTool, runBash } from "../tools/bash";
+import { enrichCodingAgentBashInput } from "./coding-agent-bash-env";
 import { loadJavascriptTool } from "./javascript-tool-loader";
 
 let registeredSubAgentTool: ToolDefinition | null = null;
@@ -19,7 +27,7 @@ export function registerGenerateImageTool(tool: ToolDefinition | null): void {
 
 export function omitUnavailableBuiltinTools(
   tools: ToolDefinition[],
-  emailConfigured: boolean,
+  emailConfigured: boolean
 ): ToolDefinition[] {
   if (emailConfigured) {
     return tools;
@@ -32,12 +40,17 @@ export async function resolveProfileStoredTools(
   records: StoredToolRecord[],
   db?: DatabaseAdapter,
   builtinOverrides: ToolDefinition[] = [],
-  options: { userConfig?: UserConfig | null } = {},
+  options: { userConfig?: UserConfig | null } = {}
 ): Promise<ToolDefinition[]> {
-  const tools = await resolveToolsFromStorage(records, db, builtinOverrides, options);
+  const tools = await resolveToolsFromStorage(
+    records,
+    db,
+    builtinOverrides,
+    options
+  );
   return omitUnavailableBuiltinTools(
     tools,
-    isEmailConfigComplete(await loadEmailConfig()),
+    isEmailConfigComplete(await loadEmailConfig())
   );
 }
 
@@ -45,10 +58,10 @@ export async function resolveToolsFromStorage(
   records: StoredToolRecord[],
   db?: DatabaseAdapter,
   builtinOverrides: ToolDefinition[] = [],
-  options: { userConfig?: UserConfig | null } = {},
+  options: { userConfig?: UserConfig | null } = {}
 ): Promise<ToolDefinition[]> {
   const builtinMap = new Map(
-    [...builtinTools, ...builtinOverrides].map((tool) => [tool.name, tool]),
+    [...builtinTools, ...builtinOverrides].map((tool) => [tool.name, tool])
   );
   const serverTools = buildServerTools(db, options.userConfig);
   const resolved: ToolDefinition[] = [];
@@ -67,7 +80,7 @@ export async function resolveToolsFromStorage(
 async function resolveStoredTool(
   record: StoredToolRecord,
   builtinMap: Map<string, ToolDefinition>,
-  serverTools: Map<string, ToolDefinition>,
+  serverTools: Map<string, ToolDefinition>
 ): Promise<ToolDefinition | null> {
   if (record.handlerType === "builtin") {
     return builtinMap.get(record.name) ?? null;
@@ -94,7 +107,7 @@ async function resolveStoredTool(
 
 function buildServerTools(
   db?: DatabaseAdapter,
-  userConfig?: UserConfig | null,
+  userConfig?: UserConfig | null
 ): Map<string, ToolDefinition> {
   const bash = db ? createCodingAgentAwareBashTool(db, userConfig) : bashTool;
   const map = new Map<string, ToolDefinition>([[bash.name, bash]]);
@@ -112,12 +125,17 @@ function buildServerTools(
 
 function createCodingAgentAwareBashTool(
   db: DatabaseAdapter,
-  userConfig?: UserConfig | null,
+  userConfig?: UserConfig | null
 ): ToolDefinition {
   return {
     ...bashTool,
     run: async (input, context: ToolContext) => {
-      const enriched = await enrichCodingAgentBashInput(db, input, context, userConfig);
+      const enriched = await enrichCodingAgentBashInput(
+        db,
+        input,
+        context,
+        userConfig
+      );
       return runBash(enriched, context);
     },
   };

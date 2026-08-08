@@ -1,15 +1,15 @@
 export const BUILTIN_TOOL_IDS = {
-  write_file: "tool_write_file",
-  write_docx: "tool_write_docx",
   delete_file: "tool_delete_file",
   edit_file: "tool_edit_file",
-  read_file: "tool_read_file",
-  search_files: "tool_search_files",
-  knowledge_base_search: "tool_knowledge_base_search",
-  web_search: "tool_web_search",
-  web_fetch: "tool_web_fetch",
   email: "tool_email",
   extract_document_text: "tool_extract_document_text",
+  knowledge_base_search: "tool_knowledge_base_search",
+  read_file: "tool_read_file",
+  search_files: "tool_search_files",
+  web_fetch: "tool_web_fetch",
+  web_search: "tool_web_search",
+  write_docx: "tool_write_docx",
+  write_file: "tool_write_file",
 } as const;
 
 export const BASH_TOOL_ID = "tool_bash";

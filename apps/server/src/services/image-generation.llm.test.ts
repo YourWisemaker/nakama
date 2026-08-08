@@ -12,7 +12,11 @@
 import { expect, test } from "bun:test";
 import { loadUserConfig } from "@nakama/core";
 import { readApiKeyForInstance } from "../providers/create";
-import { cassetteFilePath, loadCassette, withMswCassette } from "../testing/llm-msw-cassette";
+import {
+  cassetteFilePath,
+  loadCassette,
+  withMswCassette,
+} from "../testing/llm-msw-cassette";
 import { generateImageWithOpenAI } from "./image-generation";
 
 const cassetteName = "image-generation-gpt-image-2";
@@ -39,10 +43,10 @@ test("generates a non-empty png via Images API under cassette replay", async () 
   const existing = await loadCassette(cassettePath);
   const apiKey = existing ? "cassette-replay-key" : await resolveOpenAiApiKey();
 
-  if (!existing && !apiKey) {
+  if (!(existing || apiKey)) {
     // Offline-safe: commit a cassette for replay; skip only when neither cassette nor key exists.
     console.warn(
-      `Skipping ${cassetteName}: no cassette at ${cassettePath} and no OpenAI API key.`,
+      `Skipping ${cassetteName}: no cassette at ${cassettePath} and no OpenAI API key.`
     );
     return;
   }
@@ -51,12 +55,12 @@ test("generates a non-empty png via Images API under cassette replay", async () 
     cassetteName,
     async () =>
       generateImageWithOpenAI({
-        prompt: "A tiny red circle on white background, minimal",
-        size: "1024x1024",
         apiKey: apiKey!,
         model: "gpt-image-2",
+        prompt: "A tiny red circle on white background, minimal",
+        size: "1024x1024",
       }),
-    { url: imagesUrl },
+    { url: imagesUrl }
   );
 
   expect(result.model).toBe("gpt-image-2");

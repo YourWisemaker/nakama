@@ -1,13 +1,13 @@
 import type { ProfileSummary, StoredTask } from "@nakama/core/contract";
+import { useQueryClient } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useTaskMessagesQuery } from "@/hooks/use-tasks";
-import { chatMessagesToListItems, type ChatListItem } from "@/lib/chat-history";
+import { type ChatListItem, chatMessagesToListItems } from "@/lib/chat-history";
 import {
   appendOutgoingMessages,
   buildStreamHandlers,
@@ -16,22 +16,31 @@ import {
   isAbortError,
 } from "@/lib/chat-stream";
 import { client, formatError } from "@/lib/client";
-import { queryKeys } from "@/lib/query-keys";
 import { NAV_ITEM_ICONS } from "@/lib/navigation";
+import { queryKeys } from "@/lib/query-keys";
 import { TASK_STATUS_BADGE } from "@/lib/task-board";
 import { cn } from "@/lib/utils";
 
 const ChatNavIcon = NAV_ITEM_ICONS.chat;
 
 interface TaskRunHistoryPanelProps {
-  task: StoredTask;
-  profile?: ProfileSummary | null;
   onClose: () => void;
+  profile?: ProfileSummary | null;
+  task: StoredTask;
 }
 
-export function TaskRunHistoryPanel({ task, profile, onClose }: TaskRunHistoryPanelProps) {
+export function TaskRunHistoryPanel({
+  task,
+  profile,
+  onClose,
+}: TaskRunHistoryPanelProps) {
   const queryClient = useQueryClient();
-  const { data, isLoading, isFetching, error: loadError } = useTaskMessagesQuery(task.id);
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error: loadError,
+  } = useTaskMessagesQuery(task.id);
 
   const [messages, setMessages] = useState<ChatListItem[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(task.sessionId);
@@ -61,7 +70,7 @@ export function TaskRunHistoryPanel({ task, profile, onClose }: TaskRunHistoryPa
 
   const chatStatus = useMemo(
     () => deriveChatStatus(busy, error, messages),
-    [busy, error, messages],
+    [busy, error, messages]
   );
 
   const stopStreaming = useCallback(() => {
@@ -88,11 +97,13 @@ export function TaskRunHistoryPanel({ task, profile, onClose }: TaskRunHistoryPa
         await chatSession.sendStream(
           { message: text },
           buildStreamHandlers(setMessages),
-          { signal: abortController.signal },
+          { signal: abortController.signal }
         );
 
         setMessages((current) => finalizeStreamingMessages(current));
-        void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.messages(task.id) });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.tasks.messages(task.id),
+        });
       } catch (err) {
         if (isAbortError(err)) {
           setMessages((current) => finalizeStreamingMessages(current));
@@ -100,62 +111,70 @@ export function TaskRunHistoryPanel({ task, profile, onClose }: TaskRunHistoryPa
         }
 
         setError(formatError(err));
-        setMessages((current) => current.filter((message) => !message.streaming));
+        setMessages((current) =>
+          current.filter((message) => !message.streaming)
+        );
       } finally {
         streamAbortRef.current = null;
         setCanStop(false);
         setBusy(false);
       }
     },
-    [busy, queryClient, sessionId, task.id],
+    [busy, queryClient, sessionId, task.id]
   );
 
   const displayError = error ?? (loadError ? formatError(loadError) : null);
-  const chatUnavailable = !sessionId && !waitingForMessages && messages.length > 0;
-  const emptyHistory = !waitingForMessages && !displayError && messages.length === 0;
+  const chatUnavailable =
+    !(sessionId || waitingForMessages) && messages.length > 0;
+  const emptyHistory =
+    !(waitingForMessages || displayError) && messages.length === 0;
 
   return (
     <aside
+      aria-label={`Run chat for ${task.title}`}
       className={cn(
         "flex min-h-[24rem] shrink-0 flex-col bg-background",
-        "border-t border-border/50",
-        "lg:h-full lg:min-h-0 lg:w-[24rem] lg:border-t-0 lg:border-l lg:border-border/30",
-        "xl:w-[26rem]",
+        "border-border/50 border-t",
+        "lg:h-full lg:min-h-0 lg:w-[24rem] lg:border-border/30 lg:border-t-0 lg:border-l",
+        "xl:w-[26rem]"
       )}
-      aria-label={`Run chat for ${task.title}`}
     >
-      <header className="flex items-start justify-between gap-3 border-b border-border/50 bg-muted/20 px-4 py-4 sm:px-5">
+      <header className="flex items-start justify-between gap-3 border-border/50 border-b bg-muted/20 px-4 py-4 sm:px-5">
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-2">
             <ChatNavIcon
+              aria-hidden
               className="sidebar-nav-icon text-muted-foreground"
               strokeWidth={1.75}
-              aria-hidden
             />
             <p className="type-label">Run chat</p>
           </div>
-          <h2 className="truncate text-sm font-semibold text-foreground">{task.title}</h2>
+          <h2 className="truncate font-semibold text-foreground text-sm">
+            {task.title}
+          </h2>
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                statusBadge.className,
+                "rounded-full px-2 py-0.5 font-medium text-[11px]",
+                statusBadge.className
               )}
             >
               {statusBadge.label}
             </span>
-            <span className="truncate text-xs text-muted-foreground">{profileLabel}</span>
+            <span className="truncate text-muted-foreground text-xs">
+              {profileLabel}
+            </span>
           </div>
         </div>
         <Button
+          aria-label="Close task chat"
+          className="shrink-0"
+          onClick={onClose}
+          size="icon-sm"
           type="button"
           variant="ghost"
-          size="icon-sm"
-          className="shrink-0"
-          aria-label="Close task chat"
-          onClick={onClose}
         >
-          <XIcon className="size-4" aria-hidden />
+          <XIcon aria-hidden className="size-4" />
         </Button>
       </header>
 
@@ -166,42 +185,45 @@ export function TaskRunHistoryPanel({ task, profile, onClose }: TaskRunHistoryPa
           </div>
         ) : (
           <ChatMessageList
-            messages={messages}
+            className="absolute inset-0 bg-background"
+            contentClassName="px-4 sm:px-5"
             emptyMessage={
               emptyHistory
                 ? "No run output yet. Open task details or run the agent again."
                 : undefined
             }
-            className="absolute inset-0 bg-background"
-            contentClassName="px-4 sm:px-5"
+            messages={messages}
           />
         )}
       </div>
 
       {displayError ? (
-        <div className="shrink-0 border-t border-border/50 px-4 py-3 sm:px-5">
-          <p className="text-sm text-red-700 dark:text-red-300">{displayError}</p>
+        <div className="shrink-0 border-border/50 border-t px-4 py-3 sm:px-5">
+          <p className="text-red-700 text-sm dark:text-red-300">
+            {displayError}
+          </p>
         </div>
       ) : null}
 
       {chatUnavailable ? (
-        <div className="shrink-0 space-y-2 border-t border-border/50 px-4 py-4 sm:px-5">
-          <p className="text-sm text-muted-foreground">
-            Run history is shown above. Restart the Nakama server to enable follow-up chat.
+        <div className="shrink-0 space-y-2 border-border/50 border-t px-4 py-4 sm:px-5">
+          <p className="text-muted-foreground text-sm">
+            Run history is shown above. Restart the Nakama server to enable
+            follow-up chat.
           </p>
         </div>
       ) : (
         <ChatComposer
-          variant="minimal"
-          chatStatus={chatStatus}
           busy={busy}
           canStop={canStop}
+          chatStatus={chatStatus}
+          className="border-border/50 border-t px-4 py-4 sm:px-5"
           disabled={!sessionId || waitingForMessages}
           error={displayError}
-          placeholder="Follow up on this task…"
-          className="border-t border-border/50 px-4 py-4 sm:px-5"
-          onSubmit={(text) => void sendMessage(text)}
           onStop={stopStreaming}
+          onSubmit={(text) => void sendMessage(text)}
+          placeholder="Follow up on this task…"
+          variant="minimal"
         />
       )}
     </aside>

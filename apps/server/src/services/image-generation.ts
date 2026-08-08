@@ -4,13 +4,13 @@ import {
   type ProviderInstance,
   type UserConfig,
 } from "@nakama/core";
+import { readApiKeyForInstance } from "../providers/create";
 import {
   IMAGE_GENERATION_MODEL_ID,
   IMAGE_GENERATION_SELECTION,
   isAllowedImageGenerationSelection,
   modelSupportsImageGeneration,
 } from "../providers/models";
-import { readApiKeyForInstance } from "../providers/create";
 
 export const IMAGE_MODEL_REQUIRED_MESSAGE =
   "Configure an image generation model in Settings before generating images.";
@@ -26,13 +26,14 @@ export type ImageGenerationSize = (typeof IMAGE_GENERATION_SIZES)[number];
 
 export const DEFAULT_IMAGE_GENERATION_SIZE: ImageGenerationSize = "1024x1024";
 
-const OPENAI_IMAGES_GENERATIONS_URL = "https://api.openai.com/v1/images/generations";
+const OPENAI_IMAGES_GENERATIONS_URL =
+  "https://api.openai.com/v1/images/generations";
 
 export interface ResolvedImageGenerationSelection {
+  apiKey: string;
   instance: ProviderInstance;
   model: typeof IMAGE_GENERATION_MODEL_ID;
   selection: typeof IMAGE_GENERATION_SELECTION;
-  apiKey: string;
 }
 
 export interface ImageGenerationUsage {
@@ -41,19 +42,19 @@ export interface ImageGenerationUsage {
 }
 
 export interface GenerateImageResult {
-  mediaType: string;
   data: Uint8Array;
+  mediaType: string;
   model: string;
-  size: string;
   revisedPrompt?: string;
+  size: string;
   usage?: ImageGenerationUsage;
 }
 
 export interface GenerateImageInput {
-  prompt: string;
-  size?: string;
   apiKey: string;
   model?: string;
+  prompt: string;
+  size?: string;
 }
 
 /**
@@ -63,20 +64,17 @@ export interface GenerateImageInput {
  */
 export function fallbackImageGenerationTokens(
   prompt: string,
-  size: string,
+  size: string
 ): ImageGenerationUsage {
   const inputTokens = Math.max(1, Math.ceil(prompt.trim().length / 4));
-  const outputTokens =
-    size === "1024x1536" || size === "1536x1024"
-      ? 167
-      : 200;
+  const outputTokens = size === "1024x1536" || size === "1536x1024" ? 167 : 200;
   return { inputTokens, outputTokens };
 }
 
 export function resolveImageGenerationTokens(
   prompt: string,
   size: string,
-  usage: { input_tokens?: number; output_tokens?: number } | undefined,
+  usage: { input_tokens?: number; output_tokens?: number } | undefined
 ): ImageGenerationUsage {
   if (
     usage &&
@@ -97,7 +95,7 @@ export function resolveImageGenerationTokens(
 }
 
 export function normalizeImageGenerationSize(
-  size: string | null | undefined,
+  size: string | null | undefined
 ): ImageGenerationSize {
   const trimmed = size?.trim();
   if (!trimmed) {
@@ -110,13 +108,13 @@ export function normalizeImageGenerationSize(
 
   throw new NakamaApiError(
     `Unsupported image size "${trimmed}". Allowed: ${IMAGE_GENERATION_SIZES.join(", ")}.`,
-    400,
+    400
   );
 }
 
 export function resolveImageGenerationSelection(
   userConfig: UserConfig | null | undefined,
-  env: Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = process.env
 ): ResolvedImageGenerationSelection | null {
   const imageModel = userConfig?.imageModel?.trim();
 
@@ -127,31 +125,35 @@ export function resolveImageGenerationSelection(
   if (!isAllowedImageGenerationSelection(imageModel)) {
     throw new NakamaApiError(
       "Configured image generation model is invalid. Update it in Settings.",
-      400,
+      400
     );
   }
 
   const openaiInstances = (userConfig?.providers ?? []).filter(
-    (provider) => provider.type === "openai",
+    (provider) => provider.type === "openai"
   );
   const preferredId = userConfig?.defaultProviderId?.trim();
   const preferred =
-    preferredId && openaiInstances.some((instance) => instance.id === preferredId)
-      ? findProviderInstance({ providers: userConfig?.providers ?? [] }, preferredId)
+    preferredId &&
+    openaiInstances.some((instance) => instance.id === preferredId)
+      ? findProviderInstance(
+          { providers: userConfig?.providers ?? [] },
+          preferredId
+        )
       : null;
   const instance = preferred ?? openaiInstances[0] ?? null;
 
   if (!instance || instance.type !== "openai") {
     throw new NakamaApiError(
       "Image generation requires an OpenAI provider. Add one in Settings.",
-      400,
+      400
     );
   }
 
   if (!modelSupportsImageGeneration(IMAGE_GENERATION_MODEL_ID, instance.type)) {
     throw new NakamaApiError(
       `Configured image generation model "${IMAGE_GENERATION_MODEL_ID}" is not supported.`,
-      400,
+      400
     );
   }
 
@@ -160,20 +162,20 @@ export function resolveImageGenerationSelection(
   if (!apiKey) {
     throw new NakamaApiError(
       "OpenAI API key is missing. Configure an OpenAI provider or set OPENAI_API_KEY.",
-      400,
+      400
     );
   }
 
   return {
+    apiKey,
     instance,
     model: IMAGE_GENERATION_MODEL_ID,
     selection: IMAGE_GENERATION_SELECTION,
-    apiKey,
   };
 }
 
 export async function generateImageWithOpenAI(
-  input: GenerateImageInput,
+  input: GenerateImageInput
 ): Promise<GenerateImageResult> {
   const prompt = input.prompt?.trim();
 
@@ -186,7 +188,7 @@ export async function generateImageWithOpenAI(
   if (model !== IMAGE_GENERATION_MODEL_ID) {
     throw new NakamaApiError(
       `Image generation model "${model}" is not supported.`,
-      400,
+      400
     );
   }
 
@@ -196,31 +198,31 @@ export async function generateImageWithOpenAI(
   if (!apiKey) {
     throw new NakamaApiError(
       "OpenAI API key is missing. Configure an OpenAI provider or set OPENAI_API_KEY.",
-      400,
+      400
     );
   }
 
   const response = await fetch(OPENAI_IMAGES_GENERATIONS_URL, {
-    method: "POST",
+    body: JSON.stringify({
+      model,
+      n: 1,
+      // gpt-image models return b64_json; request explicitly for clarity.
+      output_format: "png",
+      prompt,
+      size,
+    }),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      prompt,
-      size,
-      n: 1,
-      // gpt-image models return b64_json; request explicitly for clarity.
-      output_format: "png",
-    }),
+    method: "POST",
   });
 
   if (!response.ok) {
     const body = await response.text();
     throw new NakamaApiError(
       `Image generation failed (${response.status}): ${body}`,
-      502,
+      502
     );
   }
 
@@ -242,11 +244,17 @@ export async function generateImageWithOpenAI(
   try {
     bytes = Uint8Array.from(Buffer.from(b64, "base64"));
   } catch {
-    throw new NakamaApiError("Image generation returned invalid base64 data.", 502);
+    throw new NakamaApiError(
+      "Image generation returned invalid base64 data.",
+      502
+    );
   }
 
   if (bytes.length === 0) {
-    throw new NakamaApiError("Image generation returned empty image data.", 502);
+    throw new NakamaApiError(
+      "Image generation returned empty image data.",
+      502
+    );
   }
 
   const mediaType =
@@ -257,8 +265,8 @@ export async function generateImageWithOpenAI(
         : "image/png";
 
   return {
-    mediaType,
     data: bytes,
+    mediaType,
     model,
     size,
     ...(first.revised_prompt?.trim()

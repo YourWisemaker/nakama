@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { UserConfig } from "@nakama/core";
@@ -18,28 +25,29 @@ import {
   resolveToolsFromStorage,
 } from "../services/tool-resolver";
 import {
-  GENERATE_IMAGE_TOOL_NAME,
   createGenerateImageTool,
+  GENERATE_IMAGE_TOOL_NAME,
   runGenerateImageTool,
 } from "./generate-image-tool";
 
 const PNG_BYTES = Uint8Array.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-  0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
-  0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0xfe, 0xd4, 0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
-  0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02,
+  0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44,
+  0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x00, 0x00, 0x03, 0x00,
+  0x01, 0x00, 0x05, 0xfe, 0xd4, 0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+  0x44, 0xae, 0x42, 0x60, 0x82,
 ]);
 
 const openaiConfig = (overrides?: Partial<UserConfig>): UserConfig => ({
   defaultProviderId: "p-openai",
   providers: [
     {
-      id: "p-openai",
-      type: "openai",
-      label: "OpenAI",
       apiKey: "test-key",
       createdAt: "2026-01-01T00:00:00.000Z",
+      id: "p-openai",
+      label: "OpenAI",
+      type: "openai",
     },
   ],
   ...overrides,
@@ -73,10 +81,10 @@ describe("generate_image tool seed and resolver (U3)", () => {
   test("seedDatabase includes generate_image and Super Bot is not auto-assigned", async () => {
     const db = createInMemoryDatabaseAdapter();
     await db.upsertOrganization({
+      createdAt: new Date().toISOString(),
       id: "org_a",
       name: "Org A",
       slug: "org-a",
-      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
 
@@ -85,7 +93,9 @@ describe("generate_image tool seed and resolver (U3)", () => {
 
     expect(await db.getTool(GENERATE_IMAGE_TOOL_ID)).not.toBeNull();
 
-    const assignedIds = (await db.listToolsForProfile(superBot.id)).map((tool) => tool.id);
+    const assignedIds = (await db.listToolsForProfile(superBot.id)).map(
+      (tool) => tool.id
+    );
     expect(assignedIds).not.toContain(GENERATE_IMAGE_TOOL_ID);
   });
 
@@ -96,30 +106,32 @@ describe("generate_image tool seed and resolver (U3)", () => {
     registerGenerateImageTool(
       createGenerateImageTool({
         db,
-        getUserConfig: () => null,
         ensureSettingsLoaded: async () => {},
-      }),
+        getUserConfig: () => null,
+      })
     );
 
     await ensureGenerateImageToolDefinition(db);
     await db.upsertProfile({
-      id: "profile_assigned",
-      name: "Assigned",
-      systemPrompt: "",
-      model: null,
-      isSuper: false,
-      orgId: "org_a",
-      isDefault: true,
       createdAt: now,
+      id: "profile_assigned",
+      isDefault: true,
+      isSuper: false,
+      model: null,
+      name: "Assigned",
+      orgId: "org_a",
+      systemPrompt: "",
       updatedAt: now,
     });
     await db.assignToolToProfile("profile_assigned", GENERATE_IMAGE_TOOL_ID);
 
     const assigned = await resolveToolsFromStorage(
       await db.listToolsForProfile("profile_assigned"),
-      db,
+      db
     );
-    const tool = assigned.find((entry) => entry.name === GENERATE_IMAGE_TOOL_NAME);
+    const tool = assigned.find(
+      (entry) => entry.name === GENERATE_IMAGE_TOOL_NAME
+    );
 
     expect(tool).toBeDefined();
     expect(tool?.parallelSafe).toBe(false);
@@ -135,30 +147,32 @@ describe("generate_image tool seed and resolver (U3)", () => {
     registerGenerateImageTool(
       createGenerateImageTool({
         db,
-        getUserConfig: () => null,
         ensureSettingsLoaded: async () => {},
-      }),
+        getUserConfig: () => null,
+      })
     );
 
     await ensureGenerateImageToolDefinition(db);
     await db.upsertProfile({
-      id: "profile_unassigned",
-      name: "Unassigned",
-      systemPrompt: "",
-      model: null,
-      isSuper: false,
-      orgId: "org_a",
-      isDefault: true,
       createdAt: now,
+      id: "profile_unassigned",
+      isDefault: true,
+      isSuper: false,
+      model: null,
+      name: "Unassigned",
+      orgId: "org_a",
+      systemPrompt: "",
       updatedAt: now,
     });
 
     const tools = await resolveToolsFromStorage(
       await db.listToolsForProfile("profile_unassigned"),
-      db,
+      db
     );
 
-    expect(tools.map((tool) => tool.name)).not.toContain(GENERATE_IMAGE_TOOL_NAME);
+    expect(tools.map((tool) => tool.name)).not.toContain(
+      GENERATE_IMAGE_TOOL_NAME
+    );
   });
 
   test("assigned profile tool list includes generate_image once", async () => {
@@ -168,14 +182,14 @@ describe("generate_image tool seed and resolver (U3)", () => {
     await ensureGenerateImageToolDefinition(db);
     await ensureGenerateImageToolDefinition(db);
     await db.upsertProfile({
-      id: "profile_once",
-      name: "Once",
-      systemPrompt: "",
-      model: null,
-      isSuper: false,
-      orgId: "org_a",
-      isDefault: true,
       createdAt: now,
+      id: "profile_once",
+      isDefault: true,
+      isSuper: false,
+      model: null,
+      name: "Once",
+      orgId: "org_a",
+      systemPrompt: "",
       updatedAt: now,
     });
     await db.assignToolToProfile("profile_once", GENERATE_IMAGE_TOOL_ID);
@@ -195,11 +209,11 @@ describe("generate_image tool persistence (U4)", () => {
 
   afterEach(async () => {
     if (tempConfigDir) {
-      await rm(tempConfigDir, { recursive: true, force: true });
+      await rm(tempConfigDir, { force: true, recursive: true });
       tempConfigDir = "";
     }
     if (workspaceRoot) {
-      await rm(workspaceRoot, { recursive: true, force: true });
+      await rm(workspaceRoot, { force: true, recursive: true });
       workspaceRoot = "";
     }
     if (originalConfigDir === undefined) {
@@ -221,45 +235,50 @@ describe("generate_image tool persistence (U4)", () => {
     const usage: Array<{ model: string; input: number; output: number }> = [];
 
     const result = await runGenerateImageTool(
-      { prompt: "a cat", filename: "cat.png" },
+      { filename: "cat.png", prompt: "a cat" },
       {
+        channel: "web",
         orgId: "org_1",
         profileId: "profile_1",
         sessionId: "session_1",
-        channel: "web",
         workspaceRoot,
       },
       {
         db,
-        getUserConfig: () => openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
         ensureSettingsLoaded: async () => {},
-        recordUsage: (model, input, output) => {
-          usage.push({ model, input, output });
-        },
         generateImage: async () => ({
-          mediaType: "image/png",
           data: PNG_BYTES,
+          mediaType: "image/png",
           model: "gpt-image-2",
           size: "1024x1024",
           usage: { inputTokens: 8, outputTokens: 200 },
         }),
-      },
+        getUserConfig: () =>
+          openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+        recordUsage: (model, input, output) => {
+          usage.push({ input, model, output });
+        },
+      }
     );
 
     expect(result).toMatchObject({
-      path: "artifacts/cat.png",
       mimeType: "image/png",
-      sizeBytes: PNG_BYTES.byteLength,
       model: "gpt-image-2",
+      path: "artifacts/cat.png",
+      sizeBytes: PNG_BYTES.byteLength,
     });
-    expect("attachmentId" in result && typeof result.attachmentId === "string").toBe(true);
-    if (!("attachmentId" in result) || !result.attachmentId) {
+    expect(
+      "attachmentId" in result && typeof result.attachmentId === "string"
+    ).toBe(true);
+    if (!("attachmentId" in result && result.attachmentId)) {
       throw new Error("expected attachmentId");
     }
 
     const absolute = path.join(workspaceRoot, result.path);
     expect(await readFile(absolute)).toEqual(Buffer.from(PNG_BYTES));
-    const meta = JSON.parse(await readFile(`${absolute}.nakama-meta.json`, "utf8")) as {
+    const meta = JSON.parse(
+      await readFile(`${absolute}.nakama-meta.json`, "utf8")
+    ) as {
       mimeType: string;
       sizeBytes: number;
       savedAt: string;
@@ -270,15 +289,15 @@ describe("generate_image tool persistence (U4)", () => {
 
     const attachment = await db.getAttachment(result.attachmentId);
     expect(attachment).toMatchObject({
-      orgId: "org_1",
-      profileId: "profile_1",
-      sessionId: "session_1",
       channel: "web",
       kind: "image",
       mediaType: "image/png",
+      orgId: "org_1",
+      profileId: "profile_1",
+      sessionId: "session_1",
       sizeBytes: PNG_BYTES.byteLength,
     });
-    expect(usage).toEqual([{ model: "gpt-image-2", input: 8, output: 200 }]);
+    expect(usage).toEqual([{ input: 8, model: "gpt-image-2", output: 200 }]);
   });
 
   test("filename collision gets unique suffix and remapped sidecar pairs on disk", async () => {
@@ -289,25 +308,26 @@ describe("generate_image tool persistence (U4)", () => {
     await writeFile(path.join(artifactsDir, "cat.png"), "existing");
 
     const result = await runGenerateImageTool(
-      { prompt: "a cat", filename: "cat.png" },
+      { filename: "cat.png", prompt: "a cat" },
       {
+        channel: "web",
         orgId: "org_1",
         profileId: "profile_1",
         sessionId: "session_1",
-        channel: "web",
         workspaceRoot,
       },
       {
         db,
-        getUserConfig: () => openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
         ensureSettingsLoaded: async () => {},
         generateImage: async () => ({
-          mediaType: "image/png",
           data: PNG_BYTES,
+          mediaType: "image/png",
           model: "gpt-image-2",
           size: "1024x1024",
         }),
-      },
+        getUserConfig: () =>
+          openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      }
     );
 
     expect("path" in result).toBe(true);
@@ -320,7 +340,9 @@ describe("generate_image tool persistence (U4)", () => {
 
     const absolute = path.join(workspaceRoot, result.path);
     expect(await readFile(absolute)).toEqual(Buffer.from(PNG_BYTES));
-    const meta = JSON.parse(await readFile(`${absolute}.nakama-meta.json`, "utf8")) as {
+    const meta = JSON.parse(
+      await readFile(`${absolute}.nakama-meta.json`, "utf8")
+    ) as {
       mimeType: string;
     };
     expect(meta.mimeType).toBe("image/png");
@@ -339,20 +361,20 @@ describe("generate_image tool persistence (U4)", () => {
     const result = await runGenerateImageTool(
       { prompt: "a cat" },
       {
+        channel: "web",
         orgId: "org_1",
         profileId: "profile_1",
         sessionId: "session_1",
-        channel: "web",
         workspaceRoot,
       },
       {
         db,
-        getUserConfig: () => openaiConfig({ imageModel: null }),
         ensureSettingsLoaded: async () => {},
         generateImage: async () => {
           throw new Error("should not call OpenAI");
         },
-      },
+        getUserConfig: () => openaiConfig({ imageModel: null }),
+      }
     );
 
     expect(result).toEqual({ error: IMAGE_MODEL_REQUIRED_MESSAGE });
@@ -375,24 +397,27 @@ describe("generate_image tool persistence (U4)", () => {
     const result = await runGenerateImageTool(
       { prompt: "a cat" },
       {
+        channel: "web",
         orgId: "org_1",
         profileId: "profile_1",
         sessionId: "session_1",
-        channel: "web",
         workspaceRoot,
       },
       {
         db,
-        getUserConfig: () => openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
         ensureSettingsLoaded: async () => {},
         generateImage: async () => {
           throw new Error("upstream failed");
         },
-      },
+        getUserConfig: () =>
+          openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      }
     );
 
     expect("error" in result).toBe(true);
-    const entries = await readdir(path.join(workspaceRoot, "artifacts")).catch(() => [] as string[]);
+    const entries = await readdir(path.join(workspaceRoot, "artifacts")).catch(
+      () => [] as string[]
+    );
     expect(entries).toEqual([]);
     expect(attachmentInserts).toBe(0);
   });
@@ -404,23 +429,24 @@ describe("generate_image tool persistence (U4)", () => {
     const result = await runGenerateImageTool(
       { prompt: "logo" },
       {
+        channel: "cli",
         orgId: "org_1",
         profileId: "profile_1",
         sessionId: "session_1",
-        channel: "cli",
         workspaceRoot,
       },
       {
         db,
-        getUserConfig: () => openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
         ensureSettingsLoaded: async () => {},
         generateImage: async () => ({
-          mediaType: "image/png",
           data: PNG_BYTES,
+          mediaType: "image/png",
           model: "gpt-image-2",
           size: "1024x1024",
         }),
-      },
+        getUserConfig: () =>
+          openaiConfig({ imageModel: IMAGE_GENERATION_SELECTION }),
+      }
     );
 
     expect(Object.keys(result).sort()).toEqual([
@@ -432,8 +458,8 @@ describe("generate_image tool persistence (U4)", () => {
     ]);
     expect(result).toMatchObject({
       mimeType: "image/png",
-      sizeBytes: PNG_BYTES.byteLength,
       model: "gpt-image-2",
+      sizeBytes: PNG_BYTES.byteLength,
     });
   });
 });

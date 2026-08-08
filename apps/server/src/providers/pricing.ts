@@ -1,4 +1,8 @@
-import { findCustomModel, type ProviderInstance, type ProviderName } from "@nakama/core";
+import {
+  findCustomModel,
+  type ProviderInstance,
+  type ProviderName,
+} from "@nakama/core";
 import { getModelById, IMAGE_GENERATION_MODEL_ID } from "./models";
 
 export interface ModelPricing {
@@ -32,9 +36,12 @@ export interface PricingContext {
 
 function getCustomModelPricing(
   modelId: string,
-  context: PricingContext,
+  context: PricingContext
 ): ModelPricing | null {
-  const entry = findCustomModel(context.providerInstance?.customModels, modelId);
+  const entry = findCustomModel(
+    context.providerInstance?.customModels,
+    modelId
+  );
 
   if (
     entry?.inputPerMillionUsd !== undefined &&
@@ -51,7 +58,7 @@ function getCustomModelPricing(
 
 export function getModelPricing(
   modelId: string,
-  context: PricingContext = {},
+  context: PricingContext = {}
 ): ModelPricing | null {
   const imagePricing = IMAGE_GENERATION_PRICING[modelId];
   if (imagePricing) {
@@ -60,13 +67,22 @@ export function getModelPricing(
 
   const provider = context.provider ?? context.providerInstance?.type ?? null;
 
-  if (provider === "openai_compatible" || provider === "openrouter" || provider === "cerebras" || provider === "fireworks" || provider === "ollama") {
+  if (
+    provider === "openai_compatible" ||
+    provider === "openrouter" ||
+    provider === "cerebras" ||
+    provider === "fireworks" ||
+    provider === "ollama"
+  ) {
     return getCustomModelPricing(modelId, context);
   }
 
   const catalog = getModelById(modelId);
 
-  if (catalog?.inputPerMillionUsd != null && catalog.outputPerMillionUsd != null) {
+  if (
+    catalog?.inputPerMillionUsd != null &&
+    catalog.outputPerMillionUsd != null
+  ) {
     return {
       inputPerMillionUsd: catalog.inputPerMillionUsd,
       outputPerMillionUsd: catalog.outputPerMillionUsd,
@@ -80,7 +96,7 @@ export function estimateUsageCostUsd(
   modelId: string,
   inputTokens: number,
   outputTokens: number,
-  context: PricingContext = {},
+  context: PricingContext = {}
 ): number {
   const pricing = getModelPricing(modelId, context);
 
@@ -95,7 +111,7 @@ export function estimateUsageCostUsd(
 
 export function hasCatalogPricing(
   modelId: string,
-  context: PricingContext = {},
+  context: PricingContext = {}
 ): boolean {
   return getModelPricing(modelId, context) !== null;
 }
@@ -103,9 +119,9 @@ export function hasCatalogPricing(
 export function isCostEstimated(
   provider: ProviderName | null,
   modelId: string | null,
-  providerInstance: ProviderInstance | null | undefined,
+  providerInstance: ProviderInstance | null | undefined
 ): boolean {
-  if (!provider || !modelId) {
+  if (!(provider && modelId)) {
     return false;
   }
 

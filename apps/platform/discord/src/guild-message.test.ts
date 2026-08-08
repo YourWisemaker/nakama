@@ -23,7 +23,16 @@ function createGuildMessage(options: {
   }
 
   return {
-    author: { id: "user_1", bot: false },
+    author: { bot: false, id: "user_1" },
+    channel: {
+      id: options.thread ? "thread_1" : channelId,
+      isDMBased: () => false,
+      isThread: () => options.thread === true,
+      messages: { cache: messages },
+      parentId:
+        options.parentId === null ? null : (options.parentId ?? channelId),
+    },
+    client: { user: { id: BOT_INFO.id, username: BOT_INFO.username } },
     content: options.content ?? "",
     mentions: {
       users: {
@@ -31,17 +40,6 @@ function createGuildMessage(options: {
       },
     },
     reference: options.replyToBot ? { messageId: "reply_1" } : null,
-    client: { user: { id: BOT_INFO.id, username: BOT_INFO.username } },
-    channel: {
-      id: options.thread ? "thread_1" : channelId,
-      isDMBased: () => false,
-      isThread: () => options.thread === true,
-      parentId:
-        options.parentId === null
-          ? null
-          : (options.parentId ?? channelId),
-      messages: { cache: messages },
-    },
   } as never;
 }
 
@@ -49,7 +47,7 @@ describe("explainGuildMessageHandling", () => {
   test("ignores messages without trigger", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({ content: "hello everyone" }),
-      BOT_INFO,
+      BOT_INFO
     );
 
     expect(decision.shouldHandle).toBe(false);
@@ -58,8 +56,11 @@ describe("explainGuildMessageHandling", () => {
 
   test("handles @mention", () => {
     const decision = explainGuildMessageHandling(
-      createGuildMessage({ content: "<@999000111222333444> hi", mentionsBot: true }),
-      BOT_INFO,
+      createGuildMessage({
+        content: "<@999000111222333444> hi",
+        mentionsBot: true,
+      }),
+      BOT_INFO
     );
 
     expect(decision.shouldHandle).toBe(true);
@@ -69,7 +70,7 @@ describe("explainGuildMessageHandling", () => {
   test("handles reply to bot", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({ content: "follow up", replyToBot: true }),
-      BOT_INFO,
+      BOT_INFO
     );
 
     expect(decision.shouldHandle).toBe(true);
@@ -80,7 +81,7 @@ describe("explainGuildMessageHandling", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({ content: "continue here", thread: true }),
       BOT_INFO,
-      { botOwnsThread: true },
+      { botOwnsThread: true }
     );
 
     expect(decision.shouldHandle).toBe(true);
@@ -95,7 +96,7 @@ describe("explainGuildMessageHandling", () => {
         thread: true,
       }),
       BOT_INFO,
-      { botOwnsThread: true },
+      { botOwnsThread: true }
     );
 
     expect(decision.shouldHandle).toBe(true);
@@ -106,7 +107,7 @@ describe("explainGuildMessageHandling", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({ content: "continue here", thread: true }),
       BOT_INFO,
-      { botOwnsThread: false },
+      { botOwnsThread: false }
     );
 
     expect(decision.shouldHandle).toBe(false);
@@ -121,7 +122,7 @@ describe("explainGuildMessageHandling", () => {
         thread: true,
       }),
       BOT_INFO,
-      { botOwnsThread: false },
+      { botOwnsThread: false }
     );
 
     expect(decision.shouldHandle).toBe(true);
@@ -136,7 +137,7 @@ describe("explainGuildMessageHandling", () => {
         thread: true,
       }),
       BOT_INFO,
-      { botOwnsThread: false },
+      { botOwnsThread: false }
     );
 
     expect(decision.shouldHandle).toBe(true);
@@ -146,7 +147,7 @@ describe("explainGuildMessageHandling", () => {
   test("still requires a trigger in plain channels", () => {
     const decision = explainGuildMessageHandling(
       createGuildMessage({ content: "" }),
-      BOT_INFO,
+      BOT_INFO
     );
 
     expect(decision.shouldHandle).toBe(false);
@@ -157,9 +158,9 @@ describe("explainGuildMessageHandling", () => {
 describe("resolveConversationKey", () => {
   test("uses thread suffix for thread channels", () => {
     const key = resolveConversationKey(
-      createGuildMessage({ thread: true, parentId: "parent_1" }),
+      createGuildMessage({ parentId: "parent_1", thread: true }),
       "thread_1",
-      true,
+      true
     );
 
     expect(key).toBe("g:parent_1:t:thread_1");
@@ -167,10 +168,10 @@ describe("resolveConversationKey", () => {
 
   test("uses hydrated parent when partial thread lacks parentId", () => {
     const key = resolveConversationKey(
-      createGuildMessage({ thread: true, parentId: null }),
+      createGuildMessage({ parentId: null, thread: true }),
       "thread_1",
       true,
-      { parentChannelId: "parent_hydrated" },
+      { parentChannelId: "parent_hydrated" }
     );
 
     expect(key).toBe("g:parent_hydrated:t:thread_1");
@@ -179,7 +180,7 @@ describe("resolveConversationKey", () => {
 
 describe("resolveOrgChannelId", () => {
   test("uses parent channel id for guild threads", () => {
-    const message = createGuildMessage({ thread: true, parentId: "parent_1" });
+    const message = createGuildMessage({ parentId: "parent_1", thread: true });
     expect(resolveOrgChannelId(message, "thread_1", true)).toBe("parent_1");
   });
 
@@ -189,16 +190,20 @@ describe("resolveOrgChannelId", () => {
   });
 
   test("prefers resolved parent over thread id when parentId is missing", () => {
-    const message = createGuildMessage({ thread: true, parentId: null });
+    const message = createGuildMessage({ parentId: null, thread: true });
     expect(resolveOrgChannelId(message, "thread_1", true)).toBe("thread_1");
     expect(
-      resolveOrgChannelId(message, "thread_1", true, { parentChannelId: "parent_1" }),
+      resolveOrgChannelId(message, "thread_1", true, {
+        parentChannelId: "parent_1",
+      })
     ).toBe("parent_1");
   });
 });
 
 describe("stripBotMention", () => {
   test("removes mention markup", () => {
-    expect(stripBotMention(`<@!${BOT_INFO.id}> question`, BOT_INFO)).toBe("question");
+    expect(stripBotMention(`<@!${BOT_INFO.id}> question`, BOT_INFO)).toBe(
+      "question"
+    );
   });
 });

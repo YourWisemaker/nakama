@@ -4,8 +4,8 @@ import {
   isProtectedToolId,
 } from "@nakama/core/tools/protected";
 import { PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { EmailSettingsDialog } from "@/components/EmailSettingsDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useToolsQuery, useProfilesQuery } from "@/hooks/use-app-queries";
-import { useAppNavigation } from "@/hooks/use-app-navigation";
 import { useAuth } from "@/context/use-auth";
+import { useAppNavigation } from "@/hooks/use-app-navigation";
+import { useProfilesQuery, useToolsQuery } from "@/hooks/use-app-queries";
 import { useDeleteToolMutation } from "@/hooks/use-resource-mutations";
 import { formatError } from "@/lib/client";
-import { findSuperBotProfile } from "@/lib/profiles";
 import { canUseToolPlayground, toolPlaygroundPath } from "@/lib/navigation";
+import { findSuperBotProfile } from "@/lib/profiles";
 import { cn } from "@/lib/utils";
 
 const sectionClass = "rounded-md border border-border bg-card";
@@ -40,7 +40,7 @@ export function ToolsTab({ embedded = false }: { embedded?: boolean } = {}) {
   const isOrgAdmin = activeOrg?.role === "admin";
   const canUsePlayground = canUseToolPlayground(
     user?.isPlatformAdmin === true,
-    activeOrg?.role,
+    activeOrg?.role
   );
   const { data: tools = [], isLoading, error } = useToolsQuery();
   const { data: profiles = [] } = useProfilesQuery();
@@ -48,7 +48,10 @@ export function ToolsTab({ embedded = false }: { embedded?: boolean } = {}) {
   const deleteToolMutation = useDeleteToolMutation();
   const [actionError, setActionError] = useState<string | null>(null);
   const [emailConfigOpen, setEmailConfigOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const loading = isLoading && tools.length === 0;
   const busy = deleteToolMutation.isPending;
@@ -89,7 +92,7 @@ export function ToolsTab({ embedded = false }: { embedded?: boolean } = {}) {
   }
 
   if (loading) {
-    return <PageState message="Loading tools…" embedded={embedded} />;
+    return <PageState embedded={embedded} message="Loading tools…" />;
   }
 
   const content = (
@@ -104,41 +107,41 @@ export function ToolsTab({ embedded = false }: { embedded?: boolean } = {}) {
           </p>
         </div>
 
-        <Button type="button" size="sm" onClick={goToCreateTool}>
-          <PlusIcon className="size-4" data-icon="inline-start" aria-hidden />
+        <Button onClick={goToCreateTool} size="sm" type="button">
+          <PlusIcon aria-hidden className="size-4" data-icon="inline-start" />
           Create tool
         </Button>
       </div>
 
       {tools.length === 0 ? (
-        <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center text-muted-foreground text-sm">
           <p>No tools yet. Ask Super Bot to create one.</p>
-          <Button type="button" size="sm" onClick={goToCreateTool}>
-            <PlusIcon className="size-4" data-icon="inline-start" aria-hidden />
+          <Button onClick={goToCreateTool} size="sm" type="button">
+            <PlusIcon aria-hidden className="size-4" data-icon="inline-start" />
             Create tool
           </Button>
         </div>
       ) : (
         <div className="space-y-6">
           <ToolListSection
-            title="Custom tools"
-            tools={customTools}
             busy={busy}
             canUsePlayground={canUsePlayground}
             isOrgAdmin={isOrgAdmin}
+            onConfigureEmail={() => setEmailConfigOpen(true)}
             onCreateTool={goToCreateTool}
             onDelete={requestDeleteTool}
-            onConfigureEmail={() => setEmailConfigOpen(true)}
+            title="Custom tools"
+            tools={customTools}
           />
 
           <ToolListSection
-            title="Built-in tools"
-            tools={builtinTools}
             busy={busy}
             canUsePlayground={canUsePlayground}
             isOrgAdmin={isOrgAdmin}
-            onDelete={requestDeleteTool}
             onConfigureEmail={() => setEmailConfigOpen(true)}
+            onDelete={requestDeleteTool}
+            title="Built-in tools"
+            tools={builtinTools}
           />
         </div>
       )}
@@ -149,49 +152,59 @@ export function ToolsTab({ embedded = false }: { embedded?: boolean } = {}) {
     <>
       <div className="space-y-4">
         {errorMessage ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
             {errorMessage}
           </p>
         ) : null}
 
-        {embedded ? content : <section className={cn(sectionClass, "overflow-hidden")}>{content}</section>}
+        {embedded ? (
+          content
+        ) : (
+          <section className={cn(sectionClass, "overflow-hidden")}>
+            {content}
+          </section>
+        )}
       </div>
 
       {isOrgAdmin ? (
-        <EmailSettingsDialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen} />
+        <EmailSettingsDialog
+          onOpenChange={setEmailConfigOpen}
+          open={emailConfigOpen}
+        />
       ) : null}
 
       <Dialog
-        open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open && !busy) {
+          if (!(open || busy)) {
             setDeleteTarget(null);
           }
         }}
+        open={deleteTarget !== null}
       >
         <DialogContent className="gap-6 p-6 sm:max-w-md">
           <DialogHeader className="gap-3">
             <DialogTitle>Delete tool?</DialogTitle>
             <DialogDescription>
-              Remove {deleteTarget?.name ? `"${deleteTarget.name}"` : "this tool"} from every
-              profile it is assigned to.
+              Remove{" "}
+              {deleteTarget?.name ? `"${deleteTarget.name}"` : "this tool"} from
+              every profile it is assigned to.
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter className="mx-0 mb-0 gap-2 border-0 bg-transparent p-0 sm:flex-row sm:justify-end">
             <Button
-              type="button"
-              variant="outline"
               disabled={busy}
               onClick={() => setDeleteTarget(null)}
+              type="button"
+              variant="outline"
             >
               Cancel
             </Button>
             <Button
-              type="button"
-              variant="destructive"
               disabled={busy}
               onClick={() => void confirmDeleteTool()}
+              type="button"
+              variant="destructive"
             >
               {busy ? <Spinner className="size-4" /> : "Delete"}
             </Button>
@@ -232,7 +245,8 @@ function ToolListSection({
     }
 
     return tools.filter((tool) => {
-      const haystack = `${tool.id} ${tool.name} ${tool.description}`.toLowerCase();
+      const haystack =
+        `${tool.id} ${tool.name} ${tool.description}`.toLowerCase();
       return haystack.includes(needle);
     });
   }, [tools, trimmedQuery]);
@@ -242,18 +256,31 @@ function ToolListSection({
       <div className="mb-3 flex items-baseline gap-2">
         <h3 className="type-section-title text-balance">{title}</h3>
         {tools.length > 0 ? (
-          <span className="tabular-nums text-xs text-muted-foreground">
-            {trimmedQuery ? `${filteredTools.length}/${tools.length}` : tools.length}
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {trimmedQuery
+              ? `${filteredTools.length}/${tools.length}`
+              : tools.length}
           </span>
         ) : null}
       </div>
 
       {tools.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border px-4 py-6 text-center">
-          <p className="text-xs text-pretty text-muted-foreground">None registered.</p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-border border-dashed px-4 py-6 text-center">
+          <p className="text-pretty text-muted-foreground text-xs">
+            None registered.
+          </p>
           {onCreateTool ? (
-            <Button type="button" size="sm" disabled={busy} onClick={onCreateTool}>
-              <PlusIcon className="size-4" data-icon="inline-start" aria-hidden />
+            <Button
+              disabled={busy}
+              onClick={onCreateTool}
+              size="sm"
+              type="button"
+            >
+              <PlusIcon
+                aria-hidden
+                className="size-4"
+                data-icon="inline-start"
+              />
               Create custom tool
             </Button>
           ) : null}
@@ -263,41 +290,41 @@ function ToolListSection({
           {showSearch ? (
             <div className="relative">
               <SearchIcon
-                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
+                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
               />
               <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search tools…"
                 aria-label={`Search ${title.toLowerCase()}`}
                 className="h-8 border-border/60 bg-muted/20 pl-8 text-sm shadow-none focus-visible:border-foreground/20 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-foreground/10 dark:bg-muted/15 dark:focus-visible:bg-background/60"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search tools…"
+                value={query}
               />
             </div>
           ) : null}
 
           {filteredTools.length === 0 ? (
-            <p className="py-6 text-center text-pretty text-sm text-muted-foreground">
+            <p className="text-pretty py-6 text-center text-muted-foreground text-sm">
               No tools match &ldquo;{trimmedQuery}&rdquo;.
             </p>
           ) : (
             <ul className="divide-y divide-border rounded-md border border-border">
               {filteredTools.map((tool) => (
                 <ToolListItem
-                  key={tool.id}
-                  tool={tool}
                   busy={busy}
-                  playgroundHref={
-                    canUsePlayground && isDeletableTool(tool)
-                      ? toolPlaygroundPath(tool.id)
-                      : undefined
-                  }
-                  onDelete={() => onDelete(tool.id, tool.name)}
+                  key={tool.id}
                   onConfigure={
                     isOrgAdmin && tool.id === BUILTIN_TOOL_IDS.email
                       ? onConfigureEmail
                       : undefined
                   }
+                  onDelete={() => onDelete(tool.id, tool.name)}
+                  playgroundHref={
+                    canUsePlayground && isDeletableTool(tool)
+                      ? toolPlaygroundPath(tool.id)
+                      : undefined
+                  }
+                  tool={tool}
                 />
               ))}
             </ul>
@@ -325,23 +352,23 @@ function ToolListItem({
 
   const summary = (
     <div className="min-w-0">
-      <p className="text-sm font-medium text-foreground">{tool.name}</p>
-      <p className="mt-0.5 line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground">
+      <p className="font-medium text-foreground text-sm">{tool.name}</p>
+      <p className="mt-0.5 line-clamp-2 text-pretty text-muted-foreground text-xs leading-relaxed">
         {tool.description}
       </p>
     </div>
   );
 
   return (
-    <li className="group flex items-start justify-between gap-3 px-4 py-3 first:rounded-t-md last:rounded-b-md transition-colors duration-150 ease-out hover:bg-muted/40">
+    <li className="group flex items-start justify-between gap-3 px-4 py-3 transition-colors duration-150 ease-out first:rounded-t-md last:rounded-b-md hover:bg-muted/40">
       {playgroundHref ? (
         <Link
-          to={playgroundHref}
           aria-label={`Open playground for ${tool.name}`}
           className={cn(
             "min-w-0 flex-1 text-left",
-            busy && "pointer-events-none opacity-50",
+            busy && "pointer-events-none opacity-50"
           )}
+          to={playgroundHref}
         >
           {summary}
         </Link>
@@ -358,14 +385,14 @@ function ToolListItem({
 
         {onConfigure ? (
           <Button
-            type="button"
-            variant="outline"
-            size="sm"
             disabled={busy}
             onClick={(event) => {
               event.stopPropagation();
               onConfigure();
             }}
+            size="sm"
+            type="button"
+            variant="outline"
           >
             Configure
           </Button>
@@ -373,17 +400,21 @@ function ToolListItem({
 
         {deletable ? (
           <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={busy}
             className="text-muted-foreground hover:text-destructive"
+            disabled={busy}
             onClick={(event) => {
               event.stopPropagation();
               onDelete();
             }}
+            size="sm"
+            type="button"
+            variant="ghost"
           >
-            <Trash2Icon className="size-4" data-icon="inline-start" aria-hidden />
+            <Trash2Icon
+              aria-hidden
+              className="size-4"
+              data-icon="inline-start"
+            />
             Delete
           </Button>
         ) : null}
@@ -392,12 +423,18 @@ function ToolListItem({
   );
 }
 
-function PageState({ message, embedded = false }: { message: string; embedded?: boolean }) {
+function PageState({
+  message,
+  embedded = false,
+}: {
+  message: string;
+  embedded?: boolean;
+}) {
   return (
     <div
       className={cn(
         !embedded && sectionClass,
-        "flex min-h-64 flex-col items-center justify-center gap-3 p-8 text-sm text-muted-foreground",
+        "flex min-h-64 flex-col items-center justify-center gap-3 p-8 text-muted-foreground text-sm"
       )}
     >
       <Spinner className="size-5" />

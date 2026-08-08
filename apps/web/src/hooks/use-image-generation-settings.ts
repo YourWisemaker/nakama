@@ -8,8 +8,8 @@ import { client } from "@/lib/client";
 import { queryKeys } from "@/lib/query-keys";
 
 export const imageGenerationSettingsQueryOptions = queryOptions({
-  queryKey: queryKeys.imageGenerationSettings,
   queryFn: () => client.getImageGenerationSettings(),
+  queryKey: queryKeys.imageGenerationSettings,
 });
 
 export function useImageGenerationSettings() {
@@ -20,7 +20,8 @@ export function useSaveImageGenerationSettings() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (model: string | null) => client.setImageGenerationSettings(model),
+    mutationFn: (model: string | null) =>
+      client.setImageGenerationSettings(model),
     onSuccess: (saved) => {
       queryClient.setQueryData(queryKeys.imageGenerationSettings, saved);
     },

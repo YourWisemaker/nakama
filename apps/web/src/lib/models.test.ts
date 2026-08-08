@@ -13,29 +13,40 @@ import {
 
 function group(
   providerId: string,
-  provider: "openai_compatible" | "openai" | "opencode_go" | "openrouter" | "deepseek" | "cerebras" | "fireworks",
-  flags?: { supportsThinking?: boolean; supportsVision?: boolean; contextWindow?: number },
+  provider:
+    | "openai_compatible"
+    | "openai"
+    | "opencode_go"
+    | "openrouter"
+    | "deepseek"
+    | "cerebras"
+    | "fireworks",
+  flags?: {
+    supportsThinking?: boolean;
+    supportsVision?: boolean;
+    contextWindow?: number;
+  }
 ) {
   return [
     {
-      providerId,
-      providerLabel: providerId,
       models: [
         {
           id: "model-1",
           name: "Model 1",
           provider,
-          ...(flags?.supportsThinking !== undefined
-            ? { supportsThinking: flags.supportsThinking }
-            : {}),
-          ...(flags?.supportsVision !== undefined
-            ? { supportsVision: flags.supportsVision }
-            : {}),
-          ...(flags?.contextWindow !== undefined
-            ? { contextWindow: flags.contextWindow }
-            : {}),
+          ...(flags?.supportsThinking === undefined
+            ? {}
+            : { supportsThinking: flags.supportsThinking }),
+          ...(flags?.supportsVision === undefined
+            ? {}
+            : { supportsVision: flags.supportsVision }),
+          ...(flags?.contextWindow === undefined
+            ? {}
+            : { contextWindow: flags.contextWindow }),
         },
       ],
+      providerId,
+      providerLabel: providerId,
     },
   ];
 }
@@ -45,15 +56,15 @@ describe("resolveModelThinkingSupport", () => {
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("compat-1", "model-1"),
-        group("compat-1", "openai_compatible"),
-      ),
+        group("compat-1", "openai_compatible")
+      )
     ).toBe(false);
 
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("compat-1", "model-1"),
-        group("compat-1", "openai_compatible", { supportsThinking: true }),
-      ),
+        group("compat-1", "openai_compatible", { supportsThinking: true })
+      )
     ).toBe(true);
   });
 
@@ -61,15 +72,15 @@ describe("resolveModelThinkingSupport", () => {
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("openai-1", "model-1"),
-        group("openai-1", "openai"),
-      ),
+        group("openai-1", "openai")
+      )
     ).toBe(true);
 
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("openai-1", "model-1"),
-        group("openai-1", "openai", { supportsThinking: false }),
-      ),
+        group("openai-1", "openai", { supportsThinking: false })
+      )
     ).toBe(false);
   });
 
@@ -77,15 +88,15 @@ describe("resolveModelThinkingSupport", () => {
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("or-1", "model-1"),
-        group("or-1", "openrouter"),
-      ),
+        group("or-1", "openrouter")
+      )
     ).toBe(false);
 
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("or-1", "model-1"),
-        group("or-1", "openrouter", { supportsThinking: true }),
-      ),
+        group("or-1", "openrouter", { supportsThinking: true })
+      )
     ).toBe(true);
   });
 
@@ -93,15 +104,15 @@ describe("resolveModelThinkingSupport", () => {
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("ds-1", "model-1"),
-        group("ds-1", "deepseek"),
-      ),
+        group("ds-1", "deepseek")
+      )
     ).toBe(false);
 
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("ds-1", "model-1"),
-        group("ds-1", "deepseek", { supportsThinking: true }),
-      ),
+        group("ds-1", "deepseek", { supportsThinking: true })
+      )
     ).toBe(true);
   });
 
@@ -109,15 +120,15 @@ describe("resolveModelThinkingSupport", () => {
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("cb-1", "model-1"),
-        group("cb-1", "cerebras"),
-      ),
+        group("cb-1", "cerebras")
+      )
     ).toBe(false);
 
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("cb-1", "model-1"),
-        group("cb-1", "cerebras", { supportsThinking: true }),
-      ),
+        group("cb-1", "cerebras", { supportsThinking: true })
+      )
     ).toBe(true);
   });
 
@@ -125,15 +136,15 @@ describe("resolveModelThinkingSupport", () => {
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("fw-1", "model-1"),
-        group("fw-1", "fireworks"),
-      ),
+        group("fw-1", "fireworks")
+      )
     ).toBe(false);
 
     expect(
       resolveModelThinkingSupport(
         encodeModelSelection("fw-1", "model-1"),
-        group("fw-1", "fireworks", { supportsThinking: true }),
-      ),
+        group("fw-1", "fireworks", { supportsThinking: true })
+      )
     ).toBe(true);
   });
 });
@@ -143,22 +154,22 @@ describe("resolveModelVisionSupport", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("compat-1", "model-1"),
-        group("compat-1", "openai_compatible"),
-      ),
+        group("compat-1", "openai_compatible")
+      )
     ).toBe(false);
 
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("go-1", "model-1"),
-        group("go-1", "opencode_go"),
-      ),
+        group("go-1", "opencode_go")
+      )
     ).toBe(false);
 
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("compat-1", "model-1"),
-        group("compat-1", "openai_compatible", { supportsVision: true }),
-      ),
+        group("compat-1", "openai_compatible", { supportsVision: true })
+      )
     ).toBe(true);
   });
 
@@ -166,15 +177,15 @@ describe("resolveModelVisionSupport", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("openai-1", "model-1"),
-        group("openai-1", "openai"),
-      ),
+        group("openai-1", "openai")
+      )
     ).toBe(true);
 
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("openai-1", "model-1"),
-        group("openai-1", "openai", { supportsVision: false }),
-      ),
+        group("openai-1", "openai", { supportsVision: false })
+      )
     ).toBe(false);
   });
 
@@ -182,15 +193,15 @@ describe("resolveModelVisionSupport", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("cb-1", "model-1"),
-        group("cb-1", "cerebras"),
-      ),
+        group("cb-1", "cerebras")
+      )
     ).toBe(false);
 
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("cb-1", "model-1"),
-        group("cb-1", "cerebras", { supportsVision: true }),
-      ),
+        group("cb-1", "cerebras", { supportsVision: true })
+      )
     ).toBe(true);
   });
 
@@ -198,15 +209,15 @@ describe("resolveModelVisionSupport", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("fw-1", "model-1"),
-        group("fw-1", "fireworks"),
-      ),
+        group("fw-1", "fireworks")
+      )
     ).toBe(false);
 
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("fw-1", "model-1"),
-        group("fw-1", "fireworks", { supportsVision: true }),
-      ),
+        group("fw-1", "fireworks", { supportsVision: true })
+      )
     ).toBe(true);
   });
 });
@@ -222,7 +233,9 @@ describe("isProviderTypeAlreadyConfigured", () => {
   test("always allows another openai_compatible instance", () => {
     const configured = new Set(["openai_compatible", "openai"]);
 
-    expect(isProviderTypeAlreadyConfigured("openai_compatible", configured)).toBe(false);
+    expect(
+      isProviderTypeAlreadyConfigured("openai_compatible", configured)
+    ).toBe(false);
   });
 
   test("always allows another ollama instance", () => {
@@ -234,11 +247,15 @@ describe("isProviderTypeAlreadyConfigured", () => {
 
 describe("firstAvailableProviderOption", () => {
   test("keeps preferred provider when it is still free", () => {
-    expect(firstAvailableProviderOption(new Set(["anthropic"]), "openai")).toBe("openai");
+    expect(firstAvailableProviderOption(new Set(["anthropic"]), "openai")).toBe(
+      "openai"
+    );
   });
 
   test("falls through to the next free builtin, then custom", () => {
-    expect(firstAvailableProviderOption(new Set(["openai"]), "openai")).toBe("anthropic");
+    expect(firstAvailableProviderOption(new Set(["openai"]), "openai")).toBe(
+      "anthropic"
+    );
     expect(
       firstAvailableProviderOption(
         new Set([
@@ -251,8 +268,8 @@ describe("firstAvailableProviderOption", () => {
           "fireworks",
           "opencode_go",
         ]),
-        "openai",
-      ),
+        "openai"
+      )
     ).toBe("ollama");
   });
 });
@@ -270,24 +287,34 @@ describe("hasOpenCodeZenProvider", () => {
   test("detects Zen by base URL or label on openai_compatible", () => {
     expect(
       hasOpenCodeZenProvider([
-        { type: "openai_compatible", baseUrl: "https://opencode.ai/zen/v1", label: "OpenCode Zen" },
-      ]),
+        {
+          baseUrl: "https://opencode.ai/zen/v1",
+          label: "OpenCode Zen",
+          type: "openai_compatible",
+        },
+      ])
     ).toBe(true);
 
     expect(
       hasOpenCodeZenProvider([
-        { type: "openai_compatible", baseUrl: "https://localhost:11434/v1", label: "Ollama" },
-      ]),
+        {
+          baseUrl: "https://localhost:11434/v1",
+          label: "Ollama",
+          type: "openai_compatible",
+        },
+      ])
     ).toBe(false);
 
     expect(
       hasOpenCodeZenProvider([
-        { type: "openai_compatible", baseUrl: null, label: "OpenCode Zen" },
-      ]),
+        { baseUrl: null, label: "OpenCode Zen", type: "openai_compatible" },
+      ])
     ).toBe(true);
 
     expect(
-      hasOpenCodeZenProvider([{ type: "opencode_go", baseUrl: "https://opencode.ai/zen/go/v1" }]),
+      hasOpenCodeZenProvider([
+        { baseUrl: "https://opencode.ai/zen/go/v1", type: "opencode_go" },
+      ])
     ).toBe(false);
   });
 });
@@ -297,8 +324,8 @@ describe("IMAGE_GENERATION_MODEL_OPTIONS", () => {
     expect(IMAGE_GENERATION_MODEL_OPTIONS).toHaveLength(1);
     expect(IMAGE_GENERATION_MODEL_OPTIONS[0]?.id).toBe("gpt-image-2");
     expect(IMAGE_GENERATION_SELECTION).toBe("openai::gpt-image-2");
-    expect(encodeModelSelection("openai", IMAGE_GENERATION_MODEL_OPTIONS[0]!.id)).toBe(
-      IMAGE_GENERATION_SELECTION,
-    );
+    expect(
+      encodeModelSelection("openai", IMAGE_GENERATION_MODEL_OPTIONS[0]!.id)
+    ).toBe(IMAGE_GENERATION_SELECTION);
   });
 });

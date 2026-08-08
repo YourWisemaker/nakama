@@ -1,4 +1,6 @@
-export const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
+export const convertBlobUrlToDataUrl = async (
+  url: string
+): Promise<string | null> => {
   try {
     const response = await fetch(url);
     if (!response.ok) {

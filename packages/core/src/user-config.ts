@@ -1,5 +1,5 @@
-import { homedir } from "node:os";
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import {
   isValidBaseUrl,
@@ -8,13 +8,6 @@ import {
   serializeCustomModels,
   validateDisplayName,
 } from "./compatible-provider-config";
-import {
-  defaultOllamaBaseUrl,
-  defaultOllamaLabel,
-  ollamaRequiresApiKey,
-  parseOllamaHostMode,
-  resolveOllamaHostMode,
-} from "./ollama-provider-config";
 import type {
   CustomModelEntry,
   ProviderChatOptions,
@@ -24,6 +17,13 @@ import type {
   VisionSettings,
 } from "./contract";
 import { ensureDir, readTextOrNull, writePrivateTextFile } from "./fs";
+import {
+  defaultOllamaBaseUrl,
+  defaultOllamaLabel,
+  ollamaRequiresApiKey,
+  parseOllamaHostMode,
+  resolveOllamaHostMode,
+} from "./ollama-provider-config";
 import {
   apiKeyEnvVarForProvider,
   parseProviderName,
@@ -38,27 +38,27 @@ export {
 } from "./provider-resolution";
 
 export interface ProviderInstance {
-  id: string;
-  type: UserProviderName;
-  label: string;
   apiKey: string;
   baseUrl?: string;
-  hostMode?: import("./contract").OllamaHostMode;
-  customModels?: CustomModelEntry[];
   createdAt: string;
+  customModels?: CustomModelEntry[];
+  hostMode?: import("./contract").OllamaHostMode;
+  id: string;
+  label: string;
+  type: UserProviderName;
 }
 
 export interface UserConfig {
   defaultProviderId: string | null;
-  providers: ProviderInstance[];
-  timezone?: string;
-  thinkingEnabled?: boolean;
-  thinkingEffort?: ThinkingEffort;
-  visionModel?: string | null;
-  transcriptionModel?: string | null;
   imageModel?: string | null;
-  localAuthTokenHash?: string;
   localAuthToken?: string;
+  localAuthTokenHash?: string;
+  providers: ProviderInstance[];
+  thinkingEffort?: ThinkingEffort;
+  thinkingEnabled?: boolean;
+  timezone?: string;
+  transcriptionModel?: string | null;
+  visionModel?: string | null;
 }
 
 export const DEFAULT_TIMEZONE = "UTC";
@@ -68,16 +68,16 @@ export const DEFAULT_THINKING_EFFORT: ThinkingEffort = "medium";
 const PROVIDER_SECTION_PREFIX = "provider.";
 
 const PROVIDER_TYPE_LABELS: Record<UserProviderName, string> = {
-  openai: "OpenAI",
   anthropic: "Anthropic",
-  openrouter: "OpenRouter",
-  gemini: "Gemini",
-  deepseek: "DeepSeek",
   cerebras: "Cerebras",
+  deepseek: "DeepSeek",
   fireworks: "Fireworks",
+  gemini: "Gemini",
   ollama: "Ollama",
+  openai: "OpenAI",
   openai_compatible: "Custom",
   opencode_go: "OpenCode Go",
+  openrouter: "OpenRouter",
 };
 
 export function createProviderInstanceId(): string {
@@ -87,13 +87,14 @@ export function createProviderInstanceId(): string {
 export function defaultProviderLabel(
   type: UserProviderName,
   existing: ProviderInstance[],
-  options?: { hostMode?: import("./contract").OllamaHostMode },
+  options?: { hostMode?: import("./contract").OllamaHostMode }
 ): string {
   if (type === "ollama" && options?.hostMode) {
     const base = defaultOllamaLabel(options.hostMode);
     const sameMode = existing.filter(
       (entry) =>
-        entry.type === "ollama" && resolveOllamaHostMode(entry) === options.hostMode,
+        entry.type === "ollama" &&
+        resolveOllamaHostMode(entry) === options.hostMode
     );
 
     if (sameMode.length === 0) {
@@ -117,7 +118,7 @@ export function normalizeProviderInstanceLabel(
   type: UserProviderName,
   label: string | undefined,
   existing: ProviderInstance[],
-  options?: { hostMode?: import("./contract").OllamaHostMode },
+  options?: { hostMode?: import("./contract").OllamaHostMode }
 ): string {
   const trimmed = label?.trim();
 
@@ -130,13 +131,13 @@ export function normalizeProviderInstanceLabel(
 
 export function findProviderInstance(
   config: UserConfig | null | undefined,
-  providerId: string,
+  providerId: string
 ): ProviderInstance | null {
   return config?.providers.find((entry) => entry.id === providerId) ?? null;
 }
 
 export function getActiveProviderInstance(
-  config: UserConfig | null | undefined,
+  config: UserConfig | null | undefined
 ): ProviderInstance | null {
   if (!config?.defaultProviderId) {
     return null;
@@ -147,7 +148,7 @@ export function getActiveProviderInstance(
 
 export function isProviderConfigured(
   config: UserConfig | null | undefined,
-  env: Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = process.env
 ): boolean {
   const active = getActiveProviderInstance(config);
 
@@ -198,7 +199,7 @@ export function isValidTimezone(timezone: string): boolean {
 
 export function validateTimezone(
   timezone: string | undefined,
-  fallback = DEFAULT_TIMEZONE,
+  fallback = DEFAULT_TIMEZONE
 ): string {
   const value = timezone?.trim() || fallback;
 
@@ -245,11 +246,11 @@ export async function loadUserConfig(): Promise<UserConfig | null> {
     defaultProviderId: parsed.global.default_provider_id?.trim() || null,
     providers,
     ...(timezone ? { timezone } : {}),
-    thinkingEnabled: thinking.enabled,
-    thinkingEffort: thinking.effort,
-    visionModel: readVisionModel(parsed.global),
-    transcriptionModel: readTranscriptionModel(parsed.global),
     imageModel: readImageModel(parsed.global),
+    thinkingEffort: thinking.effort,
+    thinkingEnabled: thinking.enabled,
+    transcriptionModel: readTranscriptionModel(parsed.global),
+    visionModel: readVisionModel(parsed.global),
     ...(parsed.global.local_auth_token_hash?.trim()
       ? { localAuthTokenHash: parsed.global.local_auth_token_hash.trim() }
       : {}),
@@ -294,7 +295,9 @@ export async function loadUserVisionSettings(): Promise<VisionSettings> {
   return { model: readVisionModel(parseIniWithSections(raw).global) };
 }
 
-export async function saveUserVisionSettings(settings: VisionSettings): Promise<void> {
+export async function saveUserVisionSettings(
+  settings: VisionSettings
+): Promise<void> {
   const model = settings.model?.trim() || null;
   const existing = await loadUserConfig();
 
@@ -304,7 +307,8 @@ export async function saveUserVisionSettings(settings: VisionSettings): Promise<
   }
 
   const raw = await readTextOrNull(getUserConfigPath());
-  const parsed = raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
+  const parsed =
+    raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
   const lines = buildConfigIniLines(parsed.global, parsed.sections, {
     vision_model: model ?? "",
   });
@@ -329,8 +333,8 @@ export async function loadUserThinkingSettings(): Promise<ThinkingSettings> {
 
   if (raw === null) {
     return {
-      enabled: DEFAULT_THINKING_ENABLED,
       effort: DEFAULT_THINKING_EFFORT,
+      enabled: DEFAULT_THINKING_ENABLED,
     };
   }
 
@@ -338,7 +342,7 @@ export async function loadUserThinkingSettings(): Promise<ThinkingSettings> {
 }
 
 export async function saveUserThinkingSettings(
-  settings: ThinkingSettings,
+  settings: ThinkingSettings
 ): Promise<void> {
   const effort = validateThinkingEffort(settings.effort);
   const enabled = settings.enabled;
@@ -347,14 +351,15 @@ export async function saveUserThinkingSettings(
   if (existing) {
     await saveUserConfig({
       ...existing,
-      thinkingEnabled: enabled,
       thinkingEffort: effort,
+      thinkingEnabled: enabled,
     });
     return;
   }
 
   const raw = await readTextOrNull(getUserConfigPath());
-  const parsed = raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
+  const parsed =
+    raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
   const lines = buildConfigIniLines(parsed.global, parsed.sections, {
     thinking: enabled ? "on" : "off",
     thinking_effort: effort,
@@ -366,24 +371,24 @@ export async function saveUserThinkingSettings(
 }
 
 export function buildThinkingProviderOptions(
-  config: Pick<UserConfig, "thinkingEnabled" | "thinkingEffort"> | null,
+  config: Pick<UserConfig, "thinkingEnabled" | "thinkingEffort"> | null
 ): ProviderChatOptions["thinking"] | undefined {
   const enabled = config?.thinkingEnabled ?? DEFAULT_THINKING_ENABLED;
 
   if (!enabled) {
-    return undefined;
+    return;
   }
 
   return {
-    enabled: true,
     effort: config?.thinkingEffort ?? DEFAULT_THINKING_EFFORT,
+    enabled: true,
   };
 }
 
 export async function saveUserTimezone(timezone: string): Promise<void> {
   const trimmed = timezone.trim();
 
-  if (!trimmed || !isValidTimezone(trimmed)) {
+  if (!(trimmed && isValidTimezone(trimmed))) {
     throw new Error(`Invalid timezone: ${timezone}`);
   }
 
@@ -395,7 +400,8 @@ export async function saveUserTimezone(timezone: string): Promise<void> {
   }
 
   const raw = await readTextOrNull(getUserConfigPath());
-  const parsed = raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
+  const parsed =
+    raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
   const lines = buildConfigIniLines(parsed.global, parsed.sections, {
     timezone: trimmed,
   });
@@ -407,7 +413,9 @@ export async function saveUserTimezone(timezone: string): Promise<void> {
 
 function readWebPublicUrl(values: Record<string, string>): string | undefined {
   const trimmed = values.web_public_url?.trim();
-  return trimmed && isValidBaseUrl(trimmed) ? normalizeBaseUrl(new URL(trimmed).origin) : undefined;
+  return trimmed && isValidBaseUrl(trimmed)
+    ? normalizeBaseUrl(new URL(trimmed).origin)
+    : undefined;
 }
 
 export function readUserWebPublicUrlSync(): string | null {
@@ -429,10 +437,12 @@ export async function loadUserWebPublicUrl(): Promise<string | null> {
   return readWebPublicUrl(parseIniWithSections(raw).global) ?? null;
 }
 
-export async function saveUserWebPublicUrl(webPublicUrl: string): Promise<string> {
+export async function saveUserWebPublicUrl(
+  webPublicUrl: string
+): Promise<string> {
   const trimmed = webPublicUrl.trim();
 
-  if (!trimmed || !isValidBaseUrl(trimmed)) {
+  if (!(trimmed && isValidBaseUrl(trimmed))) {
     throw new Error("webPublicUrl must be a valid http or https URL.");
   }
 
@@ -441,7 +451,8 @@ export async function saveUserWebPublicUrl(webPublicUrl: string): Promise<string
 
   if (existing) {
     const raw = await readTextOrNull(getUserConfigPath());
-    const parsed = raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
+    const parsed =
+      raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
     await writeParsedConfigIni(parsed.global, parsed.sections, {
       web_public_url: normalized,
     });
@@ -449,7 +460,8 @@ export async function saveUserWebPublicUrl(webPublicUrl: string): Promise<string
   }
 
   const raw = await readTextOrNull(getUserConfigPath());
-  const parsed = raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
+  const parsed =
+    raw === null ? { global: {}, sections: {} } : parseIniWithSections(raw);
   const lines = buildConfigIniLines(parsed.global, parsed.sections, {
     web_public_url: normalized,
   });
@@ -474,13 +486,13 @@ export async function saveUserConfig(config: UserConfig): Promise<void> {
   const global: Record<string, string | undefined> = {
     ...existingParsed.global,
     default_provider_id: config.defaultProviderId ?? "",
-    timezone: config.timezone,
-    thinking: thinking.enabled ? "on" : "off",
-    thinking_effort: thinking.effort,
-    vision_model: config.visionModel ?? "",
-    transcription_model: config.transcriptionModel ?? "",
     image_model: config.imageModel ?? "",
     local_auth_token_hash: config.localAuthTokenHash,
+    thinking: thinking.enabled ? "on" : "off",
+    thinking_effort: thinking.effort,
+    timezone: config.timezone,
+    transcription_model: config.transcriptionModel ?? "",
+    vision_model: config.visionModel ?? "",
   };
 
   const sections: Record<string, Record<string, string>> = {};
@@ -495,7 +507,7 @@ export async function saveUserConfig(config: UserConfig): Promise<void> {
     label: normalizeProviderInstanceLabel(
       provider.type,
       provider.label,
-      config.providers.slice(0, index),
+      config.providers.slice(0, index)
     ),
   }));
 
@@ -510,7 +522,7 @@ export async function saveUserConfig(config: UserConfig): Promise<void> {
 export async function writeParsedConfigIni(
   global: Record<string, string | undefined>,
   sections: Record<string, Record<string, string>>,
-  patch: Record<string, string | undefined> = {},
+  patch: Record<string, string | undefined> = {}
 ): Promise<void> {
   const lines = buildConfigIniLines(global, sections, patch);
   await writePrivateTextFile(getUserConfigPath(), lines.join("\n"), {
@@ -563,7 +575,7 @@ export function parseIniWithSections(raw: string): ParsedIniFile {
 }
 
 function loadProvidersFromSections(
-  sections: Record<string, Record<string, string>>,
+  sections: Record<string, Record<string, string>>
 ): ProviderInstance[] {
   const providers: ProviderInstance[] = [];
 
@@ -575,7 +587,7 @@ function loadProvidersFromSections(
     const id = sectionName.slice(PROVIDER_SECTION_PREFIX.length).trim();
     const type = parseProviderName(values.type);
 
-    if (!id || !type) {
+    if (!(id && type)) {
       continue;
     }
 
@@ -593,14 +605,17 @@ function loadProvidersFromSections(
       type === "opencode_go"
         ? parseCustomModelsJson(values.models_json)
         : undefined;
-    const hostMode = type === "ollama" ? parseOllamaHostMode(values.host_mode) ?? undefined : undefined;
+    const hostMode =
+      type === "ollama"
+        ? (parseOllamaHostMode(values.host_mode) ?? undefined)
+        : undefined;
     const createdAt = values.created_at?.trim() || new Date(0).toISOString();
 
     providers.push({
-      id,
-      type,
-      label,
       apiKey,
+      id,
+      label,
+      type,
       ...(baseUrl ? { baseUrl } : {}),
       ...(hostMode ? { hostMode } : {}),
       ...(customModels ? { customModels } : {}),
@@ -609,16 +624,18 @@ function loadProvidersFromSections(
   }
 
   return providers.sort((left, right) =>
-    left.createdAt.localeCompare(right.createdAt),
+    left.createdAt.localeCompare(right.createdAt)
   );
 }
 
-function buildProviderSectionValues(provider: ProviderInstance): Record<string, string> {
+function buildProviderSectionValues(
+  provider: ProviderInstance
+): Record<string, string> {
   const values: Record<string, string> = {
-    type: provider.type,
-    label: normalizeProviderInstanceLabel(provider.type, provider.label, []),
     api_key: provider.apiKey,
     created_at: provider.createdAt,
+    label: normalizeProviderInstanceLabel(provider.type, provider.label, []),
+    type: provider.type,
   };
 
   if (provider.baseUrl?.trim()) {
@@ -639,13 +656,15 @@ function buildProviderSectionValues(provider: ProviderInstance): Record<string, 
 function buildConfigIniLines(
   global: Record<string, string | undefined>,
   sections: Record<string, Record<string, string>>,
-  patch: Record<string, string | undefined> = {},
+  patch: Record<string, string | undefined> = {}
 ): string[] {
   const mergedGlobal = { ...global, ...patch };
   const lines = ["# Nakama user config"];
 
   if (mergedGlobal.default_provider_id !== undefined) {
-    lines.push(`default_provider_id=${mergedGlobal.default_provider_id.trim()}`);
+    lines.push(
+      `default_provider_id=${mergedGlobal.default_provider_id.trim()}`
+    );
   }
 
   if (mergedGlobal.timezone?.trim()) {
@@ -663,12 +682,14 @@ function buildConfigIniLines(
   lines.push(`thinking=${thinkingEnabled ? "on" : "off"}`);
 
   const effort = validateThinkingEffort(
-    mergedGlobal.thinking_effort?.trim() as ThinkingEffort | undefined,
+    mergedGlobal.thinking_effort?.trim() as ThinkingEffort | undefined
   );
   lines.push(`thinking_effort=${effort}`);
 
   if (mergedGlobal.local_auth_token_hash?.trim()) {
-    lines.push(`local_auth_token_hash=${mergedGlobal.local_auth_token_hash.trim()}`);
+    lines.push(
+      `local_auth_token_hash=${mergedGlobal.local_auth_token_hash.trim()}`
+    );
   }
 
   lines.push("");
@@ -686,16 +707,22 @@ function buildConfigIniLines(
   return lines;
 }
 
-function readThinkingSettings(values: Record<string, string>): ThinkingSettings {
+function readThinkingSettings(
+  values: Record<string, string>
+): ThinkingSettings {
   const raw = values.thinking?.trim().toLowerCase();
 
   return {
+    effort: validateThinkingEffort(
+      values.thinking_effort?.trim() as ThinkingEffort | undefined
+    ),
     enabled: raw === undefined ? DEFAULT_THINKING_ENABLED : raw !== "off",
-    effort: validateThinkingEffort(values.thinking_effort?.trim() as ThinkingEffort | undefined),
   };
 }
 
-function validateThinkingEffort(value: ThinkingEffort | undefined): ThinkingEffort {
+function validateThinkingEffort(
+  value: ThinkingEffort | undefined
+): ThinkingEffort {
   if (value === "low" || value === "medium" || value === "high") {
     return value;
   }
@@ -710,7 +737,7 @@ function readTimezone(values: Record<string, string>): string | undefined {
 
 export function validateProviderInstanceLabel(
   label: string,
-  type: UserProviderName,
+  type: UserProviderName
 ): string {
   const trimmed = label.trim();
 

@@ -6,7 +6,6 @@ export interface DiscordBotInfo {
 }
 
 export interface GuildMessageHandlingDecision {
-  shouldHandle: boolean;
   reason:
     | "slash-command"
     | "missing-bot-info"
@@ -17,6 +16,7 @@ export interface GuildMessageHandlingDecision {
     | "bot-mention"
     | "no-text"
     | "no-trigger";
+  shouldHandle: boolean;
 }
 
 export interface GuildMessageHandlingOptions {
@@ -31,7 +31,7 @@ export function isDiscordGuildMessage(message: Message): boolean {
 export function resolveChannelOrgKey(
   channelId: string,
   userId: string,
-  isGuild: boolean,
+  isGuild: boolean
 ): string {
   return isGuild ? `g:${channelId}` : `u:${userId}`;
 }
@@ -50,7 +50,7 @@ export function resolveOrgChannelId(
   message: Message,
   channelId: string,
   isGuild: boolean,
-  options?: ThreadParentResolution,
+  options?: ThreadParentResolution
 ): string {
   if (!isGuild) {
     return channelId;
@@ -67,14 +67,15 @@ export function resolveConversationKey(
   message: Message,
   channelId: string,
   isGuild: boolean,
-  options?: ThreadParentResolution,
+  options?: ThreadParentResolution
 ): string {
   if (!isGuild) {
     return channelId;
   }
 
   if (message.channel.isThread()) {
-    const parentId = message.channel.parentId ?? options?.parentChannelId ?? channelId;
+    const parentId =
+      message.channel.parentId ?? options?.parentChannelId ?? channelId;
     return `g:${parentId}:t:${message.channel.id}`;
   }
 
@@ -87,7 +88,7 @@ export function isDiscordThreadMessage(message: Message): boolean {
 
 export function resolveBotInfo(
   message: Message,
-  storedBotInfo?: DiscordBotInfo,
+  storedBotInfo?: DiscordBotInfo
 ): DiscordBotInfo | undefined {
   if (message.client.user?.id) {
     return {
@@ -102,56 +103,60 @@ export function resolveBotInfo(
 export function shouldHandleGuildMessage(
   message: Message,
   storedBotInfo?: DiscordBotInfo,
-  options?: GuildMessageHandlingOptions,
+  options?: GuildMessageHandlingOptions
 ): boolean {
-  return explainGuildMessageHandling(message, storedBotInfo, options).shouldHandle;
+  return explainGuildMessageHandling(message, storedBotInfo, options)
+    .shouldHandle;
 }
 
 export function explainGuildMessageHandling(
   message: Message,
   storedBotInfo?: DiscordBotInfo,
-  options?: GuildMessageHandlingOptions,
+  options?: GuildMessageHandlingOptions
 ): GuildMessageHandlingDecision {
   const text = message.content?.trim() ?? "";
   const botInfo = resolveBotInfo(message, storedBotInfo);
 
   if (text.startsWith("/")) {
-    return { shouldHandle: true, reason: "slash-command" };
+    return { reason: "slash-command", shouldHandle: true };
   }
 
   if (!botInfo) {
-    return { shouldHandle: false, reason: "missing-bot-info" };
+    return { reason: "missing-bot-info", shouldHandle: false };
   }
 
   // Bot-owned threads continue without a mention. Foreign threads stay quiet
   // unless the user @mentions the bot or replies to it — then we claim the thread.
   if (message.channel.isThread()) {
     if (options?.botOwnsThread) {
-      return { shouldHandle: true, reason: "in-thread" };
+      return { reason: "in-thread", shouldHandle: true };
     }
 
     if (isReplyToBot(message, botInfo.id) || hasBotMention(message, botInfo)) {
-      return { shouldHandle: true, reason: "claim-thread" };
+      return { reason: "claim-thread", shouldHandle: true };
     }
 
-    return { shouldHandle: false, reason: "foreign-thread" };
+    return { reason: "foreign-thread", shouldHandle: false };
   }
 
   if (isReplyToBot(message, botInfo.id)) {
-    return { shouldHandle: true, reason: "reply-to-bot" };
+    return { reason: "reply-to-bot", shouldHandle: true };
   }
 
   if (hasBotMention(message, botInfo)) {
-    return { shouldHandle: true, reason: "bot-mention" };
+    return { reason: "bot-mention", shouldHandle: true };
   }
 
   return {
-    shouldHandle: false,
     reason: text ? "no-trigger" : "no-text",
+    shouldHandle: false,
   };
 }
 
-export function stripBotMention(text: string, botInfo: DiscordBotInfo | undefined): string {
+export function stripBotMention(
+  text: string,
+  botInfo: DiscordBotInfo | undefined
+): string {
   if (!botInfo) {
     return text.trim();
   }
@@ -159,7 +164,10 @@ export function stripBotMention(text: string, botInfo: DiscordBotInfo | undefine
   const patterns = [
     new RegExp(`<@!?${botInfo.id}>`, "g"),
     botInfo.username
-      ? new RegExp(`@${botInfo.username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "gi")
+      ? new RegExp(
+          `@${botInfo.username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+          "gi"
+        )
       : null,
   ].filter(Boolean) as RegExp[];
 

@@ -11,20 +11,39 @@ describe("sendDiscordArtifactAttachment limits", () => {
   });
 
   test("accepts common Discord attachment types", () => {
-    expect(isDiscordAttachableArtifact({ filename: "deck.pdf", mimeType: "application/pdf" })).toBe(
-      true,
-    );
-    expect(isDiscordAttachableArtifact({ filename: "export.csv", mimeType: "text/csv" })).toBe(true);
-    expect(isDiscordAttachableArtifact({ filename: "shot.png", mimeType: "image/png" })).toBe(true);
-    expect(isDiscordAttachableArtifact({ filename: "bundle.zip", mimeType: "application/zip" })).toBe(
-      true,
-    );
+    expect(
+      isDiscordAttachableArtifact({
+        filename: "deck.pdf",
+        mimeType: "application/pdf",
+      })
+    ).toBe(true);
+    expect(
+      isDiscordAttachableArtifact({
+        filename: "export.csv",
+        mimeType: "text/csv",
+      })
+    ).toBe(true);
+    expect(
+      isDiscordAttachableArtifact({
+        filename: "shot.png",
+        mimeType: "image/png",
+      })
+    ).toBe(true);
+    expect(
+      isDiscordAttachableArtifact({
+        filename: "bundle.zip",
+        mimeType: "application/zip",
+      })
+    ).toBe(true);
   });
 
   test("rejects unsupported attachment types with a clear reason", () => {
-    expect(isDiscordAttachableArtifact({ filename: "payload.exe", mimeType: "application/octet-stream" })).toBe(
-      false,
-    );
+    expect(
+      isDiscordAttachableArtifact({
+        filename: "payload.exe",
+        mimeType: "application/octet-stream",
+      })
+    ).toBe(false);
   });
 
   test("returns a clear error when the file exceeds the Discord size cap", async () => {
@@ -35,9 +54,9 @@ describe("sendDiscordArtifactAttachment limits", () => {
     };
 
     const result = await sendDiscordArtifactAttachment(channel as never, {
+      bytes: new Uint8Array(DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES + 1),
       filename: "deck.pdf",
       mimeType: "application/pdf",
-      bytes: new Uint8Array(DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES + 1),
     });
 
     expect(result.ok).toBe(false);
@@ -53,9 +72,9 @@ describe("sendDiscordArtifactAttachment limits", () => {
     };
 
     const result = await sendDiscordArtifactAttachment(channel as never, {
+      bytes: new Uint8Array([1, 2, 3]),
       filename: "payload.exe",
       mimeType: "application/octet-stream",
-      bytes: new Uint8Array([1, 2, 3]),
     });
 
     expect(result.ok).toBe(false);

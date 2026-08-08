@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { SettingsModelTile } from "@/components/settings/settings-model-tile";
 import {
   Select,
   SelectContent,
@@ -6,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SettingsModelTile } from "@/components/settings/settings-model-tile";
 import { useModelsQuery } from "@/hooks/use-app-queries";
 import {
   useImageGenerationSettings,
@@ -32,15 +32,15 @@ export function ImageGenerationSettingsCard() {
 
   const providerModelGroups = useMemo(
     () => groupModelsByProvider(modelsResponse?.models ?? []),
-    [modelsResponse?.models],
+    [modelsResponse?.models]
   );
 
   const openaiAvailable = useMemo(
     () =>
       providerModelGroups.some((group) =>
-        group.models.some((model) => model.provider === "openai"),
+        group.models.some((model) => model.provider === "openai")
       ),
-    [providerModelGroups],
+    [providerModelGroups]
   );
 
   const imageModelGroups = useMemo(() => {
@@ -50,13 +50,13 @@ export function ImageGenerationSettingsCard() {
 
     return [
       {
-        providerId: "openai",
-        providerLabel: "OpenAI",
         models: IMAGE_GENERATION_MODEL_OPTIONS.map((option) => ({
           id: option.id,
           name: option.name,
           provider: "openai" as const,
         })),
+        providerId: "openai",
+        providerLabel: "OpenAI",
       },
     ];
   }, [openaiAvailable]);
@@ -78,68 +78,77 @@ export function ImageGenerationSettingsCard() {
 
   return (
     <SettingsModelTile
-      title="Image generation model"
       footer={
         savedHint || formError ? (
           <>
             {savedHint ? (
-              <p className="text-xs text-emerald-700 dark:text-emerald-300" role="status">
+              <p
+                className="text-emerald-700 text-xs dark:text-emerald-300"
+                role="status"
+              >
                 {savedHint}
               </p>
             ) : null}
             {formError ? (
-              <p className="text-xs text-destructive" role="alert">
+              <p className="text-destructive text-xs" role="alert">
                 {formError}
               </p>
             ) : null}
           </>
         ) : undefined
       }
+      title="Image generation model"
     >
       <Select
-        value={selectionValue}
         disabled={saveImageGenerationMutation.isPending || !openaiAvailable}
         onValueChange={(value) => {
           if (!value) {
             return;
           }
 
-          const model = value === CLEAR_IMAGE_GENERATION_MODEL_VALUE ? null : String(value);
+          const model =
+            value === CLEAR_IMAGE_GENERATION_MODEL_VALUE ? null : String(value);
 
           setFormError(null);
           setSelection(model ?? "");
           setSavedHint(null);
 
           saveImageGenerationMutation.mutate(model, {
+            onError: (error) => {
+              setSelection(imageGenerationSettings?.model ?? "");
+              setFormError(formatError(error));
+            },
             onSuccess: (saved) => {
               setSelection(saved.model ?? "");
               setSavedHint(
                 saved.model
                   ? `Saved · ${profileModelLabel(saved.model, imageModelGroups)}`
-                  : "Cleared",
+                  : "Cleared"
               );
-            },
-            onError: (error) => {
-              setSelection(imageGenerationSettings?.model ?? "");
-              setFormError(formatError(error));
             },
           });
         }}
+        value={selectionValue}
       >
-        <SelectTrigger aria-label="Image generation model" className="h-9 w-full">
+        <SelectTrigger
+          aria-label="Image generation model"
+          className="h-9 w-full"
+        >
           <SelectValue placeholder="Select image generation model">
             {selection
               ? profileModelLabel(selection, imageModelGroups)
-              : !openaiAvailable
-                ? "No OpenAI provider"
-                : "Not configured"}
+              : openaiAvailable
+                ? "Not configured"
+                : "No OpenAI provider"}
           </SelectValue>
         </SelectTrigger>
         <SelectContent
           alignItemWithTrigger={false}
           className="w-max min-w-72 max-w-[min(24rem,92vw)]"
         >
-          <SelectItem value={CLEAR_IMAGE_GENERATION_MODEL_VALUE}>Not configured</SelectItem>
+          <SelectItem value={CLEAR_IMAGE_GENERATION_MODEL_VALUE}>
+            Not configured
+          </SelectItem>
           {openaiAvailable ? (
             <SelectItem value={IMAGE_GENERATION_SELECTION}>
               OpenAI: {IMAGE_GENERATION_MODEL_OPTIONS[0].name}
