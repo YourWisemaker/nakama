@@ -1,14 +1,33 @@
-import type { ProfileSummary, StoredTask } from "@nakama/core/contract";
+import type {
+  ProfileSummary,
+  StoredTask,
+  ThinkingEffort,
+} from "@nakama/core/contract";
 import { useQueryClient } from "@tanstack/react-query";
+import type { FileUIPart } from "ai";
 import { XIcon } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useAppContext } from "@/context/use-app-context";
+import { useProfileQuery } from "@/hooks/use-app-queries";
+import { useUpdateProfileMutation } from "@/hooks/use-resource-mutations";
 import { useTaskMessagesQuery } from "@/hooks/use-tasks";
+import {
+  buildThinkingSettingsPayload,
+  useSaveThinkingSettings,
+  useThinkingSettings,
+} from "@/hooks/use-thinking-settings";
 import { type ChatListItem, chatMessagesToListItems } from "@/lib/chat-history";
+import {
+  filePartsToDisplayDocuments,
+  filePartsToDocumentAttachments,
+  filePartsToImageAttachments,
+} from "@/lib/chat-images";
 import {
   appendOutgoingMessages,
   buildStreamHandlers,
@@ -17,9 +36,22 @@ import {
   isAbortError,
 } from "@/lib/chat-stream";
 import { client, formatError } from "@/lib/client";
-import { NAV_ITEM_ICONS } from "@/lib/navigation";
+import {
+  decodeModelSelection,
+  effectiveProfileModelSelection,
+  extractModelId,
+  groupModelsByProvider,
+  resolveModelThinkingSupport,
+  resolveModelVisionSupport,
+} from "@/lib/models";
+import { NAV_ITEM_ICONS, SETUP_PATH } from "@/lib/navigation";
 import { queryKeys } from "@/lib/query-keys";
 import { TASK_STATUS_BADGE } from "@/lib/task-board";
+import {
+  DEFAULT_THINKING_EFFORT,
+  shouldBlockThinkingEffortChange,
+  shouldShowThinkingEffort,
+} from "@/lib/thinking-settings";
 import { cn } from "@/lib/utils";
 
 const ChatNavIcon = NAV_ITEM_ICONS.chat;
@@ -35,7 +67,15 @@ export function TaskRunHistoryPanel({
   profile,
   onClose,
 }: TaskRunHistoryPanelProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { health, models } = useAppContext();
+  const profileId = profile?.id ?? task.profileId;
+  const profileDetailQuery = useProfileQuery(profileId || null);
+  const updateProfileMutation = useUpdateProfileMutation();
+  const { data: thinkingSettings, isLoading: thinkingSettingsLoading } =
+    useThinkingSettings();
+  const saveThinkingSettingsMutation = useSaveThinkingSettings();
   const {
     data,
     isLoading,
@@ -58,6 +98,58 @@ export function TaskRunHistoryPanel({
   const streamAbortRef = useRef<AbortController | null>(null);
   const statusBadge = TASK_STATUS_BADGE[task.status];
   const profileLabel = profile?.name ?? task.profileId;
+  const availableSkills = profileDetailQuery.data?.skills ?? [];
+
+  const providerModelGroups = useMemo(
+    () => groupModelsByProvider(models?.models ?? []),
+    [models?.models]
+  );
+
+  const currentModelSelection = useMemo(
+    () => effectiveProfileModelSelection(profile?.model, providerModelGroups),
+    [profile?.model, providerModelGroups]
+  );
+
+  const renderModelLabel = useCallback(
+    (selection: string | null) => {
+      if (!selection) {
+        return "Select model";
+      }
+      const decoded = decodeModelSelection(selection);
+      if (!decoded) {
+        return selection;
+      }
+      if (decoded.providerId === "__unknown__") {
+        return decoded.modelId;
+      }
+      const group = providerModelGroups.find(
+        (entry) => entry.providerId === decoded.providerId
+      );
+      return (
+        group?.models.find((model) => model.id === decoded.modelId)?.name ??
+        decoded.modelId
+      );
+    },
+    [providerModelGroups]
+  );
+
+  const activeModelSupportsThinking = useMemo(
+    () =>
+      resolveModelThinkingSupport(currentModelSelection, providerModelGroups),
+    [currentModelSelection, providerModelGroups]
+  );
+
+  const activeModelSupportsVision = useMemo(
+    () => resolveModelVisionSupport(currentModelSelection, providerModelGroups),
+    [currentModelSelection, providerModelGroups]
+  );
+
+  const thinkingEffortVisible = shouldShowThinkingEffort(
+    activeModelSupportsThinking
+  );
+  const thinkingEffort = thinkingSettings?.effort ?? DEFAULT_THINKING_EFFORT;
+  const thinkingEffortDisabled =
+    busy || thinkingSettingsLoading || saveThinkingSettingsMutation.isPending;
 
   const waitingForMessages = isLoading || (isFetching && messages.length === 0);
   const [syncedData, setSyncedData] = useState(data);
@@ -84,17 +176,81 @@ export function TaskRunHistoryPanel({
     streamAbortRef.current?.abort();
   }, []);
 
+  const handleModelChange = useCallback(
+    (selection: string) => {
+      if (!(profileId && selection)) {
+        return;
+      }
+      const decoded = decodeModelSelection(selection);
+      if (!decoded) {
+        return;
+      }
+      void updateProfileMutation
+        .mutateAsync({ input: { model: selection }, profileId })
+        .catch((err) => {
+          setError(formatError(err));
+        });
+    },
+    [profileId, updateProfileMutation]
+  );
+
+  const handleThinkingEffortChange = useCallback(
+    (effort: ThinkingEffort) => {
+      if (!profileId || effort === thinkingEffort) {
+        return;
+      }
+
+      if (
+        shouldBlockThinkingEffortChange(busy) ||
+        saveThinkingSettingsMutation.isPending
+      ) {
+        if (busy) {
+          setError("Wait for the current response to finish.");
+        }
+        return;
+      }
+
+      void saveThinkingSettingsMutation
+        .mutateAsync(buildThinkingSettingsPayload(effort))
+        .catch((err) => {
+          setError(formatError(err));
+        });
+    },
+    [profileId, thinkingEffort, busy, saveThinkingSettingsMutation]
+  );
+
   const sendMessage = useCallback(
-    async (text: string) => {
-      if (!text.trim() || busy || !sessionId) {
+    async (text: string, files: FileUIPart[] = []) => {
+      if ((!text.trim() && files.length === 0) || busy || !sessionId) {
         return;
       }
 
       setBusy(true);
       setError(null);
 
+      const images = filePartsToImageAttachments(files);
+      const documents = filePartsToDocumentAttachments(files);
+      const displayDocuments = filePartsToDisplayDocuments(files);
+      const displayImages = images.map((image) => ({
+        mediaType: image.mediaType,
+        url: `data:${image.mediaType};base64,${image.data}`,
+      }));
+      const useImageAttachments = activeModelSupportsVision === false;
+
       const chatSession = client.createChatSession(sessionId, "task");
-      appendOutgoingMessages(setMessages, text);
+      appendOutgoingMessages(
+        setMessages,
+        text,
+        useImageAttachments ? [] : displayImages,
+        displayDocuments.length > 0 ? displayDocuments : undefined,
+        {
+          imageAttachments:
+            useImageAttachments && displayImages.length > 0
+              ? displayImages
+              : undefined,
+          thinkingEnabled: thinkingEffortVisible,
+        }
+      );
 
       const abortController = new AbortController();
       streamAbortRef.current = abortController;
@@ -102,7 +258,11 @@ export function TaskRunHistoryPanel({
 
       try {
         await chatSession.sendStream(
-          { message: text },
+          {
+            documents: documents.length > 0 ? documents : undefined,
+            images: images.length > 0 ? images : undefined,
+            message: text,
+          },
           buildStreamHandlers(setMessages),
           { signal: abortController.signal }
         );
@@ -127,7 +287,14 @@ export function TaskRunHistoryPanel({
         setBusy(false);
       }
     },
-    [busy, queryClient, sessionId, task.id]
+    [
+      activeModelSupportsVision,
+      busy,
+      queryClient,
+      sessionId,
+      task.id,
+      thinkingEffortVisible,
+    ]
   );
 
   const displayError = error ?? (loadError ? formatError(loadError) : null);
@@ -135,6 +302,7 @@ export function TaskRunHistoryPanel({
     !(sessionId || waitingForMessages) && messages.length > 0;
   const emptyHistory =
     !(waitingForMessages || displayError) && messages.length === 0;
+  const showOfflineHint = health?.providerConfigured === false;
 
   return (
     <aside
@@ -146,20 +314,18 @@ export function TaskRunHistoryPanel({
         "xl:w-[26rem]"
       )}
     >
-      <header className="flex items-start justify-between gap-3 border-border/50 border-b bg-muted/20 px-4 py-4 sm:px-5">
-        <div className="min-w-0 space-y-2">
+      <header className="flex items-start justify-between gap-3 border-border/50 border-b bg-muted/20 px-4 py-3 sm:px-5">
+        <div className="min-w-0 space-y-1.5">
           <div className="flex items-center gap-2">
             <ChatNavIcon
               aria-hidden
               className="sidebar-nav-icon text-muted-foreground"
-              strokeWidth={1.75}
+              strokeWidth={2}
             />
             <p className="type-label">Run chat</p>
           </div>
-          <h2 className="truncate font-semibold text-foreground text-sm">
-            {task.title}
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
+          <h2 className="type-section-title truncate">{task.title}</h2>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 font-medium text-[11px]",
@@ -175,13 +341,13 @@ export function TaskRunHistoryPanel({
         </div>
         <Button
           aria-label="Close task chat"
-          className="shrink-0"
+          className="relative shrink-0 after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2"
           onClick={onClose}
           size="icon-sm"
           type="button"
           variant="ghost"
         >
-          <XIcon aria-hidden className="size-4" />
+          <XIcon aria-hidden className="size-4" strokeWidth={2} />
         </Button>
       </header>
 
@@ -206,15 +372,15 @@ export function TaskRunHistoryPanel({
 
       {displayError ? (
         <div className="shrink-0 border-border/50 border-t px-4 py-3 sm:px-5">
-          <p className="text-red-700 text-sm dark:text-red-300">
+          <p className="text-pretty text-red-700 text-sm dark:text-red-300">
             {displayError}
           </p>
         </div>
       ) : null}
 
       {chatUnavailable ? (
-        <div className="shrink-0 space-y-2 border-border/50 border-t px-4 py-4 sm:px-5">
-          <p className="text-muted-foreground text-sm">
+        <div className="shrink-0 border-border/50 border-t px-4 py-3 sm:px-5">
+          <p className="text-pretty text-muted-foreground text-sm">
             Run history is shown above. Restart the Nakama server to enable
             follow-up chat.
           </p>
@@ -222,16 +388,29 @@ export function TaskRunHistoryPanel({
       ) : (
         <PromptInputProvider>
           <ChatComposer
+            availableSkills={availableSkills}
             busy={busy}
             canStop={canStop}
             chatStatus={chatStatus}
             className="border-border/50 border-t px-4 py-4 sm:px-5"
+            currentModelSelection={currentModelSelection}
             disabled={!sessionId || waitingForMessages}
             error={displayError}
+            onModelChange={handleModelChange}
+            onNavigateSetup={() => navigate(SETUP_PATH)}
             onStop={stopStreaming}
-            onSubmit={(text) => void sendMessage(text)}
+            onSubmit={(text, files) => void sendMessage(text, files)}
+            onThinkingEffortChange={handleThinkingEffortChange}
             placeholder="Follow up on this task…"
-            variant="minimal"
+            primarySupportsVision={activeModelSupportsVision}
+            profileModelId={extractModelId(profile?.model)}
+            providerConfigured={health?.providerConfigured}
+            providerModelGroups={providerModelGroups}
+            renderModelLabel={renderModelLabel}
+            showOfflineHint={showOfflineHint}
+            thinkingEffort={thinkingEffort}
+            thinkingEffortDisabled={thinkingEffortDisabled}
+            thinkingEffortVisible={thinkingEffortVisible}
           />
         </PromptInputProvider>
       )}
