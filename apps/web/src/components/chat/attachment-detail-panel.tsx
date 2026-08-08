@@ -2,9 +2,7 @@ import { XIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
-  useState,
   type PointerEvent,
   type ReactNode,
 } from "react";
@@ -39,40 +37,12 @@ export function AttachmentDetailPanel({
   onClose,
   className,
 }: AttachmentDetailPanelProps) {
-  const asideRef = useRef<HTMLElement>(null);
   const draggingRef = useRef(false);
-  const [displayWidth, setDisplayWidth] = useState(width);
 
   const clampWidth = useCallback(
     (nextWidth: number) => clampAttachmentPanelWidth(nextWidth),
     [],
   );
-
-  useLayoutEffect(() => {
-    if (fullscreen) {
-      const parent = asideRef.current?.parentElement;
-      setDisplayWidth(parent?.clientWidth ?? width);
-      return;
-    }
-
-    setDisplayWidth(width);
-  }, [fullscreen, width]);
-
-  useEffect(() => {
-    if (!fullscreen) {
-      return;
-    }
-
-    function measure() {
-      const parent = asideRef.current?.parentElement;
-      if (parent) {
-        setDisplayWidth(parent.clientWidth);
-      }
-    }
-
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [fullscreen]);
 
   useEffect(() => {
     if (fullscreen) {
@@ -134,12 +104,11 @@ export function AttachmentDetailPanel({
 
   return (
     <aside
-      ref={asideRef}
       data-slot="attachment-detail-panel"
-      style={{ width: displayWidth }}
+      style={fullscreen ? undefined : { width }}
       className={cn(
         "relative flex min-h-0 shrink-0 flex-col border-l border-border bg-background",
-        !fullscreen && "max-w-[50vw] lg:max-w-[75vw]",
+        fullscreen ? "left-0 min-w-0 w-full flex-1" : "max-w-[50vw] lg:max-w-[75vw]",
         className,
       )}
     >
