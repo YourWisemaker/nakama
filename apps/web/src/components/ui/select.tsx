@@ -39,7 +39,10 @@ function SelectTrigger({
       {children}
       <SelectPrimitive.Icon
         render={
-          <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
+          <ChevronDownIcon
+            className="pointer-events-none size-4 text-muted-foreground"
+            strokeWidth={1.5}
+          />
         }
       />
     </SelectPrimitive.Trigger>
@@ -74,7 +77,7 @@ function SelectContent({
       >
         <SelectPrimitive.Popup
           className={cn(
-            "data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 relative isolate z-50 w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-closed:animate-out data-open:animate-in",
+            "data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 relative isolate z-50 w-max min-w-[max(9rem,var(--anchor-width))] max-w-[min(24rem,var(--available-width,92vw))] origin-(--transform-origin) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-closed:animate-out data-open:animate-in",
             className
           )}
           data-align-trigger={alignItemWithTrigger}
@@ -100,13 +103,13 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "relative flex w-full cursor-default select-none items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex w-full cursor-default select-none items-center gap-1.5 rounded-sm py-1.5 pr-8 pl-1.5 text-sm outline-hidden transition-colors duration-100 ease-out focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 *:[span]:last:flex *:[span]:last:min-w-0 *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       data-slot="select-item"
       {...props}
     >
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+      <SelectPrimitive.ItemText className="flex min-w-0 flex-1 gap-2 truncate">
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator
@@ -114,7 +117,7 @@ function SelectItem({
           <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
         }
       >
-        <CheckIcon className="pointer-events-none" />
+        <CheckIcon className="pointer-events-none" strokeWidth={1.5} />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   );
@@ -133,7 +136,7 @@ function SelectScrollUpButton({
       data-slot="select-scroll-up-button"
       {...props}
     >
-      <ChevronUpIcon />
+      <ChevronUpIcon strokeWidth={1.5} />
     </SelectPrimitive.ScrollUpArrow>
   );
 }
@@ -151,7 +154,7 @@ function SelectScrollDownButton({
       data-slot="select-scroll-down-button"
       {...props}
     >
-      <ChevronDownIcon />
+      <ChevronDownIcon strokeWidth={1.5} />
     </SelectPrimitive.ScrollDownArrow>
   );
 }

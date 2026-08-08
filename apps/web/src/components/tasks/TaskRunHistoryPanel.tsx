@@ -2,6 +2,7 @@ import type { ProfileSummary, StoredTask } from "@nakama/core/contract";
 import { useQueryClient } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { Button } from "@/components/ui/button";
@@ -213,18 +214,20 @@ export function TaskRunHistoryPanel({
           </p>
         </div>
       ) : (
-        <ChatComposer
-          busy={busy}
-          canStop={canStop}
-          chatStatus={chatStatus}
-          className="border-border/50 border-t px-4 py-4 sm:px-5"
-          disabled={!sessionId || waitingForMessages}
-          error={displayError}
-          onStop={stopStreaming}
-          onSubmit={(text) => void sendMessage(text)}
-          placeholder="Follow up on this task…"
-          variant="minimal"
-        />
+        <PromptInputProvider>
+          <ChatComposer
+            busy={busy}
+            canStop={canStop}
+            chatStatus={chatStatus}
+            className="border-border/50 border-t px-4 py-4 sm:px-5"
+            disabled={!sessionId || waitingForMessages}
+            error={displayError}
+            onStop={stopStreaming}
+            onSubmit={(text) => void sendMessage(text)}
+            placeholder="Follow up on this task…"
+            variant="minimal"
+          />
+        </PromptInputProvider>
       )}
     </aside>
   );
