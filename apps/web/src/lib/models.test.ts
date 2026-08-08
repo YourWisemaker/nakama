@@ -297,8 +297,8 @@ describe("IMAGE_GENERATION_MODEL_OPTIONS", () => {
     expect(IMAGE_GENERATION_MODEL_OPTIONS).toHaveLength(1);
     expect(IMAGE_GENERATION_MODEL_OPTIONS[0]?.id).toBe("gpt-image-2");
     expect(IMAGE_GENERATION_SELECTION).toBe("openai::gpt-image-2");
-    expect(IMAGE_GENERATION_SELECTION).toBe(
-      encodeModelSelection("openai", IMAGE_GENERATION_MODEL_OPTIONS[0]!.id),
+    expect(encodeModelSelection("openai", IMAGE_GENERATION_MODEL_OPTIONS[0]!.id)).toBe(
+      IMAGE_GENERATION_SELECTION,
     );
   });
 });
