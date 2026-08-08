@@ -13,7 +13,7 @@
 
 > Deploy your own AI Agent platform as easily as spinning up WordPress.
 
-[Documentation](https://ahmadrosid.github.io/nakama/) · [Demo](https://demo.getnakama.cloud) · [Managed hosting](https://getnakama.cloud/)
+[Documentation](https://ahmadrosid.github.io/nakama/) · [Managed hosting](https://getnakama.cloud/)
 
 Nakama is a small, self-hosted Bun + TypeScript monorepo for running AI agents. Prefer not to run your own server? Use [managed hosting at getnakama.cloud](https://getnakama.cloud/) — sign up, create an instance, and open your dedicated URL (for example `acme.getnakama.cloud`). The first 24 hours are free with no credit card required.
 
@@ -24,13 +24,6 @@ Inspired by [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes Agent](
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for system design, or the [docs site](https://ahmadrosid.github.io/nakama/) for the full guide.
 
 ## Quick start
-
-### Try the demo
-
-Open the live demo at [https://demo.getnakama.cloud](https://demo.getnakama.cloud).
-
-- Username: `demo`
-- Password: `demo1234`
 
 ### Managed hosting
 

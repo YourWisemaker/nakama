@@ -1,5 +1,5 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
-import { isAttachIntent, isAttachOnlyCommand } from "@nakama/core";
+import { isAttachOnlyCommand } from "@nakama/core";
 import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import {
   type ChannelOrgStore,
@@ -261,7 +261,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       return;
     }
 
-    if (text.startsWith("/") && !isAttachIntent(text)) {
+    if (text.startsWith("/") && !isAttachOnlyCommand(text)) {
       await messenger.send(
         "Use slash commands from Discord's command menu for session control."
       );

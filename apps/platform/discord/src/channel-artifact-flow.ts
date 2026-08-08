@@ -4,7 +4,7 @@ import {
   extractPairedTurnArtifacts,
   formatArtifactShareFooter,
   formatMissingAttachArtifactMessage,
-  isAttachIntent,
+  isAttachOnlyCommand,
   mintDeliverableArtifacts,
   pushDeliverableArtifact,
   resolveArtifactForAttach,
@@ -95,7 +95,7 @@ export async function maybeSendRequestedDiscordArtifactAttachment(input: {
   sessionStore: SessionStore;
   messenger: DiscordMessenger;
 }): Promise<boolean> {
-  if (!isAttachIntent(input.attachUserText)) {
+  if (!isAttachOnlyCommand(input.attachUserText)) {
     return false;
   }
 
@@ -112,14 +112,13 @@ export async function maybeSendRequestedDiscordArtifactAttachment(input: {
       listed = response.artifacts;
     } catch (error) {
       console.warn(
-        "Discord artifact list failed during attach intent; cannot fall back to profile artifacts.",
+        "Discord artifact list failed during /attach; cannot fall back to profile artifacts.",
         error instanceof Error ? error.message : error
       );
     }
   }
 
   const artifact = resolveArtifactForAttach({
-    attachUserText: input.attachUserText,
     listed,
     registry,
   });

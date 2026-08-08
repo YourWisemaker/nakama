@@ -2,11 +2,10 @@ import type { NakamaClient, RemoteChatSession } from "@nakama/client";
 import {
   extractPairedTurnArtifacts,
   formatArtifactShareFooter,
-  formatMissingAttachArtifactMessage,
+  getMostRecentDeliverableArtifact,
   isAttachIntent,
   mintDeliverableArtifacts,
   pushDeliverableArtifact,
-  resolveArtifactForAttach,
 } from "@nakama/core";
 import type { Context } from "grammy";
 import type { TelegramRichMessenger } from "./rich-message";
@@ -22,72 +21,29 @@ export async function maybeSendRequestedTelegramArtifactAttachment(input: {
   attachUserText: string;
   sessionStore: SessionStore;
   messenger: TelegramRichMessenger;
-}): Promise<boolean> {
+}): Promise<void> {
   if (!isAttachIntent(input.attachUserText)) {
-    return false;
+    return;
   }
 
-  const registry = input.sessionStore.getDeliverableArtifacts(
-    input.conversationKey
+  const artifact = getMostRecentDeliverableArtifact(
+    input.sessionStore.getDeliverableArtifacts(input.conversationKey)
   );
-  let listed: Awaited<
-    ReturnType<NakamaClient["listProfileArtifacts"]>
-  >["artifacts"] = [];
-
-  if (registry.length === 0) {
-    try {
-      const response = await input.client.listProfileArtifacts(input.profileId);
-      listed = response.artifacts;
-    } catch (error) {
-      console.warn(
-        "Telegram artifact list failed during attach intent; cannot fall back to profile artifacts.",
-        error instanceof Error ? error.message : error
-      );
-    }
+  if (!artifact) {
+    return;
   }
 
-  const artifact = resolveArtifactForAttach({
-    attachUserText: input.attachUserText,
-    listed,
-    registry,
+  const { data } = await input.client.readProfileArtifactContent(
+    input.profileId,
+    artifact.path
+  );
+  const result = await sendTelegramArtifactDocument(input.ctx, {
+    bytes: new Uint8Array(data),
+    filename: artifact.filename,
   });
 
-  if (!artifact) {
-    await input.messenger.sendPlain(formatMissingAttachArtifactMessage());
-    return false;
-  }
-
-  if (!registry.some((entry) => entry.path === artifact.path)) {
-    const nextRegistry = pushDeliverableArtifact(registry, artifact);
-    input.sessionStore.updateArtifactState(input.conversationKey, {
-      deliverableArtifacts: nextRegistry,
-    });
-    await input.sessionStore.save();
-  }
-
-  try {
-    const { data } = await input.client.readProfileArtifactContent(
-      input.profileId,
-      artifact.path
-    );
-    const result = await sendTelegramArtifactDocument(input.ctx, {
-      bytes: new Uint8Array(data),
-      filename: artifact.filename,
-    });
-
-    if (!result.ok && result.error) {
-      await input.messenger.sendPlain(result.error);
-      return false;
-    }
-
-    return result.ok;
-  } catch (error) {
-    await input.messenger.sendPlain(
-      error instanceof Error
-        ? error.message
-        : "Failed to read the artifact for attachment."
-    );
-    return false;
+  if (!result.ok && result.error) {
+    await input.messenger.sendPlain(result.error);
   }
 }
 
@@ -126,16 +82,16 @@ export async function deliverTelegramTurnArtifactShares(input: {
     return;
   }
 
-  let nextRegistry = input.sessionStore.getDeliverableArtifacts(
+  let registry = input.sessionStore.getDeliverableArtifacts(
     input.conversationKey
   );
   for (const artifact of delivered) {
-    nextRegistry = pushDeliverableArtifact(nextRegistry, artifact);
+    registry = pushDeliverableArtifact(registry, artifact);
   }
 
   input.sessionStore.updateArtifactState(input.conversationKey, {
     artifactShareUrls: shareUrlCache,
-    deliverableArtifacts: nextRegistry,
+    deliverableArtifacts: registry,
   });
   await input.sessionStore.save();
 

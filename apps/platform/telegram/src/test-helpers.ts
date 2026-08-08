@@ -178,20 +178,11 @@ export function createMockClient(
       }>
     >;
     messages?: ChatMessage[];
-    listedArtifacts?: Array<{
-      filename: string;
-      mimeType: string;
-      path: string;
-      sizeBytes: number;
-      updatedAt: string;
-    }>;
-    artifactContentBytes?: Uint8Array;
   } = {}
 ) {
   const calls = {
     compact: 0,
     createSession: 0,
-    listProfileArtifacts: 0,
     listProfiles: 0,
     listUserOrgs: 0,
     publishProfileArtifactShare: 0,
@@ -347,14 +338,6 @@ export function createMockClient(
       ok: true,
       providerConfigured: options.providerConfigured ?? false,
     }),
-    listProfileArtifacts: async () => {
-      calls.listProfileArtifacts += 1;
-      return {
-        artifacts: options.listedArtifacts ?? [],
-        directory: "/tmp/artifacts",
-        profileId: "default",
-      };
-    },
     listProfiles: async () => {
       calls.listProfiles += 1;
       const scopedProfiles =
@@ -388,14 +371,9 @@ export function createMockClient(
     },
     readProfileArtifactContent: async () => {
       calls.readProfileArtifactContent += 1;
-      const data =
-        options.artifactContentBytes ?? new TextEncoder().encode("# Report");
       return {
         contentType: "text/markdown",
-        data: data.buffer.slice(
-          data.byteOffset,
-          data.byteOffset + data.byteLength
-        ),
+        data: new TextEncoder().encode("# Report").buffer,
       };
     },
     setOrgId: (orgId: string | null) => {
