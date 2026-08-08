@@ -73,45 +73,8 @@ export function DiscordPairingGuide({
               </>
             )
           }
-          description={
-            inviteUrl ? (
-              <>
-                Click{" "}
-                <a
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                  href={inviteUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Invite bot to server
-                </a>{" "}
-                above, pick a server, and approve the permissions.
-              </>
-            ) : (
-              <>
-                Create an invite link in the{" "}
-                <a
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                  href={DISCORD_DEVELOPER_PORTAL_URL}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Developer Portal
-                </a>{" "}
-                and add the bot to a server. See the{" "}
-                <a
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                  href={DISCORD_SETUP_GUIDE_URL}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  setup guide
-                </a>
-                .
-              </>
-            )
-          }
           step={1}
+          title="Invite the bot"
         />
         <div className="grid grid-cols-1 sm:grid-cols-2">
           <PairingStepTile

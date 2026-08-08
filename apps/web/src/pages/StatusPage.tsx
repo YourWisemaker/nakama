@@ -357,16 +357,9 @@ function LlmUsageSection({
               Open Settings
             </Link>
           }
-          action={
-            <Link
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
-              to={PAGE_PATHS.settings}
-            >
-              Open Settings
-            </Link>
-          }
           description="Add an API key in Settings to start estimating token usage and API cost."
           icon={SparklesIcon}
+          title="Connect a provider to track usage"
         />
       )}
 

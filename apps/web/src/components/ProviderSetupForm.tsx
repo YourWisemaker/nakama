@@ -130,26 +130,8 @@ export function ProviderSetupForm({
                 </p>
               )
             }
-            footer={
-              form.apiKeyError ? (
-                <p
-                  className="text-destructive text-sm"
-                  id="api-key-error"
-                  role="alert"
-                >
-                  {form.apiKeyError}
-                </p>
-              ) : (
-                <p className="text-muted-foreground text-xs" id="api-key-hint">
-                  Paste the API key from your{" "}
-                  {PROVIDER_OPTIONS.find(
-                    (option) => option.id === form.selectedProvider
-                  )?.label ?? "provider"}{" "}
-                  dashboard.
-                </p>
-              )
-            }
             id="api-key"
+            label={apiKeyOptional ? "API key (optional)" : "API key"}
           >
             <InputGroup>
               <InputGroupInput
@@ -243,18 +225,11 @@ export function ProviderSetupForm({
                     provider="ollama"
                   />
                 )}
-                renderBrowse={(onSelect) => (
-                  <RemoteModelsBrowseList
-                    apiKey={form.apiKey}
-                    baseUrl={form.baseUrl}
-                    browseLabel="Ollama"
-                    className="h-72 rounded-md border border-border"
-                    hostMode={form.ollamaHostMode}
-                    onSelect={onSelect}
-                    provider="ollama"
-                  />
-                )}
                 showPricing={false}
+                toModelRow={(row: { id: string; name: string }) => ({
+                  id: row.id,
+                  name: row.name,
+                })}
               />
             </>
           ) : null}

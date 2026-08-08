@@ -1,6 +1,7 @@
 import { BrowsableModelFields } from "@/components/BrowsableModelFields";
 import type { ModelListRow } from "@/components/ModelListEditor";
 import { OpenRouterModelsBrowseList } from "@/components/OpenRouterModelsBrowseList";
+import type { OpenRouterModelRow } from "@/lib/openrouter-models";
 
 interface OpenRouterProviderModelFieldsProps {
   customModels: ModelListRow[];
@@ -33,12 +34,17 @@ export function OpenRouterProviderModelFields({
           onSelect={onSelect}
         />
       )}
-      renderBrowse={(onSelect) => (
-        <OpenRouterModelsBrowseList
-          className="h-72 rounded-md border border-border"
-          onSelect={onSelect}
-        />
-      )}
+      toModelRow={(row: OpenRouterModelRow) => ({
+        id: row.id,
+        name: row.name,
+        supportsThinking: row.reasoning,
+        ...(row.inputPerMillionUsd === undefined
+          ? {}
+          : { inputPerMillionUsd: row.inputPerMillionUsd }),
+        ...(row.outputPerMillionUsd === undefined
+          ? {}
+          : { outputPerMillionUsd: row.outputPerMillionUsd }),
+      })}
     />
   );
 }

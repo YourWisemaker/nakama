@@ -41,6 +41,10 @@ export function OpenRouterModelsBrowseList({
       onSelect={onSelect}
       query={{ error, isLoading }}
       rows={catalogRows}
+      status={({ filteredCount, filteredRows }) => {
+        const freeCount = filteredRows.filter((row) => row.isFree).length;
+        return `${filteredCount} models · ${freeCount} free`;
+      }}
       toDisplayRow={(row) => ({
         badges: [
           ...(row.isFree ? [{ label: "FREE", tone: "emerald" as const }] : []),
@@ -54,22 +58,6 @@ export function OpenRouterModelsBrowseList({
         id: row.id,
         name: row.name,
       })}
-      toolbarTrailing={
-        <Select
-          onValueChange={(value) => setCostFilter(value as "all" | "free")}
-          value={costFilter}
-        >
-          <SelectTrigger className="w-27.5">
-            <SelectValue>
-              {costFilter === "free" ? "Free only" : "All"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="free">Free only</SelectItem>
-          </SelectContent>
-        </Select>
-      }
       toolbarTrailing={
         <Select
           onValueChange={(value) => setCostFilter(value as "all" | "free")}

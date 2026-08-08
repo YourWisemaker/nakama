@@ -93,19 +93,7 @@ export function McpServerDialogForm({
             Import JSON
           </Button>
         }
-        action={
-          <Button
-            className="text-muted-foreground hover:text-foreground"
-            disabled={formDisabled}
-            onClick={onOpenImport}
-            size="xs"
-            type="button"
-            variant="ghost"
-          >
-            <BracesIcon aria-hidden />
-            Import JSON
-          </Button>
-        }
+        label="Transport"
       >
         <div
           aria-label="MCP transport"

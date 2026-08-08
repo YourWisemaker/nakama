@@ -47,10 +47,7 @@ function AppShell() {
             <Route element={<AuthGuard />}>
               <Route element={<SetupGuard />}>
                 <Route element={<Layout />}>
-                  <Route
-                    element={<Navigate replace to="/chat" />}
-                    element={<Navigate replace to="/chat" />}
-                  />
+                  <Route element={<Navigate replace to="/chat" />} index />
                   <Route
                     element={<Navigate replace to={statusTabPath()} />}
                     path="/status"
@@ -81,10 +78,7 @@ function AppShell() {
                     path="/notifications"
                   />
                   <Route element={<SettingsPage />} path="/settings" />
-                  <Route
-                    element={<Navigate replace to="/chat" />}
-                    element={<Navigate replace to="/chat" />}
-                  />
+                  <Route element={<Navigate replace to="/chat" />} path="*" />
                 </Route>
               </Route>
             </Route>

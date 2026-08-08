@@ -2,6 +2,7 @@ import { BrowsableModelFields } from "@/components/BrowsableModelFields";
 import { CerebrasModelsBrowseList } from "@/components/CerebrasModelsBrowseList";
 import { FireworksModelsBrowseList } from "@/components/FireworksModelsBrowseList";
 import type { ModelListRow } from "@/components/ModelListEditor";
+import { capabilityBrowseRowToModelListRow } from "@/components/model-browse-utils";
 import {
   SHORTLIST_BROWSE_COPY,
   type ShortlistBrowseProvider,
@@ -55,21 +56,7 @@ export function ShortlistBrowseProviderModelFields({
           />
         )
       }
-      renderBrowse={(onSelect) =>
-        provider === "cerebras" ? (
-          <CerebrasModelsBrowseList
-            className="h-72 rounded-md border border-border"
-            onSelect={onSelect}
-          />
-        ) : (
-          <FireworksModelsBrowseList
-            apiKey={apiKey}
-            className="h-72 rounded-md border border-border"
-            onSelect={onSelect}
-            providerId={providerId}
-          />
-        )
-      }
+      toModelRow={capabilityBrowseRowToModelListRow}
     />
   );
 }

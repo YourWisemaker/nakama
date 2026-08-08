@@ -105,12 +105,6 @@ export function SidebarNotifications() {
                     to={PAGE_PATHS.notifications}
                   />
                 }
-                render={
-                  <Link
-                    onClick={() => setOpen(false)}
-                    to={PAGE_PATHS.notifications}
-                  />
-                }
                 size="sm"
                 type="button"
               >

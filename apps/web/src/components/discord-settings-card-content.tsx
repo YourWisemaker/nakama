@@ -138,30 +138,8 @@ export function DiscordSettingsCardContent({
             for token, intents, and invite steps.
           </>
         }
-        description={
-          <>
-            Create a bot in the{" "}
-            <a
-              className="font-medium text-primary underline-offset-2 hover:underline"
-              href={DISCORD_DEVELOPER_PORTAL_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Discord Developer Portal
-            </a>
-            . Follow the{" "}
-            <a
-              className="font-medium text-primary underline-offset-2 hover:underline"
-              href={DISCORD_SETUP_GUIDE_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
-              setup guide
-            </a>{" "}
-            for token, intents, and invite steps.
-          </>
-        }
         label="Bot token"
+        layout="stacked"
       >
         <InputGroup className="w-full">
           <InputGroupInput
