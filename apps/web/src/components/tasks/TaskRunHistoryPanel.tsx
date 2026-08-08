@@ -43,8 +43,14 @@ export function TaskRunHistoryPanel({
     error: loadError,
   } = useTaskMessagesQuery(task.id);
 
-  const [messages, setMessages] = useState<ChatListItem[]>([]);
-  const [sessionId, setSessionId] = useState<string | null>(task.sessionId);
+  // Prefetch can resolve before mount; seed from cached query data so the
+  // data!==syncedData sync is not skipped when both start as the same reference.
+  const [messages, setMessages] = useState<ChatListItem[]>(() =>
+    data ? chatMessagesToListItems(data.messages) : []
+  );
+  const [sessionId, setSessionId] = useState<string | null>(
+    () => data?.sessionId || task.sessionId
+  );
   const [busy, setBusy] = useState(false);
   const [canStop, setCanStop] = useState(false);
   const [error, setError] = useState<string | null>(null);
