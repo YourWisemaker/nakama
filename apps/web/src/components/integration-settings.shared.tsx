@@ -19,7 +19,11 @@ export function IntegrationCardShell({
 }) {
   if (embedded && !bordered) {
     return (
-      <div className={className} aria-busy={busyLabel ? true : undefined} aria-label={busyLabel}>
+      <div
+        aria-busy={busyLabel ? true : undefined}
+        aria-label={busyLabel}
+        className={className}
+      >
         {children}
       </div>
     );
@@ -28,9 +32,9 @@ export function IntegrationCardShell({
   return (
     <Card className={cn("w-full shadow-none", className)}>
       <CardContent
-        className="overflow-hidden p-0"
         aria-busy={busyLabel ? true : undefined}
         aria-label={busyLabel}
+        className="overflow-hidden p-0"
       >
         {children}
       </CardContent>
@@ -39,7 +43,10 @@ export function IntegrationCardShell({
 }
 
 export const SETTINGS_CARD_LOADING_SKELETON = (
-  <div className="h-16 animate-pulse rounded-lg bg-muted px-4" aria-hidden="true" />
+  <div
+    aria-hidden="true"
+    className="h-16 animate-pulse rounded-lg bg-muted px-4"
+  />
 );
 
 export function PairingStepTile({
@@ -56,12 +63,14 @@ export function PairingStepTile({
   return (
     <div className={cn("p-3", className)}>
       <div className="flex items-start gap-2">
-        <span className="w-4 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+        <span className="w-4 shrink-0 font-medium text-muted-foreground text-xs tabular-nums">
           {step}.
         </span>
         <div className="min-w-0 space-y-0.5">
-          <p className="text-sm font-medium text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="font-medium text-foreground text-sm">{title}</p>
+          <p className="text-pretty text-muted-foreground text-xs">
+            {description}
+          </p>
         </div>
       </div>
     </div>
@@ -80,11 +89,18 @@ export function SettingsRow({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-3 px-4 py-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 px-4 py-3",
+        className
+      )}
+    >
       <div className="min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="font-medium text-foreground text-sm">{label}</p>
         {description ? (
-          <p className="text-xs text-muted-foreground [text-wrap:pretty]">{description}</p>
+          <p className="text-pretty text-muted-foreground text-xs">
+            {description}
+          </p>
         ) : null}
       </div>
       {children}
@@ -108,23 +124,32 @@ export function IntegrationStatusHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-3 px-4 py-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-start justify-between gap-3 px-4 py-3",
+        className
+      )}
+    >
       <div className="min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground [text-wrap:pretty]">{subtitle}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-balance font-medium text-foreground text-sm">
+            {title}
+          </p>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 font-medium text-[11px]",
+              connected
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : configured
+                  ? "bg-amber-500/10 text-amber-800 dark:text-amber-200"
+                  : "bg-muted text-muted-foreground"
+            )}
+          >
+            {statusBadge}
+          </span>
+        </div>
+        <p className="text-pretty text-muted-foreground text-xs">{subtitle}</p>
       </div>
-      <span
-        className={cn(
-          "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-          connected
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200"
-            : configured
-              ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-100"
-              : "border-border bg-muted text-muted-foreground",
-        )}
-      >
-        {statusBadge}
-      </span>
     </div>
   );
 }
@@ -149,14 +174,19 @@ export function IntegrationSettingsFooter({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-3 px-4 py-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 px-4 py-3",
+        className
+      )}
+    >
       {statusLine ? (
         <p
           className={cn(
             "min-w-0 text-xs",
             formError || loadError
               ? "text-destructive"
-              : "text-emerald-800 dark:text-emerald-200",
+              : "text-emerald-700 dark:text-emerald-300"
           )}
           role={formError || loadError ? "alert" : "status"}
         >
@@ -165,7 +195,12 @@ export function IntegrationSettingsFooter({
       ) : (
         <span />
       )}
-      <Button type="button" size="sm" disabled={savePending || !canSave} onClick={onSave}>
+      <Button
+        disabled={savePending || !canSave}
+        onClick={onSave}
+        size="sm"
+        type="button"
+      >
         {savePending ? (
           <>
             <Spinner className="size-3" />

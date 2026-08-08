@@ -1,29 +1,32 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
+import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import {
-  formatAgentQuestionnaireAnswersMessage,
-  formatAgentQuestionnaireMessage,
-  hasActiveAgentQuestionnaire,
-  tryParseChannelQuestionnaireAnswers,
-} from "@nakama/core/agent-questionnaire";
-import type { AgentQuestionnaire, SendMessageInput } from "@nakama/core/contract";
-import {
+  type ChannelOrgStore,
   findOrgBySelectionInput,
   formatOrgSelectionPrompt,
   formatOrgSwitchConfirmation,
   prepareChannelOrgContext,
-  type ChannelOrgStore,
 } from "@nakama/core/channel-org";
+import type {
+  AgentQuestionnaire,
+  SendMessageInput,
+} from "@nakama/core/contract";
 import {
   filterProfilesForChatAccess,
   formatProfileSelectionPrompt,
   formatProfileSwitchConfirmation,
   isProfileSelectionIndexInput,
+  type ProfileScope,
   pickProfileForOrg,
   resolveProfileInput,
   resolveProfileInScopes,
-  type ProfileScope,
 } from "@nakama/core/profiles";
-import type { ChatInputCommandInteraction, Message, TextBasedChannel } from "discord.js";
+import type {
+  ChatInputCommandInteraction,
+  Message,
+  TextBasedChannel,
+  ThreadChannel,
+} from "discord.js";
 import {
   clearActiveStream,
   isAbortError,
@@ -31,10 +34,14 @@ import {
   stopActiveStream,
 } from "./active-stream";
 import type { DiscordAuthStore } from "./auth-store";
+import {
+  deliverDiscordTurnArtifactShares,
+  maybeSendRequestedDiscordArtifactAttachment,
+} from "./channel-artifact-flow";
 import type { DiscordBridgeConfig } from "./config";
 import { formatError, HELP_TEXT, splitDiscordMessage } from "./format";
-import { isIgnorableInteractionError } from "./interaction-errors";
 import {
+  type DiscordBotInfo,
   explainGuildMessageHandling,
   isDiscordGuildMessage,
   isDiscordThreadMessage,
@@ -43,27 +50,36 @@ import {
   resolveBotInfo,
   resolveChannelOrgKey,
   resolveConversationKey,
+  resolveMentionedBotRoleIds,
+  resolveOrgChannelId,
   stripBotMention,
-  type DiscordBotInfo,
 } from "./guild-message";
+import { isIgnorableInteractionError } from "./interaction-errors";
 import {
   createDiscordMessenger,
   createInteractionMessenger,
+  type DiscordMessenger,
   getMessageChannel,
   replyAsChat,
-  type DiscordMessenger,
 } from "./messenger";
-import {
-  deliverDiscordTurnArtifactShares,
-  maybeSendRequestedDiscordArtifactAttachment,
-} from "./channel-artifact-flow";
 import { DiscordQuestionnaireMessage } from "./questionnaire-message";
 import type { SessionStore } from "./session-store";
+import type { ThreadStore } from "./thread-store";
 import { DiscordTodoStatusMessage } from "./todo-status-message";
 import { createTypingLoop } from "./typing-indicator";
 
 const chatLocks = new Map<string, Promise<void>>();
 const pendingQuestionnaires = new Map<string, AgentQuestionnaire>();
+const THREAD_OWNERSHIP_LOCK_KEY = "__discord_thread_ownership__";
+
+/**
+ * Max time a queued message waits for the previous agent run on the same key.
+ * Long enough for legitimate multi-minute tool/LLM turns; short enough that a
+ * wedged run cannot silence a thread forever. Slash commands bypass this lock.
+ */
+export const chatLockOptions = {
+  waitMs: 15 * 60 * 1000,
+};
 
 const GROUP_MESSAGE_PREFIX =
   "[Discord channel — your reply is visible to everyone in this channel.]\n";
@@ -85,17 +101,25 @@ const NO_CODE_PROMPT =
   "Then send that code here in a DM.";
 
 export interface ChatHandlerDeps {
+  authStore: DiscordAuthStore;
   client: NakamaClient;
   config: DiscordBridgeConfig;
-  authStore: DiscordAuthStore;
-  sessionStore: SessionStore;
-  orgStore: ChannelOrgStore;
   getBotInfo?: () => DiscordBotInfo | undefined;
+  orgStore: ChannelOrgStore;
+  sessionStore: SessionStore;
+  threadStore: ThreadStore;
 }
 
 export function createChatHandler(deps: ChatHandlerDeps) {
-  const { client, config, authStore, sessionStore, orgStore, getBotInfo = () => undefined } =
-    deps;
+  const {
+    client,
+    config,
+    authStore,
+    sessionStore,
+    threadStore,
+    orgStore,
+    getBotInfo = () => undefined,
+  } = deps;
 
   return {
     handleMessage,
@@ -113,95 +137,296 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const channelId = message.channel.id;
     const text = message.content?.trim();
     const isGuild = isDiscordGuildMessage(message);
+    const isThread = isDiscordThreadMessage(message);
     const botInfo = resolveBotInfo(message, getBotInfo());
-    const groupDecision = isGuild ? explainGuildMessageHandling(message, botInfo) : null;
+    // Ownership is by thread id alone — partial parentId cannot flip this to foreign.
+    const botOwnsThread = isThread ? threadStore.hasThreadId(channelId) : false;
+    const groupDecision = isGuild
+      ? explainGuildMessageHandling(message, botInfo, { botOwnsThread })
+      : null;
+
+    console.log(
+      "[discord] handle",
+      groupDecision?.reason ?? (isGuild ? "none" : "dm"),
+      { botId: botInfo?.id, botOwnsThread, channelId, isThread }
+    );
 
     if (groupDecision && !groupDecision.shouldHandle) {
+      console.log("[discord] skip", groupDecision.reason);
       return;
     }
 
-    const channelOrgKey = resolveChannelOrgKey(channelId, userId, isGuild);
-    const conversationKey = resolveConversationKey(message, channelId, isGuild);
-    const isThread = isDiscordThreadMessage(message);
+    if (isThread && groupDecision?.reason === "claim-thread") {
+      await trackOwnedThread(channelId);
+      console.log("[discord] claimed thread", channelId);
+    }
 
-    await withChatLock(conversationKey, async () => {
-      await authStore.reload();
-      const isAuthorized = authStore.isAuthorized(userId);
+    const resolvedParentId = isThread
+      ? await resolveThreadParentChannelId(message)
+      : undefined;
+    const parentResolution = resolvedParentId
+      ? { parentChannelId: resolvedParentId }
+      : undefined;
+    const parentChannelId = resolveOrgChannelId(
+      message,
+      channelId,
+      isGuild,
+      parentResolution
+    );
+    // Threads share the parent channel's org selection — do not key by thread id.
+    const channelOrgKey = resolveChannelOrgKey(
+      parentChannelId,
+      userId,
+      isGuild
+    );
+    const conversationKey = resolveConversationKey(
+      message,
+      channelId,
+      isGuild,
+      parentResolution
+    );
 
-      if (!isAuthorized) {
-        if (isGuild) {
-          await messenger.send(LINK_IN_PRIVATE_REPLY);
-          return;
-        }
+    // Auth/org/thread-create run without the agent-stream lock so parallel parent mentions
+    // can each open a thread. Agent work locks per conversation/thread key below.
+    await authStore.reload();
+    const isAuthorized = authStore.isAuthorized(userId);
 
-        if (!text) {
-          await messenger.send("Send your pairing code as text to link this chat.");
-          return;
-        }
-
-        await handlePairing(text, userId, messenger);
-        return;
-      }
-
-      if (isGuild && text && looksLikeHandshakeAttempt(text)) {
+    if (!isAuthorized) {
+      console.log("[discord] unauthorized", userId);
+      if (isGuild) {
         await messenger.send(LINK_IN_PRIVATE_REPLY);
         return;
       }
 
-      const command = text?.startsWith("/") ? parseTextCommand(text) : null;
-      const bypassOrgGate = command === "/help" || command === "/start" || command === "/org";
-
-      if (!bypassOrgGate) {
-        const orgGateText =
-          isGuild && text && botInfo ? stripBotMention(text, botInfo) : text;
-        const orgReady = await ensureOrgReady(messenger, channelOrgKey, orgGateText);
-        if (!orgReady) {
-          return;
-        }
-      }
-
       if (!text) {
-        await messenger.send("Text messages only.");
+        await messenger.send(
+          "Send your pairing code as text to link this chat."
+        );
         return;
       }
 
-      if (command === "/org" || command === "/profile") {
-        await handleTextCommand(text, command, conversationKey, channelOrgKey, isThread, messenger);
-        return;
-      }
+      await withChatLock(conversationKey, async () => {
+        await handlePairing(text, userId, messenger);
+      });
+      return;
+    }
 
-      if (text.startsWith("/")) {
-        await messenger.send("Use slash commands from Discord's command menu for session control.");
-        return;
-      }
+    if (isGuild && text && looksLikeHandshakeAttempt(text)) {
+      await messenger.send(LINK_IN_PRIVATE_REPLY);
+      return;
+    }
 
-      const messageText = isGuild && botInfo ? stripBotMention(text, botInfo) : text;
+    const command = text?.startsWith("/") ? parseTextCommand(text) : null;
+    const bypassOrgGate =
+      command === "/help" || command === "/start" || command === "/org";
 
-      if (!messageText) {
-        return;
-      }
+    const mentionedBotRoleIds = isGuild
+      ? resolveMentionedBotRoleIds(message)
+      : [];
 
-      await handleChatMessage(
-        channel,
-        conversationKey,
+    if (!bypassOrgGate) {
+      const orgGateText =
+        isGuild && text && botInfo
+          ? stripBotMention(text, botInfo, mentionedBotRoleIds)
+          : text;
+      const orgReady = await ensureOrgReady(
         messenger,
+        channelOrgKey,
+        orgGateText
+      );
+      if (!orgReady) {
+        console.log("[discord] skip org-gate", channelOrgKey);
+        return;
+      }
+    }
+
+    if (!text) {
+      await messenger.send("Text messages only.");
+      return;
+    }
+
+    if (command === "/org" || command === "/profile") {
+      await withChatLock(conversationKey, async () => {
+        await handleTextCommand(
+          text,
+          command,
+          conversationKey,
+          channelOrgKey,
+          isThread,
+          messenger
+        );
+      });
+      return;
+    }
+
+    if (text.startsWith("/")) {
+      await messenger.send(
+        "Use slash commands from Discord's command menu for session control."
+      );
+      return;
+    }
+
+    const messageText =
+      isGuild && botInfo
+        ? stripBotMention(text, botInfo, mentionedBotRoleIds)
+        : text;
+
+    if (!messageText) {
+      return;
+    }
+
+    let replyChannel = channel;
+    let replyConversationKey = conversationKey;
+    let replyMessenger = messenger;
+    let replyIsThread = isThread;
+
+    const shouldRouteToThread =
+      isGuild &&
+      !isThread &&
+      (groupDecision?.reason === "bot-mention" ||
+        groupDecision?.reason === "reply-to-bot");
+
+    if (shouldRouteToThread) {
+      const thread = await createGuildThread(message, messageText);
+
+      if (thread) {
+        replyChannel = thread;
+        replyConversationKey = `g:${channelId}:t:${thread.id}`;
+        replyMessenger = createDiscordMessenger(thread);
+        replyIsThread = true;
+        console.log("[discord] thread created", thread.id);
+      } else {
+        console.log("[discord] thread create failed, falling back to channel");
+      }
+    }
+
+    console.log(
+      "[discord] chat start",
+      replyConversationKey,
+      messageText.slice(0, 80)
+    );
+
+    await withChatLock(replyConversationKey, async () => {
+      await handleChatMessage(
+        replyChannel,
+        replyConversationKey,
+        replyMessenger,
         messageText,
         isGuild,
+        replyIsThread
       );
+    });
+
+    console.log("[discord] chat done", replyConversationKey);
+  }
+
+  async function createGuildThread(
+    message: Message,
+    messageText: string
+  ): Promise<ThreadChannel | null> {
+    let thread: ThreadChannel;
+    try {
+      thread = await message.startThread({
+        autoArchiveDuration: 1440,
+        name: deriveThreadName(messageText),
+      });
+    } catch (error) {
+      console.error(
+        "Failed to create Discord thread; falling back to channel reply:",
+        error
+      );
+      return null;
+    }
+
+    await trackOwnedThread(thread.id);
+    return thread;
+  }
+
+  /**
+   * Register ownership in memory first, then persist. Save failures must not
+   * leave a live Discord thread untracked (that yields permanent foreign-thread drops).
+   */
+  async function trackOwnedThread(threadId: string): Promise<void> {
+    // Brief lock so concurrent ownership saves do not drop a newly created id.
+    await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
+      threadStore.add(threadId);
+      try {
+        await threadStore.save();
+      } catch (error) {
+        console.error(
+          `Failed to persist Discord thread ownership for ${threadId}; keeping in-memory tracking:`,
+          error
+        );
+      }
     });
   }
 
-  async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  async function handleCloseThread(
+    interaction: ChatInputCommandInteraction,
+    conversationKey: string,
+    messenger: DiscordMessenger
+  ): Promise<void> {
+    const channel = interaction.channel;
+
+    if (!channel?.isThread()) {
+      await messenger.send("Use /close inside a bot conversation thread.");
+      return;
+    }
+
+    if (!threadStore.hasThreadId(channel.id)) {
+      await messenger.send("I can only close threads I started.");
+      return;
+    }
+
+    stopActiveStream(conversationKey);
+    pendingQuestionnaires.delete(conversationKey);
+
+    await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
+      if (threadStore.deleteByThreadId(channel.id)) {
+        await threadStore.save();
+      }
+    });
+
+    await messenger.send("Thread closed.");
+
+    try {
+      if (!channel.archived) {
+        await channel.setArchived(true);
+      }
+    } catch (error) {
+      console.error("Failed to archive Discord thread after /close:", error);
+      await messenger.send(
+        "Couldn't archive the thread. Check the bot's Manage Threads permission."
+      );
+    }
+  }
+
+  async function handleSlashCommand(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     // Caller (bot.ts) already deferred — do not wait on withChatLock here.
     // Agent replies hold that lock for a long time and would leave commands stuck.
 
     const userId = interaction.user.id;
     const channelId = interaction.channelId;
     const isGuild = !interaction.channel?.isDMBased();
-    const channelOrgKey = resolveChannelOrgKey(channelId, userId, isGuild);
+    const isThread = Boolean(interaction.channel?.isThread());
+    let threadParentId =
+      isGuild &&
+      isThread &&
+      interaction.channel &&
+      "parentId" in interaction.channel
+        ? (interaction.channel.parentId ?? undefined)
+        : undefined;
+    if (isGuild && isThread && !threadParentId && interaction.channel) {
+      threadParentId = await hydrateThreadParentId(interaction.channel);
+    }
+    const orgChannelId =
+      isGuild && isThread ? (threadParentId ?? channelId) : channelId;
+    const channelOrgKey = resolveChannelOrgKey(orgChannelId, userId, isGuild);
     const conversationKey = isGuild
-      ? interaction.channel?.isThread()
-        ? `g:${interaction.channel.parentId ?? channelId}:t:${interaction.channel.id}`
+      ? isThread
+        ? `g:${threadParentId ?? channelId}:t:${interaction.channel!.id}`
         : channelId
       : channelId;
 
@@ -209,39 +434,56 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       (content) => interaction.reply({ content: content.slice(0, 2000) }),
       (content) => interaction.followUp({ content: content.slice(0, 2000) }),
       (content) => interaction.editReply({ content: content.slice(0, 2000) }),
-      true,
+      true
     );
 
     try {
       await authStore.reload();
 
       if (!authStore.isAuthorized(userId)) {
-        if (interaction.commandName === "start" || interaction.commandName === "help") {
+        if (
+          interaction.commandName === "start" ||
+          interaction.commandName === "help"
+        ) {
           await handlePairingSlash(interaction.commandName, messenger);
           return;
         }
 
         await messenger.send(
-          interaction.channel?.isDMBased() ? PAIRING_PROMPT : LINK_IN_PRIVATE_REPLY,
+          interaction.channel?.isDMBased()
+            ? PAIRING_PROMPT
+            : LINK_IN_PRIVATE_REPLY
         );
         return;
       }
 
-      if (interaction.commandName === "start" || interaction.commandName === "help") {
+      if (
+        interaction.commandName === "start" ||
+        interaction.commandName === "help"
+      ) {
         await messenger.send(HELP_TEXT);
         return;
       }
 
       if (interaction.commandName === "stop") {
-        if (!stopActiveStream(conversationKey)) {
-          await messenger.send("Nothing to stop.");
-        } else {
+        if (stopActiveStream(conversationKey)) {
           await messenger.send("Stopping…");
+        } else {
+          await messenger.send("Nothing to stop.");
         }
         return;
       }
 
-      const orgReady = await ensureOrgReady(messenger, channelOrgKey, undefined);
+      if (interaction.commandName === "close") {
+        await handleCloseThread(interaction, conversationKey, messenger);
+        return;
+      }
+
+      const orgReady = await ensureOrgReady(
+        messenger,
+        channelOrgKey,
+        undefined
+      );
       if (!orgReady) {
         return;
       }
@@ -252,7 +494,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           pendingQuestionnaires.delete(conversationKey);
           const session = await resolveSession(conversationKey);
           await session.clear();
-          clearSessionArtifactState(conversationKey);
+          await clearSessionArtifactState(conversationKey);
           await messenger.send("History cleared.");
           return;
         }
@@ -261,7 +503,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           const session = await resolveSession(conversationKey);
           const result = await session.compact({ force: true });
           await messenger.send(
-            `Compacted (${result.action}). Messages: ${result.messagesAfter}.`,
+            `Compacted (${result.action}). Messages: ${result.messagesAfter}.`
           );
           return;
         }
@@ -281,7 +523,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     } catch (error) {
       // Finalize the deferred reply so Discord does not stay on "thinking…".
       if (isIgnorableInteractionError(error)) {
-        console.warn("Slash command interaction expired before reply could be sent.");
+        console.warn(
+          "Slash command interaction expired before reply could be sent."
+        );
         return;
       }
 
@@ -293,7 +537,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
   async function handlePairing(
     text: string,
     userId: string,
-    messenger: DiscordMessenger,
+    messenger: DiscordMessenger
   ): Promise<void> {
     const command = parseTextCommand(text);
     const fileConfig = authStore.getConfig();
@@ -325,7 +569,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
   async function handlePairingSlash(
     command: string,
-    messenger: DiscordMessenger,
+    messenger: DiscordMessenger
   ): Promise<void> {
     const hasHandshake = Boolean(authStore.getConfig()?.handshakeCode);
 
@@ -343,7 +587,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     conversationKey: string,
     channelOrgKey: string,
     isThread: boolean,
-    messenger: DiscordMessenger,
+    messenger: DiscordMessenger
   ): Promise<void> {
     if (command === "/org") {
       await handleOrgCommand(text, channelOrgKey, conversationKey, messenger);
@@ -351,8 +595,13 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
 
     if (command === "/profile") {
-      await handleProfileCommand(text, conversationKey, channelOrgKey, isThread, messenger);
-      return;
+      await handleProfileCommand(
+        text,
+        conversationKey,
+        channelOrgKey,
+        isThread,
+        messenger
+      );
     }
   }
 
@@ -362,33 +611,29 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     messenger: DiscordMessenger,
     attachUserText: string,
     isGuild: boolean,
+    isThread: boolean
   ): Promise<void> {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
 
     if (profileId) {
       await maybeSendRequestedDiscordArtifactAttachment({
+        attachUserText,
         channel,
         client,
         conversationKey,
-        profileId,
-        attachUserText,
-        sessionStore,
         messenger,
+        profileId,
+        sessionStore,
       });
     }
 
-    const streamInput = await resolveQuestionnaireStreamInput(
-      conversationKey,
-      session,
-      attachUserText,
+    // Forward free text to the agent — do not gate Discord replies on questionnaire parsing.
+    const streamInput = withGroupContext(
+      { message: attachUserText },
       isGuild,
-      messenger,
+      isThread
     );
-
-    if (!streamInput) {
-      return;
-    }
 
     const signal = registerActiveStream(conversationKey);
     const typingLoop = createTypingLoop(messenger);
@@ -404,28 +649,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       reply = await session.sendStream(
         streamInput,
         {
-          onThinking: () => {
-            typingLoop.ping();
-          },
           onChunk: (delta) => {
             reply += delta;
-          },
-          onToolStart: () => {
-            typingLoop.ping();
-            if (earlyAck) {
-              return;
-            }
-
-            const earlyText = reply.trim() || DISCORD_EARLY_ACK_FALLBACK;
-            reply = "";
-            earlyAck = replyAsChat(messenger, earlyText);
-          },
-          onToolEnd: () => {
-            typingLoop.ping();
-          },
-          onTodosUpdated: (todos) => {
-            typingLoop.ping();
-            void todoStatus.update(todos);
           },
           onQuestionnaireUpdated: (questionnaire) => {
             typingLoop.ping();
@@ -438,8 +663,28 @@ export function createChatHandler(deps: ChatHandlerDeps) {
               questionnaireStatus.clear();
             }
           },
+          onThinking: () => {
+            typingLoop.ping();
+          },
+          onTodosUpdated: (todos) => {
+            typingLoop.ping();
+            void todoStatus.update(todos);
+          },
+          onToolEnd: () => {
+            typingLoop.ping();
+          },
+          onToolStart: () => {
+            typingLoop.ping();
+            if (earlyAck) {
+              return;
+            }
+
+            const earlyText = reply.trim() || DISCORD_EARLY_ACK_FALLBACK;
+            reply = "";
+            earlyAck = replyAsChat(messenger, earlyText);
+          },
         },
-        { signal },
+        { signal }
       );
 
       await earlyAck;
@@ -475,7 +720,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
     if (reply.trim()) {
       await replyAsChat(messenger, reply);
-    } else if (!postedQuestionnaire && !earlyAck) {
+    } else if (!(postedQuestionnaire || earlyAck)) {
       await messenger.send("(empty reply)");
     }
 
@@ -483,76 +728,23 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       await deliverDiscordTurnArtifactShares({
         channel,
         client,
-        session,
         conversationKey,
-        profileId,
-        sessionStore,
         messenger,
+        profileId,
+        session,
+        sessionStore,
       });
     }
-  }
-
-  async function resolveQuestionnaireStreamInput(
-    conversationKey: string,
-    session: RemoteChatSession,
-    userText: string,
-    isGuild: boolean,
-    messenger: DiscordMessenger,
-  ): Promise<SendMessageInput | null> {
-    const pending = await resolvePendingQuestionnaire(conversationKey, session);
-
-    if (!pending) {
-      return withGroupContext({ message: userText }, isGuild);
-    }
-
-    const answers = tryParseChannelQuestionnaireAnswers(pending, userText);
-
-    if (!answers) {
-      await messenger.send(formatAgentQuestionnaireMessage(pending));
-      await messenger.send("Couldn't parse that. Reply using the format above.");
-      return null;
-    }
-
-    pendingQuestionnaires.delete(conversationKey);
-    return withGroupContext(
-      { message: formatAgentQuestionnaireAnswersMessage(answers) },
-      isGuild,
-    );
-  }
-
-  async function resolvePendingQuestionnaire(
-    conversationKey: string,
-    session: RemoteChatSession,
-  ): Promise<AgentQuestionnaire | null> {
-    const cached = pendingQuestionnaires.get(conversationKey);
-
-    if (hasActiveAgentQuestionnaire(cached)) {
-      return cached ?? null;
-    }
-
-    try {
-      const { questionnaire } = await client.getSessionMessages(session.id);
-
-      if (hasActiveAgentQuestionnaire(questionnaire)) {
-        pendingQuestionnaires.set(conversationKey, questionnaire!);
-        return questionnaire;
-      }
-    } catch {
-      // Best-effort; continue without a pending questionnaire.
-    }
-
-    pendingQuestionnaires.delete(conversationKey);
-    return null;
   }
 
   async function ensureOrgReady(
     messenger: DiscordMessenger,
     channelOrgKey: string,
-    messageText: string | undefined,
+    messageText: string | undefined
   ): Promise<boolean> {
     const orgContext = await prepareChannelOrgContext({
-      listOrgs: () => client.listUserOrgs(),
       getSelectedOrgId: () => getOrgSelection(orgStore, channelOrgKey)?.orgId,
+      listOrgs: () => client.listUserOrgs(),
       saveSelectedOrgId: async (orgId) => {
         orgStore.set(channelOrgKey, orgId);
         await orgStore.save();
@@ -584,7 +776,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     text: string,
     channelOrgKey: string,
     conversationKey: string,
-    messenger: DiscordMessenger,
+    messenger: DiscordMessenger
   ): Promise<void> {
     const { orgs } = await client.listUserOrgs();
 
@@ -598,7 +790,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     if (!arg) {
       await replyChunks(
         messenger,
-        formatOrgSelectionPrompt(orgs, getOrgSelection(orgStore, channelOrgKey)?.orgId),
+        formatOrgSelectionPrompt(
+          orgs,
+          getOrgSelection(orgStore, channelOrgKey)?.orgId
+        )
       );
       return;
     }
@@ -629,11 +824,13 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     conversationKey: string,
     channelOrgKey: string,
     isThread: boolean,
-    messenger: DiscordMessenger,
+    messenger: DiscordMessenger
   ): Promise<void> {
     const { orgs } = await client.listUserOrgs();
     const currentOrgId = getOrgSelection(orgStore, channelOrgKey)?.orgId;
-    const currentOrg = currentOrgId ? orgs.find((org) => org.id === currentOrgId) : undefined;
+    const currentOrg = currentOrgId
+      ? orgs.find((org) => org.id === currentOrgId)
+      : undefined;
     const arg = text.trim().split(/\s+/).slice(1).join(" ");
     const currentProfileId = await resolveSessionProfileId(conversationKey);
 
@@ -647,31 +844,43 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
       await replyChunks(
         messenger,
-        formatProfileSelectionPrompt(profiles, currentProfileId, currentOrg?.name),
+        formatProfileSelectionPrompt(
+          profiles,
+          currentProfileId,
+          currentOrg?.name
+        )
       );
       return;
     }
 
-    const currentOrgProfiles = currentOrgId ? await listSelectableProfiles() : [];
+    const currentOrgProfiles = currentOrgId
+      ? await listSelectableProfiles()
+      : [];
     const currentOrgNumericPick =
-      currentOrgId && isProfileSelectionIndexInput(arg, currentOrgProfiles.length)
+      currentOrgId &&
+      isProfileSelectionIndexInput(arg, currentOrgProfiles.length)
         ? resolveProfileInput(currentOrgProfiles, arg)
         : undefined;
     const currentOrgProfilePick =
-      currentOrgId && isThread ? resolveProfileInput(currentOrgProfiles, arg) : undefined;
+      currentOrgId && isThread
+        ? resolveProfileInput(currentOrgProfiles, arg)
+        : undefined;
     const resolved =
       currentOrgId && (currentOrgNumericPick || currentOrgProfilePick)
         ? {
+            profile: currentOrgNumericPick ?? currentOrgProfilePick!,
             scope: {
               orgId: currentOrgId,
               orgName: currentOrg?.name ?? "Current org",
               profiles: currentOrgProfiles,
             },
-            profile: currentOrgNumericPick ?? currentOrgProfilePick!,
           }
         : isThread
           ? null
-          : resolveProfileInScopes(await listProfileScopes(orgs, currentOrgId), arg);
+          : resolveProfileInScopes(
+              await listProfileScopes(orgs, currentOrgId),
+              arg
+            );
 
     if (!resolved) {
       await messenger.send("Unknown profile. Send /profile to see the list.");
@@ -680,7 +889,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
     if ("ambiguous" in resolved) {
       await messenger.send(
-        `That profile exists in multiple orgs (${resolved.ambiguous}). Send /org first, then /profile.`,
+        `That profile exists in multiple orgs (${resolved.ambiguous}). Send /org first, then /profile.`
       );
       return;
     }
@@ -702,13 +911,15 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
 
     await createAndBindSession(conversationKey, picked.id);
-    const orgNote = scope.orgId !== currentOrgId ? ` (${scope.orgName})` : "";
-    await messenger.send(`${formatProfileSwitchConfirmation(picked.name)}${orgNote}`);
+    const orgNote = scope.orgId === currentOrgId ? "" : ` (${scope.orgName})`;
+    await messenger.send(
+      `${formatProfileSwitchConfirmation(picked.name)}${orgNote}`
+    );
   }
 
   async function listProfileScopes(
     orgs: Array<{ id: string; name: string }>,
-    restoreOrgId?: string,
+    restoreOrgId?: string
   ): Promise<ProfileScope[]> {
     const scopes: ProfileScope[] = [];
 
@@ -733,7 +944,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     return filterProfilesForChatAccess(profiles, { excludeSuperBot: true });
   }
 
-  async function replyStatus(messenger: DiscordMessenger, chatId: string): Promise<void> {
+  async function replyStatus(
+    messenger: DiscordMessenger,
+    chatId: string
+  ): Promise<void> {
     try {
       const health = await client.health();
       const lines = [
@@ -781,17 +995,18 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
   async function createAndBindSession(
     chatId: string,
-    profileId?: string,
+    profileId?: string
   ): Promise<RemoteChatSession> {
     pendingQuestionnaires.delete(chatId);
-    const resolvedProfileId = profileId ?? (await resolveSessionProfileId(chatId));
+    const resolvedProfileId =
+      profileId ?? (await resolveSessionProfileId(chatId));
     const session = await client.createSession("discord", {
       profileId: resolvedProfileId,
     });
 
     sessionStore.set(chatId, {
-      sessionId: session.id,
       profileId: resolvedProfileId,
+      sessionId: session.id,
       updatedAt: new Date().toISOString(),
     });
     await sessionStore.save();
@@ -811,26 +1026,47 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       }
     }
 
+    // New thread sessions inherit the parent channel's /profile selection.
+    const parentChannelId = parentChannelIdFromConversationKey(chatId);
+    if (parentChannelId) {
+      const parentProfileId = sessionStore.get(parentChannelId)?.profileId;
+      if (parentProfileId) {
+        const match = profiles.find(
+          (profile) => profile.id === parentProfileId
+        );
+        if (match) {
+          return match.id;
+        }
+      }
+    }
+
     return pickProfileForOrg(profiles, config.profileId).id;
   }
 
-  function clearSessionArtifactState(conversationKey: string): void {
+  async function clearSessionArtifactState(
+    conversationKey: string
+  ): Promise<void> {
     const existing = sessionStore.get(conversationKey);
     if (!existing) {
       return;
     }
 
     sessionStore.set(conversationKey, {
-      sessionId: existing.sessionId,
       profileId: existing.profileId,
+      sessionId: existing.sessionId,
       updatedAt: new Date().toISOString(),
     });
-    void sessionStore.save();
+    await sessionStore.save();
   }
 }
 
-function withGroupContext(input: SendMessageInput, isGroup: boolean): SendMessageInput {
-  if (!isGroup) {
+function withGroupContext(
+  input: SendMessageInput,
+  isGuild: boolean,
+  isThread: boolean
+): SendMessageInput {
+  // Threads are a private-ish conversation surface — skip the public-channel warning.
+  if (!isGuild || isThread) {
     return input;
   }
 
@@ -843,26 +1079,111 @@ function withGroupContext(input: SendMessageInput, isGroup: boolean): SendMessag
   return { ...input, message: GROUP_MESSAGE_PREFIX.trim() };
 }
 
+function deriveThreadName(messageText: string): string {
+  const cleaned = messageText.replace(/\s+/g, " ").trim();
+
+  if (!cleaned) {
+    return "Nakama chat";
+  }
+
+  // Discord thread names are capped at 100 characters.
+  if (cleaned.length <= 100) {
+    return cleaned;
+  }
+
+  const sliced = cleaned.slice(0, 100);
+  const lastSpace = sliced.lastIndexOf(" ");
+
+  if (lastSpace > 40) {
+    return sliced.slice(0, lastSpace);
+  }
+
+  return sliced;
+}
+
 function getOrgSelection(
   orgStore: ChannelOrgStore,
-  channelOrgKey: string,
+  channelOrgKey: string
 ): { orgId: string } | undefined {
   const record = orgStore.get(channelOrgKey);
 
   if (!record) {
-    return undefined;
+    return;
   }
 
   return { orgId: record.orgId };
 }
 
-async function replyChunks(messenger: DiscordMessenger, text: string): Promise<void> {
+async function replyChunks(
+  messenger: DiscordMessenger,
+  text: string
+): Promise<void> {
   for (const chunk of splitDiscordMessage(text)) {
     await messenger.send(chunk);
   }
 }
 
-async function withChatLock(chatId: string, fn: () => Promise<void>): Promise<void> {
+/** Parent guild channel id from `g:{parent}:t:{thread}` conversation keys. */
+function parentChannelIdFromConversationKey(
+  chatId: string
+): string | undefined {
+  const match = /^g:(.+):t:(.+)$/.exec(chatId);
+  return match?.[1];
+}
+
+/**
+ * Hydrate parent guild channel id for thread messages when Discord delivers a
+ * partial channel (`Partials.Channel`) without `parentId`. Ownership checks use
+ * the thread id alone; this only protects org + conversation keys.
+ */
+async function resolveThreadParentChannelId(
+  message: Message
+): Promise<string | undefined> {
+  if (!message.channel.isThread()) {
+    return;
+  }
+
+  if (message.channel.parentId) {
+    return message.channel.parentId;
+  }
+
+  return hydrateThreadParentId(message.channel);
+}
+
+async function hydrateThreadParentId(
+  channel: TextBasedChannel | { fetch?: () => Promise<unknown>; id?: string }
+): Promise<string | undefined> {
+  if (typeof channel.fetch !== "function") {
+    return;
+  }
+
+  try {
+    const fetched = await channel.fetch();
+    if (fetched && typeof fetched === "object" && "isThread" in fetched) {
+      const thread = fetched as ThreadChannel;
+      if (
+        typeof thread.isThread === "function" &&
+        thread.isThread() &&
+        thread.parentId
+      ) {
+        return thread.parentId;
+      }
+    }
+  } catch (error) {
+    const id = "id" in channel ? String(channel.id) : "unknown";
+    console.warn(`Failed to hydrate Discord thread parentId for ${id}:`, error);
+  }
+}
+
+/**
+ * Serialize work per conversation key. Waiting for a prior run is bounded so a
+ * hung agent turn cannot queue follow-ups forever; after the wait budget the
+ * next message proceeds (concurrent with the wedged run).
+ */
+export async function withChatLock(
+  chatId: string,
+  fn: () => Promise<void>
+): Promise<void> {
   const previous = chatLocks.get(chatId) ?? Promise.resolve();
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -870,11 +1191,39 @@ async function withChatLock(chatId: string, fn: () => Promise<void>): Promise<vo
   });
   chatLocks.set(chatId, gate);
 
-  await previous.catch(() => undefined);
+  const waitMs = chatLockOptions.waitMs;
+  let timedOut = false;
+  if (waitMs > 0) {
+    timedOut = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(true), waitMs);
+      previous
+        .then(() => {
+          clearTimeout(timer);
+          resolve(false);
+        })
+        .catch(() => {
+          clearTimeout(timer);
+          resolve(false);
+        });
+    });
+  } else {
+    await previous.catch(() => undefined);
+  }
+
+  if (timedOut) {
+    console.warn(
+      `Chat lock for ${chatId} exceeded ${waitMs}ms wait; proceeding to recover from a wedged run.`
+    );
+  }
 
   try {
     await fn();
   } finally {
     release();
   }
+}
+
+/** @internal Test helper — clears the in-process chat lock map. */
+export function resetChatLocksForTests(): void {
+  chatLocks.clear();
 }

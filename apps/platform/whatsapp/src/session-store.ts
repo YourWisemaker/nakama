@@ -1,11 +1,10 @@
+import { dirname, join } from "node:path";
 import { readTextOrNull, writePrivateTextFile } from "@nakama/core/fs";
 import { getWhatsAppConfigDir } from "@nakama/core/whatsapp-config";
-import { join } from "node:path";
-import { homedir } from "node:os";
 
 export interface ChatSessionRecord {
-  sessionId: string;
   profileId: string;
+  sessionId: string;
   updatedAt: string;
 }
 
@@ -29,7 +28,11 @@ export class SessionStore {
 
     const parsed = JSON.parse(raw) as unknown;
 
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
       this.map = {};
       return;
     }
@@ -50,9 +53,13 @@ export class SessionStore {
   }
 
   async save(): Promise<void> {
-    await writePrivateTextFile(this.path, `${JSON.stringify(this.map, null, 2)}\n`, {
-      ensureDir: getWhatsAppConfigDir(),
-    });
+    await writePrivateTextFile(
+      this.path,
+      `${JSON.stringify(this.map, null, 2)}\n`,
+      {
+        ensureDir: dirname(this.path),
+      }
+    );
   }
 }
 

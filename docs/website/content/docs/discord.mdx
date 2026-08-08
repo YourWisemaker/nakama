@@ -51,6 +51,7 @@ This toggle is required. Without it, the bridge worker logs `Used disallowed int
    - **Read Message History**
    - **Attach Files**
    - **Send Messages in Threads** (recommended if you use threads)
+   - **Manage Threads** (recommended so `/close` can archive bot conversation threads)
 4. Copy the generated URL, open it, pick a server, and approve
 
 You can also use the **Invite bot to server** link on **Integrations → Discord** after saving your token — Nakama generates an invite with the right permissions.
@@ -118,7 +119,7 @@ In a server channel, the bot responds only when the message is:
 
 - a slash command from Discord's command menu
 - a reply to one of the bot's messages
-- a direct `@mention` of the bot
+- a direct `@mention` of the bot, or of a Discord role the bot holds
 
 This keeps server channels usable without making the bot noisy.
 
@@ -126,10 +127,16 @@ This keeps server channels usable without making the bot noisy.
 
 In Discord threads, each thread keeps its own Nakama session.
 
+- In a parent server channel, every `@mention` or reply to the bot starts a **new** Discord thread (you do not need `/close` or `/new` first)
+- Continue chatting inside a bot-started thread without mentioning the bot again
+- The same user can have multiple open bot threads in one channel, and agent replies in different threads can run at the same time
 - `/profile` inside a thread changes only that thread
-- new threads use the default Discord profile until you switch them
-- `/profile` in the main channel changes the channel-level profile
+- new threads inherit the channel-level profile set with `/profile` in the parent channel (or the default Discord profile if none is set)
+- `/profile` in the main channel changes the channel-level profile used by new threads
 - `/org` stays channel-level, so switch org first if a thread needs a profile from another org
+- `/close` inside a bot-started thread archives that thread only; other open bot threads stay usable
+- `/new` starts a fresh Nakama conversation in the current Discord thread (it does not open a new Discord thread)
+- threads the bot did not start stay quiet until you `@mention` the bot (or reply to it); that claims the thread so follow-ups work without another mention
 
 Replies in server channels are visible to everyone in that channel. Nakama prefixes those messages so the agent knows the reply is public.
 
@@ -144,12 +151,13 @@ Session control uses Discord slash commands. Org and profile switching use text 
 | `/stop` | Slash | Stop the current in-progress reply |
 | `/clear` | Slash | Clear chat history |
 | `/compact` | Slash | Compact conversation history |
-| `/new` | Slash | Start a new conversation |
+| `/new` | Slash | Start a new conversation (same Discord thread) |
+| `/close` | Slash | Close (archive) this bot conversation thread |
 | `/status` | Slash | Show server and model status |
 | `/org` | Text | Choose or switch organization |
 | `/profile` | Text | Choose or switch profile |
 
-In servers, `@mention` the bot or reply to it to chat. Complete DM pairing first.
+In servers, `@mention` the bot (or a role it holds) or reply to it to chat — each mention in a parent channel opens a new thread. Complete DM pairing first.
 
 ## Reply formatting
 
@@ -227,14 +235,16 @@ Usually one of these is true:
 
 - **Message Content Intent** is off — turn the toggle on under **Bot → Privileged Gateway Intents** (see Step 1a)
 - the bot was invited before Message Content Intent was enabled — re-invite with a fresh URL (Step 1b)
-- the message was not a slash command, reply, or direct `@mention`
+- the message was not a slash command, reply, bot `@mention`, or `@mention` of a role the bot holds
 - the user has not completed DM pairing yet
 
 ### Mentions do not work in servers
 
 1. Turn **Message Content Intent** on (Step 1a), then re-invite the bot (Step 1b)
 2. Make sure only one Discord bridge worker is running
-3. `@mention` the bot or reply to one of its messages
+3. `@mention` the bot user (or a role assigned to the bot) or reply to one of its messages
+
+If Discord autocomplete offers both a **role** and the **bot user** with similar names, either works when the bot holds that role. Mentioning an unrelated role does not trigger a reply.
 
 ### Discord says to link in a private DM
 
