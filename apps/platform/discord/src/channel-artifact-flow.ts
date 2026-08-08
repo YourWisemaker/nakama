@@ -3,10 +3,11 @@ import {
   type DeliverableChannelArtifact,
   extractPairedTurnArtifacts,
   formatArtifactShareFooter,
-  getMostRecentDeliverableArtifact,
-  isAttachIntent,
+  formatMissingAttachArtifactMessage,
+  isAttachOnlyCommand,
   mintDeliverableArtifacts,
   pushDeliverableArtifact,
+  resolveArtifactForAttach,
 } from "@nakama/core";
 import type { TextBasedChannel } from "discord.js";
 import type { DiscordMessenger } from "./messenger";
@@ -15,6 +16,74 @@ import {
   sendDiscordArtifactAttachment,
 } from "./send-artifact-attachment";
 import type { SessionStore } from "./session-store";
+
+export async function uploadDiscordArtifactFromToolResult(input: {
+  channel: TextBasedChannel;
+  client: NakamaClient;
+  messenger: DiscordMessenger;
+  profileId: string;
+  result: unknown;
+}): Promise<boolean> {
+  const artifact = parseSendDiscordArtifactResult(input.result);
+  if (!artifact) {
+    return false;
+  }
+
+  try {
+    const { data } = await input.client.readProfileArtifactContent(
+      input.profileId,
+      artifact.path
+    );
+    const result = await sendDiscordArtifactAttachment(input.channel, {
+      bytes: new Uint8Array(data),
+      filename: artifact.filename,
+      mimeType: artifact.mimeType,
+    });
+
+    if (!result.ok && result.error) {
+      await input.messenger.send(result.error);
+      return false;
+    }
+
+    return result.ok;
+  } catch (error) {
+    await input.messenger.send(
+      error instanceof Error
+        ? error.message
+        : "Failed to read the artifact for attachment."
+    );
+    return false;
+  }
+}
+
+function parseSendDiscordArtifactResult(result: unknown): {
+  filename: string;
+  mimeType: string;
+  path: string;
+} | null {
+  if (typeof result !== "object" || result === null) {
+    return null;
+  }
+
+  const record = result as Record<string, unknown>;
+  if (record.ok !== true) {
+    return null;
+  }
+
+  if (
+    typeof record.path !== "string" ||
+    typeof record.filename !== "string" ||
+    typeof record.mimeType !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    filename: record.filename,
+    mimeType: record.mimeType,
+    path: record.path,
+  };
+}
 
 export async function maybeSendRequestedDiscordArtifactAttachment(input: {
   channel: TextBasedChannel;
@@ -25,30 +94,72 @@ export async function maybeSendRequestedDiscordArtifactAttachment(input: {
   attachUserText: string;
   sessionStore: SessionStore;
   messenger: DiscordMessenger;
-}): Promise<void> {
-  if (!isAttachIntent(input.attachUserText)) {
-    return;
+}): Promise<boolean> {
+  if (!isAttachOnlyCommand(input.attachUserText)) {
+    return false;
   }
 
-  const artifact = getMostRecentDeliverableArtifact(
-    input.sessionStore.getDeliverableArtifacts(input.conversationKey)
+  const registry = input.sessionStore.getDeliverableArtifacts(
+    input.conversationKey
   );
-  if (!artifact) {
-    return;
+  let listed: Awaited<
+    ReturnType<NakamaClient["listProfileArtifacts"]>
+  >["artifacts"] = [];
+
+  if (registry.length === 0) {
+    try {
+      const response = await input.client.listProfileArtifacts(input.profileId);
+      listed = response.artifacts;
+    } catch (error) {
+      console.warn(
+        "Discord artifact list failed during /attach; cannot fall back to profile artifacts.",
+        error instanceof Error ? error.message : error
+      );
+    }
   }
 
-  const { data } = await input.client.readProfileArtifactContent(
-    input.profileId,
-    artifact.path
-  );
-  const result = await sendDiscordArtifactAttachment(input.channel, {
-    bytes: new Uint8Array(data),
-    filename: artifact.filename,
-    mimeType: artifact.mimeType,
+  const artifact = resolveArtifactForAttach({
+    listed,
+    registry,
   });
 
-  if (!result.ok && result.error) {
-    await input.messenger.send(result.error);
+  if (!artifact) {
+    await input.messenger.send(formatMissingAttachArtifactMessage());
+    return false;
+  }
+
+  if (!registry.some((entry) => entry.path === artifact.path)) {
+    const nextRegistry = pushDeliverableArtifact(registry, artifact);
+    input.sessionStore.updateArtifactState(input.conversationKey, {
+      deliverableArtifacts: nextRegistry,
+    });
+    await input.sessionStore.save();
+  }
+
+  try {
+    const { data } = await input.client.readProfileArtifactContent(
+      input.profileId,
+      artifact.path
+    );
+    const result = await sendDiscordArtifactAttachment(input.channel, {
+      bytes: new Uint8Array(data),
+      filename: artifact.filename,
+      mimeType: artifact.mimeType,
+    });
+
+    if (!result.ok && result.error) {
+      await input.messenger.send(result.error);
+      return false;
+    }
+
+    return result.ok;
+  } catch (error) {
+    await input.messenger.send(
+      error instanceof Error
+        ? error.message
+        : "Failed to read the artifact for attachment."
+    );
+    return false;
   }
 }
 
@@ -88,16 +199,16 @@ export async function deliverDiscordTurnArtifactShares(input: {
     return;
   }
 
-  let registry = input.sessionStore.getDeliverableArtifacts(
+  let nextRegistry = input.sessionStore.getDeliverableArtifacts(
     input.conversationKey
   );
   for (const artifact of delivered) {
-    registry = pushDeliverableArtifact(registry, artifact);
+    nextRegistry = pushDeliverableArtifact(nextRegistry, artifact);
   }
 
   input.sessionStore.updateArtifactState(input.conversationKey, {
     artifactShareUrls: shareUrlCache,
-    deliverableArtifacts: registry,
+    deliverableArtifacts: nextRegistry,
   });
   await input.sessionStore.save();
 
@@ -154,7 +265,7 @@ async function tryUploadDiscordArtifact(input: {
     if (!result.ok) {
       console.warn(
         `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
-        result.error ?? "unknown error",
+        result.error ?? "unknown error"
       );
     }
 
@@ -162,7 +273,7 @@ async function tryUploadDiscordArtifact(input: {
   } catch (error) {
     console.warn(
       `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
-      error instanceof Error ? error.message : error,
+      error instanceof Error ? error.message : error
     );
     return false;
   }

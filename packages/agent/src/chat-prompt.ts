@@ -184,6 +184,12 @@ export function buildChatSystemPrompt(
         "When the user asks you to create or generate an image, use generate_image. Do not invent image URLs or pretend binary image data is attached in text."
       );
     }
+
+    if (tools.some((tool) => tool.name === "send_discord_artifact")) {
+      sections.push(
+        "When the user asks you to send, share, or attach a file from artifacts in this Discord chat, use send_discord_artifact with the artifact path (for example artifacts/report.pdf). Do not say you cannot attach files in Discord — this tool uploads the attachment into the channel."
+      );
+    }
   }
 
   if (isMessagingChannel(options.channel)) {

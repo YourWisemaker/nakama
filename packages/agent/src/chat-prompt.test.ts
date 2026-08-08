@@ -204,6 +204,21 @@ test("buildChatSystemPrompt tells Discord to acknowledge before tools", () => {
   expect(prompt).toContain("short outcome when finished");
 });
 
+test("buildChatSystemPrompt includes send_discord_artifact guidance when tool is present", () => {
+  const prompt = buildChatSystemPrompt(
+    [
+      {
+        description: "Attach an artifact",
+        name: "send_discord_artifact",
+        run: async () => ({}),
+      },
+    ],
+    { channel: "discord", enableToolLoop: true }
+  );
+  expect(prompt).toContain("send_discord_artifact");
+  expect(prompt).toContain("Do not say you cannot attach files in Discord");
+});
+
 test("buildChatSystemPrompt omits Discord ack-before-tools guidance on Telegram", () => {
   const prompt = buildChatSystemPrompt([], {
     channel: "telegram",

@@ -181,6 +181,7 @@ import { wrapProviderForNonVision } from "../providers/non-vision-wrap";
 import { wrapProviderWithUsageTracking } from "../providers/usage-tracking";
 import { createAskUserQuestionTools } from "../tools/ask-user-question-tool";
 import { createOrgMemoryTools } from "../tools/org-memory-tools";
+import { createSendDiscordArtifactTools } from "../tools/send-discord-artifact-tool";
 import { createSkillManageTools } from "../tools/skill-manage-tool";
 import { formatToolActivityLabel } from "../tools/sub-agent-activity";
 import {
@@ -3012,10 +3013,13 @@ export class AgentService {
     await this.ensureVisionSettingsLoaded();
     const profile = await this.requireProfile(orgId, profileId);
     const includeSkillManageTools = channel === "web" || channel === "cli";
-    const tools = await this.resolveProfileTools(profile, {
+    let tools = await this.resolveProfileTools(profile, {
       includeSkillManageTools,
       userId,
     });
+    if (channel === "discord") {
+      tools = [...tools, ...createSendDiscordArtifactTools()];
+    }
     const skillUsageContext =
       channel === "web" || channel === "cli"
         ? { seenCatalogSkillIds: new Set<string>(), sessionId }

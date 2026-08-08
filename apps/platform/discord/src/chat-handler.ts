@@ -1,4 +1,5 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
+import { isAttachOnlyCommand } from "@nakama/core";
 import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import {
   type ChannelOrgStore,
@@ -37,6 +38,7 @@ import type { DiscordAuthStore } from "./auth-store";
 import {
   deliverDiscordTurnArtifactShares,
   maybeSendRequestedDiscordArtifactAttachment,
+  uploadDiscordArtifactFromToolResult,
 } from "./channel-artifact-flow";
 import type { DiscordBridgeConfig } from "./config";
 import { formatError, HELP_TEXT, splitDiscordMessage } from "./format";
@@ -259,7 +261,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       return;
     }
 
-    if (text.startsWith("/")) {
+    if (text.startsWith("/") && !isAttachOnlyCommand(text)) {
       await messenger.send(
         "Use slash commands from Discord's command menu for session control."
       );
@@ -616,7 +618,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
 
-    if (profileId) {
+    // `/attach` remains a non-LLM shortcut. Natural-language sends use the
+    // send_discord_artifact tool from the agent turn.
+    if (profileId && isAttachOnlyCommand(attachUserText)) {
       await maybeSendRequestedDiscordArtifactAttachment({
         attachUserText,
         channel,
@@ -626,6 +630,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         profileId,
         sessionStore,
       });
+      return;
     }
 
     // Forward free text to the agent — do not gate Discord replies on questionnaire parsing.
@@ -644,6 +649,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     let reply = "";
     let earlyAck: Promise<void> | undefined;
     let postedQuestionnaire = false;
+    const pendingArtifactUploads: Promise<unknown>[] = [];
 
     try {
       reply = await session.sendStream(
@@ -670,8 +676,21 @@ export function createChatHandler(deps: ChatHandlerDeps) {
             typingLoop.ping();
             void todoStatus.update(todos);
           },
-          onToolEnd: () => {
+          onToolEnd: (event) => {
             typingLoop.ping();
+            if (!(profileId && event.tool === "send_discord_artifact")) {
+              return;
+            }
+
+            pendingArtifactUploads.push(
+              uploadDiscordArtifactFromToolResult({
+                channel,
+                client,
+                messenger,
+                profileId,
+                result: event.result,
+              })
+            );
           },
           onToolStart: () => {
             typingLoop.ping();
@@ -687,6 +706,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         { signal }
       );
 
+      await Promise.all(pendingArtifactUploads);
       await earlyAck;
       await todoStatus.complete();
 

@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import {
   formatArtifactShareFooter,
   isAttachIntent,
+  isAttachOnlyCommand,
   mintDeliverableArtifacts,
   pushDeliverableArtifact,
+  resolveArtifactForAttach,
   resolveShareUrlForPublish,
 } from "./channel-artifact-delivery";
 
@@ -21,6 +23,65 @@ describe("isAttachIntent", () => {
   test("does not match unrelated text", () => {
     expect(isAttachIntent("thanks")).toBe(false);
     expect(isAttachIntent("save a report")).toBe(false);
+  });
+});
+
+describe("isAttachOnlyCommand", () => {
+  test("matches /attach shortcuts", () => {
+    expect(isAttachOnlyCommand("/attach")).toBe(true);
+    expect(isAttachOnlyCommand("/attach@bot")).toBe(true);
+    expect(isAttachOnlyCommand("send me the file")).toBe(false);
+  });
+});
+
+describe("resolveArtifactForAttach", () => {
+  test("prefers registry over listed artifacts", () => {
+    const artifact = resolveArtifactForAttach({
+      listed: [
+        {
+          filename: "listed.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 10,
+          updatedAt: "2026-08-08T12:00:00.000Z",
+        },
+      ],
+      registry: [
+        {
+          filename: "registry.md",
+          mimeType: "text/markdown",
+          path: "registry.md",
+          savedAt: "2026-08-08T11:00:00.000Z",
+          sharePath: null,
+          shareUrl: null,
+          sizeBytes: 5,
+        },
+      ],
+    });
+
+    expect(artifact?.path).toBe("registry.md");
+  });
+
+  test("falls back to newest listed artifact when registry is empty", () => {
+    const artifact = resolveArtifactForAttach({
+      listed: [
+        {
+          filename: "nakama-pitch-deck.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 272_153,
+          updatedAt: "2026-08-08T12:51:00.000Z",
+        },
+        {
+          filename: "older.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 100,
+          updatedAt: "2026-08-07T12:00:00.000Z",
+        },
+      ],
+      registry: [],
+    });
+
+    expect(artifact?.filename).toBe("nakama-pitch-deck.pdf");
+    expect(artifact?.path).toBe("nakama-pitch-deck.pdf");
   });
 });
 

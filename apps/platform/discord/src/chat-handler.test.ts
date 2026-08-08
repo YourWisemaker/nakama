@@ -34,6 +34,10 @@ async function createPairedHandler(
     questionnaire?: Parameters<typeof createMockClient>[0]["questionnaire"];
     orgs?: Parameters<typeof createMockClient>[0]["orgs"];
     profiles?: Parameters<typeof createMockClient>[0]["profiles"];
+    listedArtifacts?: Parameters<typeof createMockClient>[0]["listedArtifacts"];
+    artifactContentBytes?: Parameters<
+      typeof createMockClient
+    >[0]["artifactContentBytes"];
     configProfileId?: string;
   } = {}
 ) {
@@ -442,22 +446,100 @@ describe("createChatHandler artifact delivery", () => {
     });
   });
 
-  test("sends a document when the user asks to attach a saved artifact", async () => {
+  test("uploads when the agent calls send_discord_artifact", async () => {
+    await withTempHome(async (homeDir) => {
+      const { calls, handleMessage, sessionStore } = await createPairedHandler(
+        homeDir,
+        {
+          artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+          onSendStream: async (_input, handlers) => {
+            handlers?.onToolStart?.({
+              input: { path: "nakama-pitch-deck.pdf" },
+              tool: "send_discord_artifact",
+              toolCallId: "tool_1",
+            });
+            handlers?.onToolEnd?.({
+              result: {
+                filename: "nakama-pitch-deck.pdf",
+                mimeType: "application/pdf",
+                ok: true,
+                path: "nakama-pitch-deck.pdf",
+                sizeBytes: 8,
+              },
+              tool: "send_discord_artifact",
+              toolCallId: "tool_1",
+            });
+            handlers?.onChunk?.("Here's the pitch deck.");
+            return "Here's the pitch deck.";
+          },
+        }
+      );
+      sessionStore.set("dm_channel_1", {
+        profileId: "default",
+        sessionId: "session_test",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        content: "can you send the pitch deck pdf file to me",
+        userId: "424242424242424242",
+      });
+      await handleMessage(dm.message);
+
+      expect(calls.sendStream).toBe(1);
+      expect(calls.readProfileArtifactContent).toBe(1);
+      expect(dm.fileSendCalls).toBe(1);
+      expect(dm.sentMessages.at(-1)).toBe("Here's the pitch deck.");
+    });
+  });
+
+  test("typed /attach still sends without an agent turn", async () => {
+    await withTempHome(async (homeDir) => {
+      const { calls, handleMessage, sessionStore } = await createPairedHandler(
+        homeDir,
+        {
+          artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+          listedArtifacts: [
+            {
+              filename: "nakama-pitch-deck.pdf",
+              mimeType: "application/pdf",
+              path: "/tmp/artifacts/nakama-pitch-deck.pdf",
+              sizeBytes: 8,
+              updatedAt: "2026-08-08T12:51:00.000Z",
+            },
+          ],
+        }
+      );
+      sessionStore.set("dm_channel_1", {
+        profileId: "default",
+        sessionId: "session_test",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        content: "/attach",
+        userId: "424242424242424242",
+      });
+      await handleMessage(dm.message);
+
+      expect(dm.fileSendCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
+      expect(calls.listProfileArtifacts).toBe(1);
+      expect(
+        dm.sentMessages.some((reply) =>
+          /Use slash commands from Discord/i.test(reply)
+        )
+      ).toBe(false);
+    });
+  });
+
+  test("typed /attach reports when no artifact is available", async () => {
     await withTempHome(async (homeDir) => {
       const { handleMessage, sessionStore } =
         await createPairedHandler(homeDir);
       sessionStore.set("dm_channel_1", {
-        deliverableArtifacts: [
-          {
-            filename: "report.md",
-            mimeType: "text/markdown",
-            path: "report.md",
-            savedAt: "2026-07-13T10:00:00.000Z",
-            sharePath: "/s/tok_test",
-            shareUrl: "https://app.example/s/tok_test",
-            sizeBytes: 42,
-          },
-        ],
         profileId: "default",
         sessionId: "session_test",
         updatedAt: new Date().toISOString(),
@@ -465,52 +547,21 @@ describe("createChatHandler artifact delivery", () => {
       await sessionStore.save();
 
       const dm = createDmMessage({
-        content: "send me the file",
+        content: "/attach",
         userId: "424242424242424242",
       });
       await handleMessage(dm.message);
 
-      expect(dm.fileSendCalls).toBe(1);
+      expect(dm.fileSendCalls).toBe(0);
+      expect(
+        dm.sentMessages.some((reply) =>
+          /No saved artifact to attach/i.test(reply)
+        )
+      ).toBe(true);
     });
   });
 
-  test("sends a PDF when the user asks to send the pdf", async () => {
-    await withTempHome(async (homeDir) => {
-      const { handleMessage, sessionStore } = await createPairedHandler(
-        homeDir,
-        {
-          artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
-        }
-      );
-      sessionStore.set("dm_channel_1", {
-        deliverableArtifacts: [
-          {
-            filename: "nakama-pitch-deck.pdf",
-            mimeType: "application/pdf",
-            path: "nakama-pitch-deck.pdf",
-            savedAt: "2026-07-13T10:00:00.000Z",
-            sharePath: "/s/tok_pdf",
-            shareUrl: "https://app.example/s/tok_pdf",
-            sizeBytes: 270_000,
-          },
-        ],
-        profileId: "default",
-        sessionId: "session_test",
-        updatedAt: new Date().toISOString(),
-      });
-      await sessionStore.save();
-
-      const dm = createDmMessage({
-        content: "send the pdf",
-        userId: "424242424242424242",
-      });
-      await handleMessage(dm.message);
-
-      expect(dm.fileSendCalls).toBe(1);
-    });
-  });
-
-  test("returns a clear error when attach is requested for an unsupported type", async () => {
+  test("returns a clear error when /attach targets an unsupported type", async () => {
     await withTempHome(async (homeDir) => {
       const { handleMessage, sessionStore } = await createPairedHandler(
         homeDir,
@@ -537,7 +588,7 @@ describe("createChatHandler artifact delivery", () => {
       await sessionStore.save();
 
       const dm = createDmMessage({
-        content: "send me the file",
+        content: "/attach",
         userId: "424242424242424242",
       });
       await handleMessage(dm.message);
@@ -549,7 +600,6 @@ describe("createChatHandler artifact delivery", () => {
     });
   });
 });
-
 describe("createChatHandler early ack", () => {
   async function setupAckHandler(
     homeDir: string,

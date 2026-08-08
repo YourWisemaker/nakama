@@ -63,6 +63,13 @@ export function createMockClient(
       isSuper?: boolean;
     }>;
     orgs?: UserOrgSummary[];
+    listedArtifacts?: Array<{
+      filename: string;
+      mimeType: string;
+      path: string;
+      sizeBytes: number;
+      updatedAt: string;
+    }>;
     onSendStream?: (
       input: unknown,
       handlers?: StreamHandlers
@@ -73,6 +80,7 @@ export function createMockClient(
   const calls = {
     createSession: 0,
     getSessionMessages: 0,
+    listProfileArtifacts: 0,
     publishProfileArtifactShare: 0,
     readProfileArtifactContent: 0,
     sendStream: 0,
@@ -133,6 +141,14 @@ export function createMockClient(
       };
     },
     health: async () => ({ ok: true, providerConfigured: false }),
+    listProfileArtifacts: async () => {
+      calls.listProfileArtifacts += 1;
+      return {
+        artifacts: options.listedArtifacts ?? [],
+        directory: "/tmp/artifacts",
+        profileId: "default",
+      };
+    },
     listProfiles: async () =>
       parseListProfilesResponse({
         profiles: profiles.map((profile) => ({
