@@ -138,6 +138,144 @@ describe("createChatHandler artifact delivery", () => {
     });
   });
 
+  test("auto-uploads a PDF artifact after a paired save-artifact turn", async () => {
+    await withTempHome(async (homeDir) => {
+      const pdfMeta = JSON.stringify({
+        mimeType: "application/pdf",
+        savedAt: "2026-07-13T10:00:00.000Z",
+        sizeBytes: 270_000,
+      });
+      const pdfMessages: ChatMessage[] = [
+        { role: "user", content: "save pitch deck" },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [
+            {
+              id: "tool_1",
+              name: "write_file",
+              arguments: { path: "artifacts/nakama-pitch-deck.pdf", content: "%PDF-1.4" },
+            },
+            {
+              id: "tool_2",
+              name: "write_file",
+              arguments: { path: "artifacts/nakama-pitch-deck.pdf.nakama-meta.json", content: pdfMeta },
+            },
+          ],
+        },
+        {
+          role: "tool",
+          toolCallId: "tool_1",
+          name: "write_file",
+          content: JSON.stringify({
+            path: "/home/.nakama/orgs/org/profiles/default/artifacts/nakama-pitch-deck.pdf",
+            bytesWritten: 270_000,
+          }),
+        },
+        {
+          role: "tool",
+          toolCallId: "tool_2",
+          name: "write_file",
+          content: JSON.stringify({
+            path: "/home/.nakama/orgs/org/profiles/default/artifacts/nakama-pitch-deck.pdf.nakama-meta.json",
+            bytesWritten: pdfMeta.length,
+          }),
+        },
+        { role: "assistant", content: "Saved the pitch deck." },
+      ];
+
+      const { handleMessage, calls, sessionStore } = await createPairedHandler(homeDir, {
+        messages: pdfMessages,
+        artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+      });
+      sessionStore.set("dm_channel_1", {
+        sessionId: "session_test",
+        profileId: "default",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        userId: "424242424242424242",
+        content: "thanks",
+      });
+      await handleMessage(dm.message);
+
+      expect(calls.publishProfileArtifactShare).toBe(1);
+      expect(calls.readProfileArtifactContent).toBe(1);
+      expect(dm.fileSendCalls).toBe(1);
+    });
+  });
+
+  test("auto-uploads a CSV artifact after a paired save-artifact turn", async () => {
+    await withTempHome(async (homeDir) => {
+      const csvMeta = JSON.stringify({
+        mimeType: "text/csv",
+        savedAt: "2026-07-13T10:00:00.000Z",
+        sizeBytes: 24,
+      });
+      const csvMessages: ChatMessage[] = [
+        { role: "user", content: "export csv" },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [
+            {
+              id: "tool_1",
+              name: "write_file",
+              arguments: { path: "artifacts/export.csv", content: "a,b\n1,2\n" },
+            },
+            {
+              id: "tool_2",
+              name: "write_file",
+              arguments: { path: "artifacts/export.csv.nakama-meta.json", content: csvMeta },
+            },
+          ],
+        },
+        {
+          role: "tool",
+          toolCallId: "tool_1",
+          name: "write_file",
+          content: JSON.stringify({
+            path: "/home/.nakama/orgs/org/profiles/default/artifacts/export.csv",
+            bytesWritten: 8,
+          }),
+        },
+        {
+          role: "tool",
+          toolCallId: "tool_2",
+          name: "write_file",
+          content: JSON.stringify({
+            path: "/home/.nakama/orgs/org/profiles/default/artifacts/export.csv.nakama-meta.json",
+            bytesWritten: csvMeta.length,
+          }),
+        },
+        { role: "assistant", content: "Saved the CSV." },
+      ];
+
+      const { handleMessage, calls, sessionStore } = await createPairedHandler(homeDir, {
+        messages: csvMessages,
+        artifactContentBytes: new TextEncoder().encode("a,b\n1,2\n"),
+      });
+      sessionStore.set("dm_channel_1", {
+        sessionId: "session_test",
+        profileId: "default",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        userId: "424242424242424242",
+        content: "thanks",
+      });
+      await handleMessage(dm.message);
+
+      expect(calls.publishProfileArtifactShare).toBe(1);
+      expect(calls.readProfileArtifactContent).toBe(1);
+      expect(dm.fileSendCalls).toBe(1);
+    });
+  });
+
   test("falls back to a share link when the artifact exceeds the Discord attachment cap", async () => {
     await withTempHome(async (homeDir) => {
       const oversizedMeta = JSON.stringify({
@@ -256,7 +394,7 @@ describe("createChatHandler artifact delivery", () => {
 
   test("sends a document when the user asks to attach a saved artifact", async () => {
     await withTempHome(async (homeDir) => {
-      const { handleMessage, calls, sessionStore } = await createPairedHandler(homeDir);
+      const { handleMessage, sessionStore } = await createPairedHandler(homeDir);
       sessionStore.set("dm_channel_1", {
         sessionId: "session_test",
         profileId: "default",
@@ -282,6 +420,73 @@ describe("createChatHandler artifact delivery", () => {
       await handleMessage(dm.message);
 
       expect(dm.fileSendCalls).toBe(1);
+    });
+  });
+
+  test("sends a PDF when the user asks to send the pdf", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, sessionStore } = await createPairedHandler(homeDir, {
+        artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+      });
+      sessionStore.set("dm_channel_1", {
+        sessionId: "session_test",
+        profileId: "default",
+        updatedAt: new Date().toISOString(),
+        deliverableArtifacts: [
+          {
+            filename: "nakama-pitch-deck.pdf",
+            path: "nakama-pitch-deck.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 270_000,
+            savedAt: "2026-07-13T10:00:00.000Z",
+            shareUrl: "https://app.example/s/tok_pdf",
+            sharePath: "/s/tok_pdf",
+          },
+        ],
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        userId: "424242424242424242",
+        content: "send the pdf",
+      });
+      await handleMessage(dm.message);
+
+      expect(dm.fileSendCalls).toBe(1);
+    });
+  });
+
+  test("returns a clear error when attach is requested for an unsupported type", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, sessionStore } = await createPairedHandler(homeDir, {
+        artifactContentBytes: new Uint8Array([0x4d, 0x5a]),
+      });
+      sessionStore.set("dm_channel_1", {
+        sessionId: "session_test",
+        profileId: "default",
+        updatedAt: new Date().toISOString(),
+        deliverableArtifacts: [
+          {
+            filename: "payload.exe",
+            path: "payload.exe",
+            mimeType: "application/octet-stream",
+            sizeBytes: 2,
+            savedAt: "2026-07-13T10:00:00.000Z",
+            shareUrl: "https://app.example/s/tok_exe",
+            sharePath: "/s/tok_exe",
+          },
+        ],
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        userId: "424242424242424242",
+        content: "send me the file",
+      });
+      await handleMessage(dm.message);
+
+      expect(dm.fileSendCalls).toBe(0);
+      expect(dm.sentMessages.some((reply) => /unsupported file type/i.test(reply))).toBe(true);
     });
   });
 });
