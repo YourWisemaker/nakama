@@ -157,13 +157,7 @@ export function CatalogModelsBrowseList<
             style={style}
           />
         )}
-        renderRow={(row, style) => (
-          <BrowseModelRowButton
-            onSelect={() => onSelect(row)}
-            row={toDisplayRow(row)}
-            style={style}
-          />
-        )}
+        rows={filtered}
       />
     </ModelBrowseShell>
   );
