@@ -20,8 +20,14 @@ import {
 describe("buildDiscordInviteUrl", () => {
   test("builds an oauth invite link with bot scopes and permissions", () => {
     expect(buildDiscordInviteUrl("1525937133096013954")).toBe(
-      "https://discord.com/oauth2/authorize?client_id=1525937133096013954&permissions=68608&scope=bot+applications.commands",
+      "https://discord.com/oauth2/authorize?client_id=1525937133096013954&permissions=101376&scope=bot+applications.commands",
     );
+  });
+
+  test("invite permissions bitfield includes Attach Files (32768)", () => {
+    const url = new URL(buildDiscordInviteUrl("1525937133096013954"));
+    const permissions = Number(url.searchParams.get("permissions"));
+    expect((permissions & 32768) !== 0).toBe(true);
   });
 });
 
@@ -80,7 +86,7 @@ describe("loadDiscordSettingsPublic", () => {
     const settings = await loadDiscordSettingsPublic();
 
     expect(settings.inviteUrl).toBe(
-      "https://discord.com/oauth2/authorize?client_id=1525937133096013954&permissions=68608&scope=bot+applications.commands",
+      "https://discord.com/oauth2/authorize?client_id=1525937133096013954&permissions=101376&scope=bot+applications.commands",
     );
   });
 });

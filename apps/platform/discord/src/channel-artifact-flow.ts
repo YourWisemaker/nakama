@@ -134,8 +134,19 @@ async function tryUploadDiscordArtifact(input: {
       bytes,
     });
 
+    if (!result.ok) {
+      console.warn(
+        `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
+        result.error ?? "unknown error",
+      );
+    }
+
     return result.ok;
-  } catch {
+  } catch (error) {
+    console.warn(
+      `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
+      error instanceof Error ? error.message : error,
+    );
     return false;
   }
 }
