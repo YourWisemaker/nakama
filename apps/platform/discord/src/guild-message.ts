@@ -155,21 +155,30 @@ export function explainGuildMessageHandling(
 
 export function stripBotMention(
   text: string,
-  botInfo: DiscordBotInfo | undefined
+  botInfo: DiscordBotInfo | undefined,
+  roleIds: readonly string[] = []
 ): string {
-  if (!botInfo) {
-    return text.trim();
-  }
+  const patterns: RegExp[] = [];
 
-  const patterns = [
-    new RegExp(`<@!?${botInfo.id}>`, "g"),
-    botInfo.username
-      ? new RegExp(
+  if (botInfo) {
+    patterns.push(new RegExp(`<@!?${botInfo.id}>`, "g"));
+    if (botInfo.username) {
+      patterns.push(
+        new RegExp(
           `@${botInfo.username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
           "gi"
         )
-      : null,
-  ].filter(Boolean) as RegExp[];
+      );
+    }
+  }
+
+  for (const roleId of roleIds) {
+    patterns.push(new RegExp(`<@&${roleId}>`, "g"));
+  }
+
+  if (patterns.length === 0) {
+    return text.trim();
+  }
 
   let result = text;
 
@@ -178,6 +187,31 @@ export function stripBotMention(
   }
 
   return result.replace(/\s+/g, " ").trim();
+}
+
+/** Role IDs mentioned in the message that the bot currently holds (excludes @everyone). */
+export function resolveMentionedBotRoleIds(message: Message): string[] {
+  const guild = message.guild;
+  const botMember = guild?.members.me;
+
+  if (!(guild && botMember)) {
+    return [];
+  }
+
+  const everyoneRoleId = guild.id;
+  const roleIds: string[] = [];
+
+  for (const roleId of message.mentions.roles.keys()) {
+    if (roleId === everyoneRoleId) {
+      continue;
+    }
+
+    if (botMember.roles.cache.has(roleId)) {
+      roleIds.push(roleId);
+    }
+  }
+
+  return roleIds;
 }
 
 function isReplyToBot(message: Message, botId: string): boolean {
@@ -194,6 +228,12 @@ function isReplyToBot(message: Message, botId: string): boolean {
 
 function hasBotMention(message: Message, botInfo: DiscordBotInfo): boolean {
   if (message.mentions.users.has(botInfo.id)) {
+    return true;
+  }
+
+  // Users often pick a role with the bot's name from autocomplete (`<@&role>`),
+  // which does not populate mentions.users — treat held role pings as triggers.
+  if (resolveMentionedBotRoleIds(message).length > 0) {
     return true;
   }
 

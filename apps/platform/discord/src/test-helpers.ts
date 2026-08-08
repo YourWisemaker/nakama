@@ -252,6 +252,8 @@ export function createGuildChatMessage(options: {
   fetchParentId?: string;
   content?: string;
   mentionsBot?: boolean;
+  mentionedRoleIds?: string[];
+  botHeldRoleIds?: string[];
   replyToBot?: boolean;
   inThread?: boolean;
   startThreadError?: Error;
@@ -280,6 +282,9 @@ export function createGuildChatMessage(options: {
     options.parentId === null ? null : (options.parentId ?? channelId);
   const fetchParentId = options.fetchParentId ?? channelId;
   const botId = "bot_id";
+  const guildId = "guild_1";
+  const mentionedRoleIds = options.mentionedRoleIds ?? [];
+  const botHeldRoleIds = new Set(options.botHeldRoleIds ?? []);
   const existingThreads = options.existingThreads ?? new Map();
 
   const messages = new Map<string, { author: { id: string } }>();
@@ -380,7 +385,22 @@ export function createGuildChatMessage(options: {
       user: { id: botId, username: "nakamabot" },
     },
     content: options.content ?? "",
+    guild: {
+      id: guildId,
+      members: {
+        me: {
+          roles: {
+            cache: {
+              has: (id: string) => botHeldRoleIds.has(id),
+            },
+          },
+        },
+      },
+    },
     mentions: {
+      roles: {
+        keys: () => mentionedRoleIds.values(),
+      },
       users: {
         has: (id: string) => (options.mentionsBot ? id === botId : false),
       },

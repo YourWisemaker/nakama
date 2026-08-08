@@ -50,6 +50,7 @@ import {
   resolveBotInfo,
   resolveChannelOrgKey,
   resolveConversationKey,
+  resolveMentionedBotRoleIds,
   resolveOrgChannelId,
   stripBotMention,
 } from "./guild-message";
@@ -219,9 +220,15 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const bypassOrgGate =
       command === "/help" || command === "/start" || command === "/org";
 
+    const mentionedBotRoleIds = isGuild
+      ? resolveMentionedBotRoleIds(message)
+      : [];
+
     if (!bypassOrgGate) {
       const orgGateText =
-        isGuild && text && botInfo ? stripBotMention(text, botInfo) : text;
+        isGuild && text && botInfo
+          ? stripBotMention(text, botInfo, mentionedBotRoleIds)
+          : text;
       const orgReady = await ensureOrgReady(
         messenger,
         channelOrgKey,
@@ -260,7 +267,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
 
     const messageText =
-      isGuild && botInfo ? stripBotMention(text, botInfo) : text;
+      isGuild && botInfo
+        ? stripBotMention(text, botInfo, mentionedBotRoleIds)
+        : text;
 
     if (!messageText) {
       return;
