@@ -232,7 +232,10 @@ export function createGuildChatMessage(options: {
   userId?: string;
   channelId?: string;
   threadId?: string;
-  parentId?: string;
+  /** Pass `null` to simulate a partial thread channel with missing parentId. */
+  parentId?: string | null;
+  /** Parent id returned by channel.fetch() when initial parentId is null. */
+  fetchParentId?: string;
   content?: string;
   mentionsBot?: boolean;
   replyToBot?: boolean;
@@ -259,7 +262,8 @@ export function createGuildChatMessage(options: {
   const userId = options.userId ?? "424242424242424242";
   const channelId = options.channelId ?? "guild_channel_1";
   const threadId = options.threadId ?? "thread_1";
-  const parentId = options.parentId ?? channelId;
+  const parentId = options.parentId === null ? null : (options.parentId ?? channelId);
+  const fetchParentId = options.fetchParentId ?? channelId;
   const botId = "bot_id";
   const existingThreads = options.existingThreads ?? new Map();
 
@@ -268,11 +272,12 @@ export function createGuildChatMessage(options: {
     messages.set("reply_1", { author: { id: botId } });
   }
 
-  function createThreadChannel(id: string, parent: string, archived = false) {
-    return {
+  function createThreadChannel(id: string, parent: string | null, archived = false) {
+    const channel = {
       id,
       parentId: parent,
       archived,
+      partial: parent === null,
       isDMBased: () => false,
       isTextBased: () => true,
       isThread: () => true,
@@ -280,6 +285,7 @@ export function createGuildChatMessage(options: {
         archived = value;
         return createThreadChannel(id, parent, archived);
       },
+      fetch: async () => createThreadChannel(id, fetchParentId, archived),
       send: async (payload: string | { files: unknown[] }) => {
         if (typeof payload === "string") {
           threadSentMessages.push(payload);
@@ -297,6 +303,7 @@ export function createGuildChatMessage(options: {
         }),
       },
     };
+    return channel;
   }
 
   const parentChannel = {
@@ -401,7 +408,10 @@ export function createSlashInteraction(options: {
   channelId?: string;
   commandName: string;
   inThread?: boolean;
-  parentId?: string;
+  /** Pass `null` to simulate a partial thread channel with missing parentId. */
+  parentId?: string | null;
+  /** Parent id returned by channel.fetch() when initial parentId is null. */
+  fetchParentId?: string;
   threadId?: string;
 }): {
   interaction: import("discord.js").ChatInputCommandInteraction;
@@ -411,15 +421,24 @@ export function createSlashInteraction(options: {
   const userId = options.userId ?? "424242424242424242";
   const channelId = options.channelId ?? "guild_channel_1";
   const threadId = options.threadId ?? "thread_1";
-  const parentId = options.parentId ?? channelId;
+  const parentId = options.parentId === null ? null : (options.parentId ?? channelId);
+  const fetchParentId = options.fetchParentId ?? channelId;
 
   const channel = options.inThread
     ? {
         id: threadId,
         parentId,
         archived: false,
+        partial: parentId === null,
         isDMBased: () => false,
         isThread: () => true,
+        fetch: async () => ({
+          id: threadId,
+          parentId: fetchParentId,
+          archived: false,
+          isDMBased: () => false,
+          isThread: () => true,
+        }),
         setArchived: async (value: boolean) => {
           channel.archived = value;
           return channel;

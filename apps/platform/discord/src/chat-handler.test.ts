@@ -1,8 +1,13 @@
 import path from "node:path";
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { ChatMessage } from "@nakama/core/contract";
 import { DiscordAuthStore } from "./auth-store";
-import { createChatHandler } from "./chat-handler";
+import {
+  chatLockOptions,
+  createChatHandler,
+  resetChatLocksForTests,
+  withChatLock,
+} from "./chat-handler";
 import { SessionStore } from "./session-store";
 import { ThreadStore } from "./thread-store";
 import {
@@ -15,6 +20,11 @@ import {
   withTempHome,
   writeDiscordConfigIni,
 } from "./test-helpers";
+
+afterEach(() => {
+  resetChatLocksForTests();
+  chatLockOptions.waitMs = 15 * 60 * 1000;
+});
 
 async function createPairedHandler(
   homeDir: string,
@@ -858,5 +868,181 @@ describe("createChatHandler guild thread routing", () => {
       expect(foreignClose.replies).toContain("I can only close threads I started.");
       expect(threadStore.hasThreadId("thread_owned")).toBe(true);
     });
+  });
+
+  test("threadStore save failure still tracks the created Discord thread", async () => {
+    await withTempHome(async (homeDir) => {
+      const streamedInputs: unknown[] = [];
+      const { handleMessage, threadStore } = await createPairedHandler(homeDir, {
+        onSendStream: async (input) => {
+          streamedInputs.push(input);
+          return "Tracked despite save failure";
+        },
+      });
+
+      const originalSave = threadStore.save.bind(threadStore);
+      let saveCalls = 0;
+      threadStore.save = async () => {
+        saveCalls += 1;
+        throw new Error("ENOSPC");
+      };
+
+      const mention = createGuildChatMessage({
+        content: "<@bot_id> start me",
+        mentionsBot: true,
+      });
+      await handleMessage(mention.message);
+
+      const threadId = mention.createdThreadId;
+      expect(threadId).toBeTruthy();
+      expect(saveCalls).toBeGreaterThan(0);
+      expect(threadStore.hasThreadId(threadId!)).toBe(true);
+      expect(mention.threadSentMessages).toContain("Tracked despite save failure");
+      expect(mention.channelSentMessages).not.toContain("Tracked despite save failure");
+
+      threadStore.save = originalSave;
+
+      const followUp = createGuildChatMessage({
+        content: "still here",
+        inThread: true,
+        threadId: threadId!,
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(followUp.message);
+
+      expect(followUp.threadSentMessages).toContain("Tracked despite save failure");
+      expect(streamedInputs).toHaveLength(2);
+    });
+  });
+
+  test("claim-thread save failure still tracks ownership for follow-ups", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, threadStore } = await createPairedHandler(homeDir, {
+        onSendStream: async () => "Claimed despite save failure",
+      });
+
+      threadStore.save = async () => {
+        throw new Error("EACCES");
+      };
+
+      const claim = createGuildChatMessage({
+        content: "<@bot_id> join please",
+        mentionsBot: true,
+        inThread: true,
+        threadId: "user_thread_claim",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(claim.message);
+
+      expect(threadStore.hasThreadId("user_thread_claim")).toBe(true);
+      expect(claim.threadSentMessages).toContain("Claimed despite save failure");
+
+      const followUp = createGuildChatMessage({
+        content: "keep going",
+        inThread: true,
+        threadId: "user_thread_claim",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(followUp.message);
+
+      expect(followUp.threadSentMessages.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("partial thread hydrates parentId via channel.fetch so org keys stay correct", async () => {
+    await withTempHome(async (homeDir) => {
+      const streamedByKey: string[] = [];
+      const { handleMessage, threadStore, orgStore, sessionStore } = await createPairedHandler(
+        homeDir,
+        {
+          orgs: createMultiTestOrgs(),
+          onSendStream: async (input) => {
+            streamedByKey.push(String((input as { message?: string }).message ?? ""));
+            return "Partial ok";
+          },
+        },
+      );
+
+      orgStore.set("g:guild_channel_1", "org_a");
+      await orgStore.save();
+      threadStore.add("thread_partial");
+      await threadStore.save();
+
+      const followUp = createGuildChatMessage({
+        content: "hello from partial",
+        inThread: true,
+        threadId: "thread_partial",
+        parentId: null,
+        fetchParentId: "guild_channel_1",
+      });
+      await handleMessage(followUp.message);
+
+      expect(followUp.threadSentMessages).toContain("Partial ok");
+      expect(streamedByKey).toEqual(["hello from partial"]);
+      expect(orgStore.get("g:thread_partial")).toBeUndefined();
+      expect(sessionStore.get("g:guild_channel_1:t:thread_partial")).toBeTruthy();
+      expect(sessionStore.get("g:thread_partial:t:thread_partial")).toBeUndefined();
+    });
+  });
+
+  test("slash commands in partial threads hydrate parentId via channel.fetch", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleSlashCommand, orgStore, sessionStore } = await createPairedHandler(homeDir, {
+        orgs: createMultiTestOrgs(),
+      });
+
+      orgStore.set("g:guild_channel_1", "org_b");
+      await orgStore.save();
+      sessionStore.set("g:guild_channel_1:t:thread_partial_slash", {
+        sessionId: "session_test",
+        profileId: "default",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const clearCmd = createSlashInteraction({
+        commandName: "clear",
+        inThread: true,
+        threadId: "thread_partial_slash",
+        parentId: null,
+        fetchParentId: "guild_channel_1",
+      });
+      await handleSlashCommand(clearCmd.interaction);
+
+      expect(clearCmd.replies.some((text) => text.includes("Choose an organization"))).toBe(false);
+      expect(clearCmd.replies).toContain("History cleared.");
+      expect(orgStore.get("g:thread_partial_slash")).toBeUndefined();
+    });
+  });
+
+  test("wedged chat lock recovers so follow-ups are not silenced forever", async () => {
+    chatLockOptions.waitMs = 40;
+
+    let releaseHang!: () => void;
+    const hang = new Promise<void>((resolve) => {
+      releaseHang = resolve;
+    });
+
+    const order: string[] = [];
+    const first = withChatLock("g:channel:t:thread_wedge", async () => {
+      order.push("first-start");
+      await hang;
+      order.push("first-end");
+    });
+
+    await Bun.sleep(5);
+    const secondStarted = Date.now();
+    const second = withChatLock("g:channel:t:thread_wedge", async () => {
+      order.push("second");
+    });
+
+    await second;
+    const waitedMs = Date.now() - secondStarted;
+    expect(waitedMs).toBeGreaterThanOrEqual(35);
+    expect(order).toEqual(["first-start", "second"]);
+
+    releaseHang();
+    await first;
+    expect(order).toEqual(["first-start", "second", "first-end"]);
   });
 });
