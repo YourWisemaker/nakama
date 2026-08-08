@@ -2,6 +2,7 @@ import { XIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent,
@@ -10,8 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { clampAttachmentPanelWidth } from "@/components/chat/attachment-panel-width";
 import { cn } from "@/lib/utils";
-
-const WIDTH_MOTION_MS = 200;
 
 interface AttachmentDetailPanelProps {
   title: string;
@@ -42,44 +41,21 @@ export function AttachmentDetailPanel({
 }: AttachmentDetailPanelProps) {
   const asideRef = useRef<HTMLElement>(null);
   const draggingRef = useRef(false);
-  const prevFullscreenRef = useRef(fullscreen);
   const [displayWidth, setDisplayWidth] = useState(width);
-  const [animateWidth, setAnimateWidth] = useState(false);
 
   const clampWidth = useCallback(
     (nextWidth: number) => clampAttachmentPanelWidth(nextWidth),
     [],
   );
 
-  useEffect(() => {
-    if (!fullscreen && !animateWidth) {
-      setDisplayWidth(width);
-    }
-  }, [animateWidth, fullscreen, width]);
-
-  useEffect(() => {
-    if (prevFullscreenRef.current === fullscreen) {
+  useLayoutEffect(() => {
+    if (fullscreen) {
+      const parent = asideRef.current?.parentElement;
+      setDisplayWidth(parent?.clientWidth ?? width);
       return;
     }
 
-    prevFullscreenRef.current = fullscreen;
-    setAnimateWidth(true);
-
-    const frame = window.requestAnimationFrame(() => {
-      if (fullscreen) {
-        const parent = asideRef.current?.parentElement;
-        setDisplayWidth(parent?.clientWidth ?? width);
-        return;
-      }
-
-      setDisplayWidth(width);
-    });
-
-    const timeout = window.setTimeout(() => setAnimateWidth(false), WIDTH_MOTION_MS);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timeout);
-    };
+    setDisplayWidth(width);
   }, [fullscreen, width]);
 
   useEffect(() => {
@@ -163,9 +139,7 @@ export function AttachmentDetailPanel({
       style={{ width: displayWidth }}
       className={cn(
         "relative flex min-h-0 shrink-0 flex-col border-l border-border bg-background",
-        animateWidth &&
-          "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-        !fullscreen && !animateWidth && "max-w-[50vw] lg:max-w-[75vw]",
+        !fullscreen && "max-w-[50vw] lg:max-w-[75vw]",
         className,
       )}
     >

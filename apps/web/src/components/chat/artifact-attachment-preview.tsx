@@ -337,6 +337,38 @@ export function ArtifactAttachmentPreview({
     );
   }
 
+  if (isImage) {
+    return (
+      <button
+        type="button"
+        className={cn(
+          "relative flex w-1/2 max-w-full shrink-0 flex-col gap-2 overflow-hidden rounded-lg border border-border bg-muted p-2 text-left transition-colors hover:bg-muted/70",
+          className,
+        )}
+        onClick={openPanel}
+      >
+        {imagePreviewUrl ? (
+          <img
+            src={imagePreviewUrl}
+            alt=""
+            className="aspect-[4/3] w-full rounded-md border border-border object-cover outline outline-1 outline-black/10 dark:outline-white/10"
+          />
+        ) : (
+          <div className="flex aspect-[4/3] w-full items-center justify-center rounded-md border border-border bg-background">
+            <ImageIcon className="size-6 text-muted-foreground" aria-hidden />
+          </div>
+        )}
+        <div className="min-w-0 px-0.5">
+          <p className="truncate text-xs font-medium text-foreground">{artifact.filename}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {artifact.sizeBytes > 0 ? `${formatBytes(artifact.sizeBytes)} · ` : null}
+            Artifact
+          </p>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -347,9 +379,7 @@ export function ArtifactAttachmentPreview({
       onClick={openPanel}
     >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-background">
-        {isImage ? (
-          <ImageIcon className="size-4 text-muted-foreground" aria-hidden />
-        ) : isVideo ? (
+        {isVideo ? (
           <FilmIcon className="size-4 text-muted-foreground" aria-hidden />
         ) : (
           <FileTextIcon className="size-4 text-muted-foreground" aria-hidden />

@@ -52,9 +52,11 @@ export function useArtifactPreviewContent({
   const [mediaBlob, setMediaBlob] = useState<Blob | null>(null);
   const mediaPreviewUrl = useBlobObjectUrl(mediaBlob);
   const isBinaryMedia = isImage || isVideo;
+  // Load image bytes eagerly so chat chips can show a real thumbnail before the panel opens.
+  const shouldLoad = open || isImage;
 
   useEffect(() => {
-    if (!open || !canPreview) {
+    if (!shouldLoad || !canPreview) {
       return;
     }
 
@@ -136,7 +138,7 @@ export function useArtifactPreviewContent({
       cancelled = true;
     };
   }, [
-    open,
+    shouldLoad,
     canPreview,
     content,
     mediaBlob,
