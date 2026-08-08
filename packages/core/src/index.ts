@@ -21,6 +21,12 @@ export * from "./composio";
 export * from "./composio-config";
 export * from "./config";
 export * from "./contract";
+export {
+  DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES,
+  formatDiscordAttachmentSizeLimitMessage,
+  formatDiscordUnsupportedAttachmentMessage,
+  isDiscordAttachableArtifact,
+} from "./discord-attachment";
 // Explicit Discord exports — omit helpers that collide with telegram-* names
 // (maskBotToken, generateHandshakeCode, normalizeHandshakeInput, parseAllowedUserIds,
 // isHeartbeatAlive, isProcessAlive). Import those from @nakama/core/discord-config

@@ -38,6 +38,7 @@ import type { DiscordAuthStore } from "./auth-store";
 import {
   deliverDiscordTurnArtifactShares,
   maybeSendRequestedDiscordArtifactAttachment,
+  uploadDiscordArtifactFromToolResult,
 } from "./channel-artifact-flow";
 import type { DiscordBridgeConfig } from "./config";
 import { formatError, HELP_TEXT, splitDiscordMessage } from "./format";
@@ -617,9 +618,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const session = await resolveSession(conversationKey);
     const profileId = sessionStore.get(conversationKey)?.profileId;
 
-    let attached = false;
-    if (profileId) {
-      attached = await maybeSendRequestedDiscordArtifactAttachment({
+    // `/attach` remains a non-LLM shortcut. Natural-language sends use the
+    // send_discord_artifact tool from the agent turn.
+    if (profileId && isAttachOnlyCommand(attachUserText)) {
+      await maybeSendRequestedDiscordArtifactAttachment({
         attachUserText,
         channel,
         client,
@@ -628,11 +630,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         profileId,
         sessionStore,
       });
-    }
-
-    // Platform owns Discord file delivery — skip the model so it cannot claim
-    // attachments are impossible after we already uploaded (or for /attach).
-    if (attached || isAttachOnlyCommand(attachUserText)) {
       return;
     }
 
@@ -652,6 +649,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     let reply = "";
     let earlyAck: Promise<void> | undefined;
     let postedQuestionnaire = false;
+    const pendingArtifactUploads: Promise<unknown>[] = [];
 
     try {
       reply = await session.sendStream(
@@ -678,8 +676,21 @@ export function createChatHandler(deps: ChatHandlerDeps) {
             typingLoop.ping();
             void todoStatus.update(todos);
           },
-          onToolEnd: () => {
+          onToolEnd: (event) => {
             typingLoop.ping();
+            if (!(profileId && event.tool === "send_discord_artifact")) {
+              return;
+            }
+
+            pendingArtifactUploads.push(
+              uploadDiscordArtifactFromToolResult({
+                channel,
+                client,
+                messenger,
+                profileId,
+                result: event.result,
+              })
+            );
           },
           onToolStart: () => {
             typingLoop.ping();
@@ -695,6 +706,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         { signal }
       );
 
+      await Promise.all(pendingArtifactUploads);
       await earlyAck;
       await todoStatus.complete();
 

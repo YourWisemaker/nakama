@@ -17,6 +17,74 @@ import {
 } from "./send-artifact-attachment";
 import type { SessionStore } from "./session-store";
 
+export async function uploadDiscordArtifactFromToolResult(input: {
+  channel: TextBasedChannel;
+  client: NakamaClient;
+  messenger: DiscordMessenger;
+  profileId: string;
+  result: unknown;
+}): Promise<boolean> {
+  const artifact = parseSendDiscordArtifactResult(input.result);
+  if (!artifact) {
+    return false;
+  }
+
+  try {
+    const { data } = await input.client.readProfileArtifactContent(
+      input.profileId,
+      artifact.path
+    );
+    const result = await sendDiscordArtifactAttachment(input.channel, {
+      bytes: new Uint8Array(data),
+      filename: artifact.filename,
+      mimeType: artifact.mimeType,
+    });
+
+    if (!result.ok && result.error) {
+      await input.messenger.send(result.error);
+      return false;
+    }
+
+    return result.ok;
+  } catch (error) {
+    await input.messenger.send(
+      error instanceof Error
+        ? error.message
+        : "Failed to read the artifact for attachment."
+    );
+    return false;
+  }
+}
+
+function parseSendDiscordArtifactResult(result: unknown): {
+  filename: string;
+  mimeType: string;
+  path: string;
+} | null {
+  if (typeof result !== "object" || result === null) {
+    return null;
+  }
+
+  const record = result as Record<string, unknown>;
+  if (record.ok !== true) {
+    return null;
+  }
+
+  if (
+    typeof record.path !== "string" ||
+    typeof record.filename !== "string" ||
+    typeof record.mimeType !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    filename: record.filename,
+    mimeType: record.mimeType,
+    path: record.path,
+  };
+}
+
 export async function maybeSendRequestedDiscordArtifactAttachment(input: {
   channel: TextBasedChannel;
   client: NakamaClient;
