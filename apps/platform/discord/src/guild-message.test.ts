@@ -8,15 +8,23 @@ import {
 
 const BOT_INFO = { id: "999000111222333444", username: "nakamabot" };
 
+const GUILD_ID = "guild_1";
+const BOT_ROLE_ID = "1525964112708894884";
+const OTHER_ROLE_ID = "role_other";
+
 function createGuildMessage(options: {
   content?: string;
   mentionsBot?: boolean;
+  mentionedRoleIds?: string[];
+  botHeldRoleIds?: string[];
   replyToBot?: boolean;
   thread?: boolean;
   parentId?: string | null;
 }) {
   const channelId = "channel_1";
   const messages = new Map<string, { author: { id: string } }>();
+  const mentionedRoleIds = options.mentionedRoleIds ?? [];
+  const botHeldRoleIds = new Set(options.botHeldRoleIds ?? []);
 
   if (options.replyToBot) {
     messages.set("reply_1", { author: { id: BOT_INFO.id } });
@@ -34,7 +42,22 @@ function createGuildMessage(options: {
     },
     client: { user: { id: BOT_INFO.id, username: BOT_INFO.username } },
     content: options.content ?? "",
+    guild: {
+      id: GUILD_ID,
+      members: {
+        me: {
+          roles: {
+            cache: {
+              has: (id: string) => botHeldRoleIds.has(id),
+            },
+          },
+        },
+      },
+    },
     mentions: {
+      roles: {
+        keys: () => mentionedRoleIds.values(),
+      },
       users: {
         has: (id: string) => (options.mentionsBot ? id === BOT_INFO.id : false),
       },
@@ -65,6 +88,64 @@ describe("explainGuildMessageHandling", () => {
 
     expect(decision.shouldHandle).toBe(true);
     expect(decision.reason).toBe("bot-mention");
+  });
+
+  test("handles @mention of a role the bot holds", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        botHeldRoleIds: [BOT_ROLE_ID],
+        content: `<@&${BOT_ROLE_ID}> can you pull the latest main branch`,
+        mentionedRoleIds: [BOT_ROLE_ID],
+      }),
+      BOT_INFO
+    );
+
+    expect(decision.shouldHandle).toBe(true);
+    expect(decision.reason).toBe("bot-mention");
+  });
+
+  test("ignores @mention of a role the bot does not hold", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        botHeldRoleIds: [BOT_ROLE_ID],
+        content: `<@&${OTHER_ROLE_ID}> hello`,
+        mentionedRoleIds: [OTHER_ROLE_ID],
+      }),
+      BOT_INFO
+    );
+
+    expect(decision.shouldHandle).toBe(false);
+    expect(decision.reason).toBe("no-trigger");
+  });
+
+  test("ignores @everyone role mention", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        botHeldRoleIds: [GUILD_ID],
+        content: `<@&${GUILD_ID}> hello`,
+        mentionedRoleIds: [GUILD_ID],
+      }),
+      BOT_INFO
+    );
+
+    expect(decision.shouldHandle).toBe(false);
+    expect(decision.reason).toBe("no-trigger");
+  });
+
+  test("claims a foreign thread when a held role is @mentioned", () => {
+    const decision = explainGuildMessageHandling(
+      createGuildMessage({
+        botHeldRoleIds: [BOT_ROLE_ID],
+        content: `<@&${BOT_ROLE_ID}> please join`,
+        mentionedRoleIds: [BOT_ROLE_ID],
+        thread: true,
+      }),
+      BOT_INFO,
+      { botOwnsThread: false }
+    );
+
+    expect(decision.shouldHandle).toBe(true);
+    expect(decision.reason).toBe("claim-thread");
   });
 
   test("handles reply to bot", () => {
@@ -205,5 +286,15 @@ describe("stripBotMention", () => {
     expect(stripBotMention(`<@!${BOT_INFO.id}> question`, BOT_INFO)).toBe(
       "question"
     );
+  });
+
+  test("removes held role mention markup", () => {
+    expect(
+      stripBotMention(
+        `<@&${BOT_ROLE_ID}> can you pull the latest main branch`,
+        BOT_INFO,
+        [BOT_ROLE_ID]
+      )
+    ).toBe("can you pull the latest main branch");
   });
 });
