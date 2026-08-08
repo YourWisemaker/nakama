@@ -3,10 +3,11 @@ import {
   type DeliverableChannelArtifact,
   extractPairedTurnArtifacts,
   formatArtifactShareFooter,
-  getMostRecentDeliverableArtifact,
+  formatMissingAttachArtifactMessage,
   isAttachIntent,
   mintDeliverableArtifacts,
   pushDeliverableArtifact,
+  resolveArtifactForAttach,
 } from "@nakama/core";
 import type { TextBasedChannel } from "discord.js";
 import type { DiscordMessenger } from "./messenger";
@@ -30,25 +31,64 @@ export async function maybeSendRequestedDiscordArtifactAttachment(input: {
     return;
   }
 
-  const artifact = getMostRecentDeliverableArtifact(
-    input.sessionStore.getDeliverableArtifacts(input.conversationKey)
+  const registry = input.sessionStore.getDeliverableArtifacts(
+    input.conversationKey
   );
+  let listed: Awaited<
+    ReturnType<NakamaClient["listProfileArtifacts"]>
+  >["artifacts"] = [];
+
+  if (registry.length === 0) {
+    try {
+      const response = await input.client.listProfileArtifacts(input.profileId);
+      listed = response.artifacts;
+    } catch (error) {
+      console.warn(
+        "Discord artifact list failed during attach intent; cannot fall back to profile artifacts.",
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+
+  const artifact = resolveArtifactForAttach({
+    attachUserText: input.attachUserText,
+    listed,
+    registry,
+  });
+
   if (!artifact) {
+    await input.messenger.send(formatMissingAttachArtifactMessage());
     return;
   }
 
-  const { data } = await input.client.readProfileArtifactContent(
-    input.profileId,
-    artifact.path
-  );
-  const result = await sendDiscordArtifactAttachment(input.channel, {
-    bytes: new Uint8Array(data),
-    filename: artifact.filename,
-    mimeType: artifact.mimeType,
-  });
+  if (!registry.some((entry) => entry.path === artifact.path)) {
+    const nextRegistry = pushDeliverableArtifact(registry, artifact);
+    input.sessionStore.updateArtifactState(input.conversationKey, {
+      deliverableArtifacts: nextRegistry,
+    });
+    await input.sessionStore.save();
+  }
 
-  if (!result.ok && result.error) {
-    await input.messenger.send(result.error);
+  try {
+    const { data } = await input.client.readProfileArtifactContent(
+      input.profileId,
+      artifact.path
+    );
+    const result = await sendDiscordArtifactAttachment(input.channel, {
+      bytes: new Uint8Array(data),
+      filename: artifact.filename,
+      mimeType: artifact.mimeType,
+    });
+
+    if (!result.ok && result.error) {
+      await input.messenger.send(result.error);
+    }
+  } catch (error) {
+    await input.messenger.send(
+      error instanceof Error
+        ? error.message
+        : "Failed to read the artifact for attachment."
+    );
   }
 }
 
@@ -88,16 +128,16 @@ export async function deliverDiscordTurnArtifactShares(input: {
     return;
   }
 
-  let registry = input.sessionStore.getDeliverableArtifacts(
+  let nextRegistry = input.sessionStore.getDeliverableArtifacts(
     input.conversationKey
   );
   for (const artifact of delivered) {
-    registry = pushDeliverableArtifact(registry, artifact);
+    nextRegistry = pushDeliverableArtifact(nextRegistry, artifact);
   }
 
   input.sessionStore.updateArtifactState(input.conversationKey, {
     artifactShareUrls: shareUrlCache,
-    deliverableArtifacts: registry,
+    deliverableArtifacts: nextRegistry,
   });
   await input.sessionStore.save();
 
@@ -154,7 +194,7 @@ async function tryUploadDiscordArtifact(input: {
     if (!result.ok) {
       console.warn(
         `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
-        result.error ?? "unknown error",
+        result.error ?? "unknown error"
       );
     }
 
@@ -162,7 +202,7 @@ async function tryUploadDiscordArtifact(input: {
   } catch (error) {
     console.warn(
       `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
-      error instanceof Error ? error.message : error,
+      error instanceof Error ? error.message : error
     );
     return false;
   }

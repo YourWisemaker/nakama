@@ -1,4 +1,5 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
+import { isAttachIntent, isAttachOnlyCommand } from "@nakama/core";
 import {
   type ChannelOrgStore,
   findOrgBySelectionInput,
@@ -253,6 +254,20 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       }
 
       if (text.startsWith("/")) {
+        if (isAttachIntent(text)) {
+          const messageText = isGroup
+            ? stripBotMention(text, botInfo?.username)
+            : text;
+          await handleChatMessage(
+            ctx,
+            withGroupContext({ message: messageText }, isGroup),
+            conversationKey,
+            telegram,
+            messageText
+          );
+          return;
+        }
+
         await handleCommand(
           ctx,
           text,
@@ -446,6 +461,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         profileId,
         sessionStore,
       });
+    }
+
+    if (isAttachOnlyCommand(attachUserText)) {
+      return;
     }
 
     const typingLoop = createTypingLoop(ctx);

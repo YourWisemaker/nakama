@@ -34,6 +34,10 @@ async function createPairedHandler(
     questionnaire?: Parameters<typeof createMockClient>[0]["questionnaire"];
     orgs?: Parameters<typeof createMockClient>[0]["orgs"];
     profiles?: Parameters<typeof createMockClient>[0]["profiles"];
+    listedArtifacts?: Parameters<typeof createMockClient>[0]["listedArtifacts"];
+    artifactContentBytes?: Parameters<
+      typeof createMockClient
+    >[0]["artifactContentBytes"];
     configProfileId?: string;
   } = {}
 ) {
@@ -545,6 +549,111 @@ describe("createChatHandler artifact delivery", () => {
       expect(dm.fileSendCalls).toBe(0);
       expect(
         dm.sentMessages.some((reply) => /unsupported file type/i.test(reply))
+      ).toBe(true);
+    });
+  });
+
+  test("falls back to profile artifacts when the session registry is empty", async () => {
+    await withTempHome(async (homeDir) => {
+      const { calls, handleMessage, sessionStore } = await createPairedHandler(
+        homeDir,
+        {
+          artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+          listedArtifacts: [
+            {
+              filename: "nakama-pitch-deck.pdf",
+              mimeType: "application/pdf",
+              path: "/tmp/artifacts/nakama-pitch-deck.pdf",
+              sizeBytes: 8,
+              updatedAt: "2026-08-08T12:51:00.000Z",
+            },
+          ],
+        }
+      );
+      sessionStore.set("dm_channel_1", {
+        profileId: "default",
+        sessionId: "session_test",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        content: "send me the file",
+        userId: "424242424242424242",
+      });
+      await handleMessage(dm.message);
+
+      expect(calls.listProfileArtifacts).toBe(1);
+      expect(calls.readProfileArtifactContent).toBe(1);
+      expect(dm.fileSendCalls).toBe(1);
+      expect(
+        sessionStore.getDeliverableArtifacts("dm_channel_1").map((a) => a.path)
+      ).toEqual(["nakama-pitch-deck.pdf"]);
+    });
+  });
+
+  test("typed /attach sends the file and skips the agent turn", async () => {
+    await withTempHome(async (homeDir) => {
+      const { calls, handleMessage, sessionStore } = await createPairedHandler(
+        homeDir,
+        {
+          artifactContentBytes: new TextEncoder().encode("%PDF-1.4"),
+          listedArtifacts: [
+            {
+              filename: "nakama-pitch-deck.pdf",
+              mimeType: "application/pdf",
+              path: "/tmp/artifacts/nakama-pitch-deck.pdf",
+              sizeBytes: 8,
+              updatedAt: "2026-08-08T12:51:00.000Z",
+            },
+          ],
+        }
+      );
+      sessionStore.set("dm_channel_1", {
+        profileId: "default",
+        sessionId: "session_test",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        content: "/attach",
+        userId: "424242424242424242",
+      });
+      await handleMessage(dm.message);
+
+      expect(dm.fileSendCalls).toBe(1);
+      expect(calls.sendStream).toBe(0);
+      expect(
+        dm.sentMessages.some((reply) =>
+          /Use slash commands from Discord/i.test(reply)
+        )
+      ).toBe(false);
+    });
+  });
+
+  test("tells the user when attach intent has no artifact available", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, sessionStore } =
+        await createPairedHandler(homeDir);
+      sessionStore.set("dm_channel_1", {
+        profileId: "default",
+        sessionId: "session_test",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const dm = createDmMessage({
+        content: "send me the file",
+        userId: "424242424242424242",
+      });
+      await handleMessage(dm.message);
+
+      expect(dm.fileSendCalls).toBe(0);
+      expect(
+        dm.sentMessages.some((reply) =>
+          /No saved artifact to attach/i.test(reply)
+        )
       ).toBe(true);
     });
   });
