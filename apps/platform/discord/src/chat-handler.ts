@@ -919,6 +919,18 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       }
     }
 
+    // New thread sessions inherit the parent channel's /profile selection.
+    const parentChannelId = parentChannelIdFromConversationKey(chatId);
+    if (parentChannelId) {
+      const parentProfileId = sessionStore.get(parentChannelId)?.profileId;
+      if (parentProfileId) {
+        const match = profiles.find((profile) => profile.id === parentProfileId);
+        if (match) {
+          return match.id;
+        }
+      }
+    }
+
     return pickProfileForOrg(profiles, config.profileId).id;
   }
 
@@ -995,6 +1007,12 @@ async function replyChunks(messenger: DiscordMessenger, text: string): Promise<v
   for (const chunk of splitDiscordMessage(text)) {
     await messenger.send(chunk);
   }
+}
+
+/** Parent guild channel id from `g:{parent}:t:{thread}` conversation keys. */
+function parentChannelIdFromConversationKey(chatId: string): string | undefined {
+  const match = /^g:(.+):t:(.+)$/.exec(chatId);
+  return match?.[1];
 }
 
 /**

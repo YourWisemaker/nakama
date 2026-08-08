@@ -71,6 +71,7 @@ export function createMockClient(
     publishProfileArtifactShare: 0,
     readProfileArtifactContent: 0,
   };
+  const createdSessionProfileIds: string[] = [];
 
   const sendStream = async (input: unknown, handlers?: StreamHandlers) => {
     calls.sendStream += 1;
@@ -100,8 +101,11 @@ export function createMockClient(
   let activeOrgId: string | null = orgs[0]?.id ?? null;
 
   const client = {
-    createSession: async () => {
+    createSession: async (_channel: string, input?: { profileId?: string }) => {
       calls.createSession += 1;
+      if (input?.profileId) {
+        createdSessionProfileIds.push(input.profileId);
+      }
       return session;
     },
     createChatSession: () => session,
@@ -160,7 +164,7 @@ export function createMockClient(
 
   assertBridgeClientMethods(client);
 
-  return { client, calls };
+  return { client, calls, createdSessionProfileIds };
 }
 
 export interface MockDmMessage {

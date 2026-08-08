@@ -33,6 +33,8 @@ async function createPairedHandler(
     onSendStream?: Parameters<typeof createMockClient>[0]["onSendStream"];
     questionnaire?: Parameters<typeof createMockClient>[0]["questionnaire"];
     orgs?: Parameters<typeof createMockClient>[0]["orgs"];
+    profiles?: Parameters<typeof createMockClient>[0]["profiles"];
+    configProfileId?: string;
   } = {},
 ) {
   await writeDiscordConfigIni(homeDir, {
@@ -42,7 +44,7 @@ async function createPairedHandler(
 
   const authStore = new DiscordAuthStore();
   await authStore.reload();
-  const { client, calls } = createMockClient(options);
+  const { client, calls, createdSessionProfileIds } = createMockClient(options);
   const sessionStore = new SessionStore(
     path.join(homeDir, ".nakama", "discord", "chat-sessions.json"),
   );
@@ -55,14 +57,25 @@ async function createPairedHandler(
   await orgStore.load();
   const handlers = createChatHandler({
     client,
-    config: { botToken: "discord-bot-token", profileId: "default" },
+    config: {
+      botToken: "discord-bot-token",
+      profileId: options.configProfileId ?? "default",
+    },
     authStore,
     sessionStore,
     threadStore,
     orgStore,
   });
 
-  return { ...handlers, client, calls, sessionStore, threadStore, orgStore };
+  return {
+    ...handlers,
+    client,
+    calls,
+    createdSessionProfileIds,
+    sessionStore,
+    threadStore,
+    orgStore,
+  };
 }
 
 describe("createChatHandler artifact delivery", () => {
@@ -927,6 +940,77 @@ describe("createChatHandler guild thread routing", () => {
       expect(streamedInputs).toHaveLength(1);
       expect(orgStore.get("g:thread_42")).toBeUndefined();
       expect(orgStore.get("g:guild_channel_1")?.orgId).toBe("org_a");
+    });
+  });
+
+  test("new threads inherit the parent channel profile", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, sessionStore, createdSessionProfileIds } = await createPairedHandler(
+        homeDir,
+        {
+          profiles: [
+            { id: "default", name: "Default" },
+            { id: "support", name: "Support" },
+          ],
+          configProfileId: "default",
+          onSendStream: async () => "Thread reply",
+        },
+      );
+
+      sessionStore.set("guild_channel_1", {
+        sessionId: "channel_session",
+        profileId: "support",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+
+      const guild = createGuildChatMessage({
+        content: "<@bot_id> help a customer",
+        mentionsBot: true,
+      });
+      await handleMessage(guild.message);
+
+      const threadId = guild.createdThreadId;
+      expect(threadId).toBeTruthy();
+      expect(createdSessionProfileIds).toContain("support");
+      expect(sessionStore.get(`g:guild_channel_1:t:${threadId}`)?.profileId).toBe("support");
+      expect(sessionStore.get("guild_channel_1")?.profileId).toBe("support");
+    });
+  });
+
+  test("thread-specific profile override is kept for that thread only", async () => {
+    await withTempHome(async (homeDir) => {
+      const { handleMessage, sessionStore, threadStore, createdSessionProfileIds } =
+        await createPairedHandler(homeDir, {
+          profiles: [
+            { id: "default", name: "Default" },
+            { id: "support", name: "Support" },
+            { id: "sales", name: "Sales" },
+          ],
+          configProfileId: "default",
+          onSendStream: async () => "ok",
+        });
+
+      sessionStore.set("guild_channel_1", {
+        sessionId: "channel_session",
+        profileId: "support",
+        updatedAt: new Date().toISOString(),
+      });
+      await sessionStore.save();
+      threadStore.add("thread_42");
+      await threadStore.save();
+
+      const switchProfile = createGuildChatMessage({
+        content: "/profile sales",
+        inThread: true,
+        threadId: "thread_42",
+        parentId: "guild_channel_1",
+      });
+      await handleMessage(switchProfile.message);
+
+      expect(sessionStore.get("g:guild_channel_1:t:thread_42")?.profileId).toBe("sales");
+      expect(sessionStore.get("guild_channel_1")?.profileId).toBe("support");
+      expect(createdSessionProfileIds.at(-1)).toBe("sales");
     });
   });
 
