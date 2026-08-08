@@ -38,6 +38,7 @@ export async function maybeSendRequestedDiscordArtifactAttachment(input: {
   const { data } = await input.client.readProfileArtifactContent(input.profileId, artifact.path);
   const result = await sendDiscordArtifactAttachment(input.channel, {
     filename: artifact.filename,
+    mimeType: artifact.mimeType,
     bytes: new Uint8Array(data),
   });
 
@@ -131,6 +132,7 @@ async function tryUploadDiscordArtifact(input: {
 
     const result = await sendDiscordArtifactAttachment(input.channel, {
       filename: input.artifact.filename,
+      mimeType: input.artifact.mimeType,
       bytes,
     });
 

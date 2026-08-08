@@ -12,9 +12,13 @@ export interface PublishArtifactShareResult {
   refreshed: boolean;
 }
 
+const ATTACH_NOUN =
+  "file|document|attachment|artifact|pdf|csv|zip|image|photo|screenshot|report|deck";
+
 const ATTACH_INTENT_PATTERNS = [
-  /\b(?:send|attach|share)\s+(?:me\s+)?(?:the\s+)?(?:file|document|attachment|artifact)\b/i,
-  /\b(?:download|get)\s+(?:me\s+)?(?:the\s+)?(?:file|document|attachment|artifact)\b/i,
+  new RegExp(String.raw`\b(?:send|attach|share)\s+(?:me\s+)?(?:the\s+)?(?:${ATTACH_NOUN})\b`, "i"),
+  new RegExp(String.raw`\b(?:download|get)\s+(?:me\s+)?(?:the\s+)?(?:${ATTACH_NOUN})\b`, "i"),
+  /\bsend\s+(?:me\s+)?(?:the\s+)?\S+\.(?:pdf|csv|png|jpe?g|gif|webp|zip|txt|md)\b/i,
   /\battach\s+it\b/i,
   /^\/attach(?:@\w+)?(?:\s|$)/i,
 ];

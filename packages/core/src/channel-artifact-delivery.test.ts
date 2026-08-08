@@ -12,6 +12,10 @@ describe("isAttachIntent", () => {
     expect(isAttachIntent("send me the file")).toBe(true);
     expect(isAttachIntent("attach it")).toBe(true);
     expect(isAttachIntent("/attach")).toBe(true);
+    expect(isAttachIntent("send the pdf")).toBe(true);
+    expect(isAttachIntent("send me the csv")).toBe(true);
+    expect(isAttachIntent("attach the image")).toBe(true);
+    expect(isAttachIntent("send nakama-pitch-deck.pdf")).toBe(true);
   });
 
   test("does not match unrelated text", () => {
