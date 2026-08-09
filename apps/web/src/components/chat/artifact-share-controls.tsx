@@ -1,4 +1,5 @@
-import { EyeIcon, Loader2Icon, Share2Icon } from "lucide-react";
+import { Share04Icon, ViewIcon } from "hugeicons-react";
+import { Loader2Icon } from "lucide-react";
 import { ArtifactSharePublishDialog } from "@/components/chat/artifact-share-publish-dialog";
 import {
   type ArtifactShareControlsState,
@@ -23,6 +24,7 @@ export function ArtifactShareMenuItem({
       disabled={share.busy || !share.orgId}
       onClick={share.handleShareClick}
     >
+      <Share04Icon aria-hidden />
       Share artifact
     </DropdownMenuItem>
   );
@@ -110,7 +112,7 @@ export function ArtifactShareControls({
                 {share.busy ? (
                   <Loader2Icon aria-hidden className="size-3.5 animate-spin" />
                 ) : (
-                  <Share2Icon aria-hidden className="size-3.5" />
+                  <Share04Icon aria-hidden className="size-3.5" />
                 )}
               </Button>
             }
@@ -136,7 +138,7 @@ export function ArtifactShareControls({
               type="button"
               variant="outline"
             >
-              <EyeIcon aria-hidden className="size-3.5" />
+              <ViewIcon aria-hidden className="size-3.5" />
               View
             </Button>
             <Button
@@ -169,7 +171,7 @@ export function ArtifactShareControls({
             {share.busy ? (
               <Loader2Icon aria-hidden className="size-3.5 animate-spin" />
             ) : (
-              <Share2Icon aria-hidden className="size-3.5" />
+              <Share04Icon aria-hidden className="size-3.5" />
             )}
             Publish
           </Button>
