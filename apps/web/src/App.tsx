@@ -22,7 +22,6 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { SetupWizardPage } from "@/pages/SetupWizardPage";
 import { SkillDetailPage } from "@/pages/SkillDetailPage";
 import { SystemPage } from "@/pages/SystemPage";
-import { TasksPage } from "@/pages/TasksPage";
 import { ToolPlaygroundPage } from "@/pages/ToolPlaygroundPage";
 
 function QueryCacheListener() {
@@ -71,7 +70,10 @@ function AppShell() {
                     />
                   </Route>
                   <Route element={<AutomationsPage />} path="/automations" />
-                  <Route element={<TasksPage />} path="/tasks" />
+                  <Route
+                    element={<Navigate replace to="/automations?tab=tasks" />}
+                    path="/tasks"
+                  />
                   <Route element={<IntegrationsPage />} path="/integrations" />
                   <Route
                     element={<NotificationsPage />}

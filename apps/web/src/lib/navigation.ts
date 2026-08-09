@@ -60,14 +60,9 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Profiles",
       },
       {
-        description: "Draft workflows from natural language",
+        description: "Manage automations and agent tasks",
         id: "automations",
-        label: "Automations",
-      },
-      {
-        description: "Agent swarm kanban board",
-        id: "tasks",
-        label: "Tasks",
+        label: "Agent work",
       },
     ],
     label: "Agent",
@@ -236,6 +231,18 @@ export const PAGE_PATHS: Record<PageId, string> = {
   tasks: "/tasks",
 };
 
+export type AgentWorkTab = "automations" | "tasks";
+
+export function agentWorkTabFromSearchParams(
+  searchParams: URLSearchParams
+): AgentWorkTab {
+  return searchParams.get("tab") === "tasks" ? "tasks" : "automations";
+}
+
+export function agentWorkTabPath(tab: AgentWorkTab): string {
+  return `${PAGE_PATHS.automations}?tab=${tab}`;
+}
+
 export function pathForPage(pageId: PageId): string {
   return PAGE_PATHS[pageId];
 }
@@ -264,6 +271,10 @@ export function findNavItem(pageId: PageId): NavItem | undefined {
 export function pageIdFromPath(pathname: string): PageId | null {
   if (pathname === "/chat" || pathname.startsWith("/chat/")) {
     return "chat";
+  }
+
+  if (pathname === PAGE_PATHS.tasks) {
+    return "automations";
   }
 
   if (
