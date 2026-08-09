@@ -63,17 +63,19 @@ describe("composio-callback-url", () => {
     }
   });
 
-  test("persistWebPublicUrl stores origin only", async () => {
+  test("persistWebPublicUrl preserves path segments", async () => {
     const configDir = join(tmpdir(), `nakama-callback-url-test-${Date.now()}`);
     mkdirSync(configDir, { recursive: true });
     const previousConfigDir = process.env.NAKAMA_CONFIG_DIR;
     process.env.NAKAMA_CONFIG_DIR = configDir;
 
     try {
-      expect(await persistWebPublicUrl("https://app.example.com/setup")).toBe(
-        "https://app.example.com"
+      expect(await persistWebPublicUrl("https://gateway.example.com/v1/")).toBe(
+        "https://gateway.example.com/v1"
       );
-      expect(resolveComposioCallbackBaseUrl()).toBe("https://app.example.com");
+      expect(resolveComposioCallbackBaseUrl()).toBe(
+        "https://gateway.example.com/v1"
+      );
     } finally {
       if (previousConfigDir === undefined) {
         delete process.env.NAKAMA_CONFIG_DIR;

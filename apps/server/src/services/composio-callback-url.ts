@@ -41,7 +41,7 @@ export async function persistWebPublicUrl(input: string): Promise<string> {
     throw new Error("webPublicUrl must be a valid http or https URL.");
   }
 
-  return saveUserWebPublicUrl(new URL(trimmed).origin);
+  return saveUserWebPublicUrl(normalizeBaseUrl(trimmed));
 }
 
 export async function getWebPublicUrlSettings(): Promise<WebPublicUrlSettingsResponse> {
