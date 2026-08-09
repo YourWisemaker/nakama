@@ -20,7 +20,11 @@ export function AgentWorkTabs() {
   }
 
   return (
-    <div aria-label="Agent work views" role="tablist">
+    <div
+      aria-label="Agent work views"
+      className="flex items-center gap-1"
+      role="tablist"
+    >
       <TabButton
         active={activeTab === "automations"}
         onClick={() => selectTab("automations")}
