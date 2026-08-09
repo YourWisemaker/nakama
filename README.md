@@ -29,7 +29,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for system design, or the [docs site](h
 
 Open the live demo at [https://demo.getnakama.cloud](https://demo.getnakama.cloud).
 
-- Username: `demo`
+- Username: `demo@getnakama.cloud`
 - Password: `demo1234`
 
 ### Managed hosting
