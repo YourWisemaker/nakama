@@ -1,5 +1,10 @@
 import type { ProfileSummary } from "@nakama/core/contract";
-import { CameraIcon, PlusIcon, Trash2Icon, UsersRoundIcon } from "lucide-react";
+import {
+  Add01Icon,
+  Camera01Icon,
+  Delete02Icon,
+  UserGroup02Icon,
+} from "hugeicons-react";
 import type { ReactNode } from "react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { Button } from "@/components/ui/button";
@@ -114,7 +119,7 @@ function ProfileAvatarOverlay({
       {uploading ? (
         <Spinner className={cn(overlayIconClass, "text-primary-foreground")} />
       ) : (
-        <CameraIcon
+        <Camera01Icon
           aria-hidden
           className={cn(overlayIconClass, "text-primary-foreground")}
         />
@@ -159,7 +164,7 @@ export function EditableProfileAvatar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-40">
           <DropdownMenuItem className="cursor-pointer" onClick={onPick}>
-            <CameraIcon aria-hidden className="size-4" />
+            <Camera01Icon aria-hidden className="size-4" />
             Change image
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -167,7 +172,7 @@ export function EditableProfileAvatar({
             onClick={onRemove}
             variant="destructive"
           >
-            <Trash2Icon aria-hidden className="size-4" />
+            <Delete02Icon aria-hidden className="size-4" />
             Remove image
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -273,7 +278,7 @@ export function ProfilesEmptyState({
           isCompact ? "size-10 rounded-full" : "size-14 rounded-2xl"
         )}
       >
-        <UsersRoundIcon
+        <UserGroup02Icon
           aria-hidden
           className={cn(
             "text-muted-foreground",
@@ -307,7 +312,7 @@ export function ProfilesEmptyState({
             size={isCompact ? "sm" : "default"}
             type="button"
           >
-            <PlusIcon aria-hidden className="size-4" />
+            <Add01Icon aria-hidden className="size-4" />
             {isCompact ? "Create profile" : "New profile"}
           </Button>
         ) : null}
