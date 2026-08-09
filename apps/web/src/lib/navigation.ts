@@ -1,16 +1,16 @@
 import {
-  AiBrain02Icon,
-  AiNetworkIcon,
-  AiScanIcon,
-  ChatDelayIcon,
+  Brain03Icon,
+  Chat01Icon,
   KanbanIcon,
   Notification01Icon,
   PlusSignSquareIcon,
   Settings01Icon,
+  SharedWifiIcon,
+  UserSquareIcon,
   WebhookIcon,
 } from "hugeicons-react";
 
-type NavIcon = typeof AiNetworkIcon;
+type NavIcon = typeof SharedWifiIcon;
 
 export type PageId =
   | "chat"
@@ -88,14 +88,14 @@ export const STANDALONE_PAGES: Partial<Record<PageId, NavItem>> = {
 };
 
 export const NAV_ITEM_ICONS: Record<PageId, NavIcon> = {
-  automations: AiNetworkIcon,
+  automations: SharedWifiIcon,
   chat: PlusSignSquareIcon,
-  history: ChatDelayIcon,
+  history: Chat01Icon,
   integrations: WebhookIcon,
   notifications: Notification01Icon,
-  profiles: AiScanIcon,
+  profiles: UserSquareIcon,
   settings: Settings01Icon,
-  soul: AiBrain02Icon,
+  soul: Brain03Icon,
   tasks: KanbanIcon,
 };
 
