@@ -1,4 +1,4 @@
-import { HugeiconsIcon, Notification01Icon } from "hugeicons-react";
+import { Notification01Icon } from "hugeicons-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { NotificationList } from "@/components/notifications/notification-list";
@@ -31,11 +31,7 @@ export function SidebarNotifications() {
       type="button"
     >
       <span className="relative shrink-0">
-        <HugeiconsIcon
-          aria-hidden
-          className="size-4"
-          icon={Notification01Icon}
-        />
+        <Notification01Icon aria-hidden className="size-4" />
         {showBadge ? (
           <span
             aria-hidden

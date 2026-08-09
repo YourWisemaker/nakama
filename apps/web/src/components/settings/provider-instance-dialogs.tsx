@@ -1,5 +1,5 @@
 import type { ProviderInstanceSummary } from "@nakama/core/contract";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { ViewIcon, ViewOffIcon } from "hugeicons-react";
 import type { ReactNode } from "react";
 import { CustomProviderFields } from "@/components/CustomProviderFields";
 import type { ModelListRow } from "@/components/ModelListEditor";
@@ -70,7 +70,7 @@ export function ProviderReplaceKeyDialog({
               onClick={onToggleShowApiKey}
               size="icon-sm"
             >
-              {showApiKey ? <EyeOffIcon /> : <EyeIcon />}
+              {showApiKey ? <ViewOffIcon /> : <ViewIcon />}
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>

@@ -1,4 +1,4 @@
-import { HugeiconsIcon, PlusIcon } from "hugeicons-react";
+import { Add01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -31,7 +31,7 @@ export function ProfileAdminPlusButton({
             type="button"
             variant="ghost"
           >
-            <HugeiconsIcon aria-hidden className="size-4" icon={PlusIcon} />
+            <Add01Icon aria-hidden className="size-4" />
           </Button>
         }
       />

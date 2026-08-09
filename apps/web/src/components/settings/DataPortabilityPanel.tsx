@@ -1,5 +1,6 @@
 import type { DataImportPreviewResponse } from "@nakama/core/contract";
-import { AlertTriangleIcon, DownloadIcon, UploadIcon } from "lucide-react";
+import { Alert02Icon, Download04Icon, Upload04Icon } from "hugeicons-react";
+import type { SVGProps } from "react";
 import { useRef, useState } from "react";
 import {
   DataImportPreview,
@@ -15,6 +16,13 @@ import {
 import { formatError } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+
+const DownloadIcon = ({ className }: SVGProps<SVGSVGElement>) => (
+  <Download04Icon className={className} />
+);
+const UploadIcon = ({ className }: SVGProps<SVGSVGElement>) => (
+  <Upload04Icon className={className} />
+);
 
 export function DataPortabilityPanel() {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -151,7 +159,7 @@ export function DataPortabilityPanel() {
               "border-destructive/30 bg-destructive/10 text-destructive"
             )}
           >
-            <AlertTriangleIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <Alert02Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
             <span className="text-pretty">{error}</span>
           </div>
         </div>

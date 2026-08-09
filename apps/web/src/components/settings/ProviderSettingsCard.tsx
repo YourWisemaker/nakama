@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, PlusIcon } from "lucide-react";
+import { Add01Icon, Alert02Icon } from "hugeicons-react";
 import { useState } from "react";
 import { ProviderSetupForm } from "@/components/ProviderSetupForm";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ export function ProviderSettingsCard({
                 type="button"
                 variant="outline"
               >
-                <PlusIcon className="mr-1.5 size-4" />
+                <Add01Icon className="mr-1.5 size-4" />
                 Add provider
               </Button>
             ) : null}
@@ -127,7 +127,7 @@ export function ProviderSettingsCard({
           ) : (
             <>
               <div className="flex items-start gap-3 border-border border-b px-4 py-3">
-                <AlertTriangleIcon
+                <Alert02Icon
                   aria-hidden="true"
                   className="mt-0.5 size-5 shrink-0 text-amber-200"
                 />

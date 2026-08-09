@@ -3,7 +3,12 @@ import type {
   ProviderModelOption,
   UpdateProviderRequest,
 } from "@nakama/core/contract";
-import { KeyRoundIcon, ListIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  Delete02Icon,
+  Key01Icon,
+  ListViewIcon,
+  PencilIcon,
+} from "hugeicons-react";
 import type { ReactNode } from "react";
 import { CatalogProviderModelFields } from "@/components/CatalogProviderModelFields";
 import { CustomProviderFields } from "@/components/CustomProviderFields";
@@ -132,14 +137,14 @@ export function ProviderInstanceCard({
                 label="Manage models"
                 onClick={card.openManage}
               >
-                <ListIcon className="size-3.5" />
+                <ListViewIcon className="size-3.5" />
               </ProviderActionButton>
             ) : null}
             <ProviderActionButton
               label={instance.hasApiKey ? "Update key" : "Add key"}
               onClick={() => card.setReplaceKeyOpen(true)}
             >
-              <KeyRoundIcon className="size-3.5" />
+              <Key01Icon className="size-3.5" />
             </ProviderActionButton>
             <ProviderActionButton
               destructive
@@ -147,7 +152,7 @@ export function ProviderInstanceCard({
               label="Remove"
               onClick={() => void card.handleDelete()}
             >
-              <Trash2Icon className="size-3.5" />
+              <Delete02Icon className="size-3.5" />
             </ProviderActionButton>
           </div>
         </td>
