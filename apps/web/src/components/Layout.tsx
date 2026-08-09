@@ -31,6 +31,7 @@ import {
   pageIdFromPath,
 } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { AgentWorkTabs } from "@/pages/automations/agent-work-tabs";
 
 export function Layout() {
   const location = useLocation();
@@ -141,6 +142,11 @@ export function Layout() {
                 <h1 className="type-brand min-w-0 truncate">
                   {activeNav?.label}
                 </h1>
+                {page === "automations" ? (
+                  <div className="ml-auto shrink-0">
+                    <AgentWorkTabs />
+                  </div>
+                ) : null}
               </header>
             )}
 
