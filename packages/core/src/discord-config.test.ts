@@ -305,7 +305,7 @@ describe("addDiscordAllowedUserId", () => {
     await run();
   }
 
-  test("adds a snowflake id to the allowlist and dedupes", async () => {
+  test("adds a snowflake id and dedupes", async () => {
     await useTempDiscordHome(async () => {
       await writeDiscordConfig(tempHome, {
         botToken: "discord-bot-token",

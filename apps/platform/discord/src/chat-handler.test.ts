@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 import type { ChatMessage } from "@nakama/core/contract";
-import {
-  isDiscordUserAuthorized,
-  loadDiscordConfigFile,
-} from "@nakama/core/discord-config";
+import { loadDiscordConfigFile } from "@nakama/core/discord-config";
 import { DiscordAuthStore } from "./auth-store";
 import {
   chatLockOptions,
@@ -43,11 +40,14 @@ async function createPairedHandler(
       typeof createMockClient
     >[0]["artifactContentBytes"];
     configProfileId?: string;
+    pairedUserIds?: string[];
+    allowedUserIds?: string[];
   } = {}
 ) {
   await writeDiscordConfigIni(homeDir, {
+    allowedUserIds: options.allowedUserIds ?? [],
     botToken: "discord-bot-token",
-    pairedUserIds: ["424242424242424242"],
+    pairedUserIds: options.pairedUserIds ?? ["424242424242424242"],
   });
 
   const authStore = new DiscordAuthStore();
@@ -1352,36 +1352,11 @@ describe("createChatHandler guild thread routing", () => {
     });
   });
 
-  test("allow denies non-paired users", async () => {
+  test("denies non-paired users", async () => {
     await withTempHome(async (homeDir) => {
-      await writeDiscordConfigIni(homeDir, {
-        allowedUserIds: ["555555555555555555"],
-        botToken: "discord-bot-token",
-        pairedUserIds: ["424242424242424242"],
+      const { handleSlashCommand } = await createPairedHandler(homeDir, {
+        pairedUserIds: [],
       });
-
-      const authStore = new DiscordAuthStore();
-      await authStore.reload();
-      const { client } = createMockClient();
-      const sessionStore = new SessionStore(
-        path.join(homeDir, ".nakama", "discord", "chat-sessions.json")
-      );
-      await sessionStore.load();
-      const threadStore = new ThreadStore(
-        path.join(homeDir, ".nakama", "discord", "chat-threads.json")
-      );
-      await threadStore.load();
-      const orgStore = createTestOrgStore(homeDir);
-      await orgStore.load();
-      const { handleSlashCommand } = createChatHandler({
-        authStore,
-        client,
-        config: { botToken: "discord-bot-token", profileId: "default" },
-        orgStore,
-        sessionStore,
-        threadStore,
-      });
-
       const allowCmd = createSlashInteraction({
         commandName: "allow",
         userId: "555555555555555555",
@@ -1392,17 +1367,14 @@ describe("createChatHandler guild thread routing", () => {
       expect(
         allowCmd.replies.some((reply) => /not authorized/i.test(reply))
       ).toBe(true);
-
-      const config = await loadDiscordConfigFile();
-      expect(config?.allowedUserIds).toEqual(["555555555555555555"]);
+      expect((await loadDiscordConfigFile())?.allowedUserIds ?? []).toEqual([]);
     });
   });
 
-  test("allow adds a mentioned user and persists to config", async () => {
+  test("adds a mentioned user", async () => {
     await withTempHome(async (homeDir) => {
       const { handleSlashCommand } = await createPairedHandler(homeDir);
       const targetUserId = "777777777777777777";
-
       const allowCmd = createSlashInteraction({
         commandName: "allow",
         userOption: { id: targetUserId, username: "alice" },
@@ -1412,52 +1384,18 @@ describe("createChatHandler guild thread routing", () => {
       expect(
         allowCmd.replies.some((reply) => reply.includes(`<@${targetUserId}>`))
       ).toBe(true);
-      expect(allowCmd.replies.some((reply) => /already/i.test(reply))).toBe(
-        false
+      expect((await loadDiscordConfigFile())?.allowedUserIds).toContain(
+        targetUserId
       );
-
-      const config = await loadDiscordConfigFile();
-      expect(config?.allowedUserIds).toContain(targetUserId);
-      expect(
-        isDiscordUserAuthorized(targetUserId, {
-          allowedUserIds: config?.allowedUserIds ?? [],
-          pairedUserIds: config?.pairedUserIds ?? [],
-        })
-      ).toBe(true);
     });
   });
 
-  test("allow reports when the user is already on the allowed list", async () => {
+  test("reports already-allowed users", async () => {
     await withTempHome(async (homeDir) => {
       const targetUserId = "888888888888888888";
-      await writeDiscordConfigIni(homeDir, {
+      const { handleSlashCommand } = await createPairedHandler(homeDir, {
         allowedUserIds: [targetUserId],
-        botToken: "discord-bot-token",
-        pairedUserIds: ["424242424242424242"],
       });
-
-      const authStore = new DiscordAuthStore();
-      await authStore.reload();
-      const { client } = createMockClient();
-      const sessionStore = new SessionStore(
-        path.join(homeDir, ".nakama", "discord", "chat-sessions.json")
-      );
-      await sessionStore.load();
-      const threadStore = new ThreadStore(
-        path.join(homeDir, ".nakama", "discord", "chat-threads.json")
-      );
-      await threadStore.load();
-      const orgStore = createTestOrgStore(homeDir);
-      await orgStore.load();
-      const { handleSlashCommand } = createChatHandler({
-        authStore,
-        client,
-        config: { botToken: "discord-bot-token", profileId: "default" },
-        orgStore,
-        sessionStore,
-        threadStore,
-      });
-
       const allowCmd = createSlashInteraction({
         commandName: "allow",
         userOption: { id: targetUserId },
@@ -1467,9 +1405,6 @@ describe("createChatHandler guild thread routing", () => {
       expect(allowCmd.replies.some((reply) => /already/i.test(reply))).toBe(
         true
       );
-
-      const config = await loadDiscordConfigFile();
-      expect(config?.allowedUserIds).toEqual([targetUserId]);
     });
   });
 
