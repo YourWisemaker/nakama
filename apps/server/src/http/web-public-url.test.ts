@@ -71,7 +71,7 @@ describe("web public url settings", () => {
       );
       expect(putResponse.status).toBe(200);
       const saved = (await putResponse.json()) as { webPublicUrl: string };
-      expect(saved.webPublicUrl).toBe("https://app.example.com");
+      expect(saved.webPublicUrl).toBe("https://app.example.com/setup");
 
       const getAfterSave = await app.fetch(
         new Request("http://localhost:4310/v1/system/web-public-url", {
@@ -81,7 +81,7 @@ describe("web public url settings", () => {
       const afterSave = (await getAfterSave.json()) as {
         webPublicUrl: string | null;
       };
-      expect(afterSave.webPublicUrl).toBe("https://app.example.com");
+      expect(afterSave.webPublicUrl).toBe("https://app.example.com/setup");
     } finally {
       if (previousConfigDir === undefined) {
         delete process.env.NAKAMA_CONFIG_DIR;

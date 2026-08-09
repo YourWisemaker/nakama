@@ -414,7 +414,7 @@ export async function saveUserTimezone(timezone: string): Promise<void> {
 function readWebPublicUrl(values: Record<string, string>): string | undefined {
   const trimmed = values.web_public_url?.trim();
   return trimmed && isValidBaseUrl(trimmed)
-    ? normalizeBaseUrl(new URL(trimmed).origin)
+    ? normalizeBaseUrl(trimmed)
     : undefined;
 }
 
@@ -446,7 +446,7 @@ export async function saveUserWebPublicUrl(
     throw new Error("webPublicUrl must be a valid http or https URL.");
   }
 
-  const normalized = normalizeBaseUrl(new URL(trimmed).origin);
+  const normalized = normalizeBaseUrl(trimmed);
   const existing = await loadUserConfig();
 
   if (existing) {

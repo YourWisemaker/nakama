@@ -8,8 +8,10 @@ import {
   ensureUserConfigDir,
   getUserConfigPath,
   loadUserConfig,
+  loadUserWebPublicUrl,
   normalizeProviderInstanceLabel,
   saveUserConfig,
+  saveUserWebPublicUrl,
 } from "./user-config";
 
 describe("ensureUserConfigDir", () => {
@@ -93,6 +95,7 @@ describe("user config multi-provider", () => {
     const loaded = await loadUserConfig();
     expect(loaded?.providers).toHaveLength(2);
     expect(loaded?.defaultProviderId).toBe(openaiId);
+    expect(loaded?.providers[1]?.baseUrl).toBe("http://localhost:11434/v1");
     expect(loaded?.providers[1]?.customModels?.[0]?.id).toBe("llama3.2");
     expect(loaded?.providers[1]?.customModels?.[0]?.supportsThinking).toBe(
       true
@@ -207,6 +210,38 @@ created_at=2026-06-15T00:00:00.000Z
   test("normalizeProviderInstanceLabel rejects undefined string", () => {
     expect(normalizeProviderInstanceLabel("openrouter", "undefined", [])).toBe(
       "OpenRouter"
+    );
+  });
+});
+
+describe("web public URL", () => {
+  let configDir = "";
+
+  afterEach(async () => {
+    if (configDir) {
+      await rm(configDir, { force: true, recursive: true });
+      configDir = "";
+    }
+
+    delete process.env.NAKAMA_CONFIG_DIR;
+  });
+
+  test("saveUserWebPublicUrl preserves path segments", async () => {
+    configDir = await mkdtemp(join(tmpdir(), "nakama-config-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+
+    await expect(
+      saveUserWebPublicUrl("https://gateway.devscale.id/v1/")
+    ).resolves.toBe("https://gateway.devscale.id/v1");
+    await expect(loadUserWebPublicUrl()).resolves.toBe(
+      "https://gateway.devscale.id/v1"
+    );
+
+    await expect(saveUserWebPublicUrl("https://app.example.com")).resolves.toBe(
+      "https://app.example.com"
+    );
+    await expect(loadUserWebPublicUrl()).resolves.toBe(
+      "https://app.example.com"
     );
   });
 });
