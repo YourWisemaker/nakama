@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import path from "node:path";
 import {
+  addDiscordAllowedUserId,
   buildDiscordInviteUrl,
   generateHandshakeCode,
   isDiscordUserAuthorized,
@@ -278,6 +279,71 @@ describe("saveDiscordConfig", () => {
       const saved = await loadDiscordConfigFile();
       expect(saved?.handshakeCode).toBe(result.handshakeCode);
       expect(saved?.allowedUserIds).toEqual([]);
+    });
+  });
+});
+
+describe("addDiscordAllowedUserId", () => {
+  let tempHome = "";
+  let homedirSpy: ReturnType<typeof spyOn<typeof os, "homedir">> | null = null;
+
+  afterEach(async () => {
+    homedirSpy?.mockRestore();
+    homedirSpy = null;
+
+    if (tempHome) {
+      await rm(tempHome, { force: true, recursive: true });
+      tempHome = "";
+    }
+  });
+
+  async function useTempDiscordHome(run: () => Promise<void>): Promise<void> {
+    tempHome = await mkdtemp(
+      path.join(os.tmpdir(), "nakama-core-discord-allow-")
+    );
+    homedirSpy = spyOn(os, "homedir").mockReturnValue(tempHome);
+    await run();
+  }
+
+  test("adds a snowflake id to the allowlist and dedupes", async () => {
+    await useTempDiscordHome(async () => {
+      await writeDiscordConfig(tempHome, {
+        botToken: "discord-bot-token",
+        pairedUserIds: ["111111111111111111"],
+      });
+
+      const userId = "222222222222222222";
+      const added = await addDiscordAllowedUserId(userId);
+      expect(added).toEqual({
+        alreadyAllowed: false,
+        ok: true,
+        userId,
+      });
+
+      const saved = await loadDiscordConfigFile();
+      expect(saved?.allowedUserIds).toEqual([userId]);
+
+      const duplicate = await addDiscordAllowedUserId(userId);
+      expect(duplicate).toEqual({
+        alreadyAllowed: true,
+        ok: true,
+        userId,
+      });
+      expect((await loadDiscordConfigFile())?.allowedUserIds).toEqual([userId]);
+    });
+  });
+
+  test("rejects invalid ids and missing config", async () => {
+    await useTempDiscordHome(async () => {
+      expect(await addDiscordAllowedUserId("not-a-snowflake")).toEqual({
+        message: "Invalid Discord user ID.",
+        ok: false,
+      });
+
+      expect(await addDiscordAllowedUserId("222222222222222222")).toEqual({
+        message: "Discord is not configured on the server yet.",
+        ok: false,
+      });
     });
   });
 });
