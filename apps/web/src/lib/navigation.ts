@@ -1,6 +1,7 @@
 import {
   Brain03Icon,
   Chat01Icon,
+  Folder01Icon,
   Notification01Icon,
   PlusSignSquareIcon,
   Settings01Icon,
@@ -14,6 +15,7 @@ type NavIcon = typeof SharedWifiIcon;
 export type PageId =
   | "chat"
   | "history"
+  | "files"
   | "profiles"
   | "soul"
   | "automations"
@@ -58,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
         PlusSignSquareIcon
       ),
       navItem("history", "Chats", "Browse and reopen saved chats", Chat01Icon),
+      navItem("files", "Files", "Manage profile artifacts", Folder01Icon),
     ],
     label: "Chat",
   },
@@ -135,6 +138,7 @@ export const NAV_ITEM_ICONS: Record<PageId, NavIcon> = {
 export const SETUP_PATH = "/setup";
 
 export const PLATFORM_ADMIN_PAGE_IDS: ReadonlySet<PageId> = new Set([
+  "files",
   "profiles",
   "soul",
 ]);
@@ -232,6 +236,7 @@ export function orgSkillProposalsPath(profileId?: string): string {
 export const PAGE_PATHS: Record<PageId, string> = {
   automations: "/automations",
   chat: "/chat",
+  files: "/files",
   history: "/history",
   integrations: "/integrations",
   notifications: "/notifications",
@@ -245,6 +250,7 @@ const PREFIX_PAGE_IDS: readonly [string, PageId][] = [
   [PAGE_PATHS.chat, "chat"],
   [PAGE_PATHS.soul, "soul"],
   [PAGE_PATHS.profiles, "profiles"],
+  [PAGE_PATHS.files, "files"],
 ];
 
 export type AgentWorkTab = "automations" | "tasks";

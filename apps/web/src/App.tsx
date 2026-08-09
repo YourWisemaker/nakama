@@ -12,6 +12,7 @@ import { statusTabPath } from "@/lib/navigation";
 import { onGlobalQueryError, queryClient } from "@/lib/query-client";
 import { AutomationsPage } from "@/pages/AutomationsPage";
 import { ChatPage } from "@/pages/ChatPage";
+import { FilesPage } from "@/pages/FilesPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { IntegrationsPage } from "@/pages/IntegrationsPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -57,6 +58,9 @@ function AppShell() {
                     path="/chat/:profileId/:sessionId"
                   />
                   <Route element={<HistoryPage />} path="/history" />
+                  <Route element={<PlatformAdminGuard />}>
+                    <Route element={<FilesPage />} path="/files" />
+                  </Route>
                   <Route
                     element={<ToolPlaygroundPage />}
                     path="/system/playground/:toolId"
