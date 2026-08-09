@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import type { ElementType } from "react";
 import { useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
@@ -23,7 +23,6 @@ import {
   canAccessSystemPage,
   findNavItem,
   NAV_GROUPS,
-  NAV_ITEM_ICONS,
   type NavItem,
   navHrefForPage,
   PAGE_PATHS,
@@ -31,6 +30,7 @@ import {
   pageIdFromPath,
 } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { AgentWorkTabs } from "@/pages/automations/agent-work-tabs";
 
 export function Layout() {
   const location = useLocation();
@@ -114,7 +114,7 @@ export function Layout() {
                             : undefined
                         }
                         collapsed={collapsed}
-                        icon={NAV_ITEM_ICONS[item.id]}
+                        icon={item.icon}
                         item={item}
                         key={item.id}
                         onPrefetch={
@@ -138,9 +138,13 @@ export function Layout() {
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {page === "chat" ? null : (
               <header className="app-shell-header gap-4 bg-card px-6">
-                <h1 className="type-brand min-w-0 truncate">
-                  {activeNav?.label}
-                </h1>
+                {page === "automations" ? (
+                  <AgentWorkTabs />
+                ) : (
+                  <h1 className="type-brand min-w-0 truncate">
+                    {activeNav?.label}
+                  </h1>
+                )}
               </header>
             )}
 
@@ -229,7 +233,7 @@ function SidebarNavButton({
   className,
 }: {
   item: NavItem;
-  icon: LucideIcon;
+  icon: ElementType;
   active: boolean;
   collapsed: boolean;
   to: string;

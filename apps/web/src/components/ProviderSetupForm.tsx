@@ -1,6 +1,6 @@
 import type { CreateProviderResponse } from "@nakama/core/contract";
 import { ollamaRequiresApiKey } from "@nakama/core/ollama-provider-config";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { ViewIcon, ViewOffIcon } from "hugeicons-react";
 import { useState } from "react";
 import { BrowsableModelFields } from "@/components/BrowsableModelFields";
 import { CustomProviderFields } from "@/components/CustomProviderFields";
@@ -156,7 +156,7 @@ export function ProviderSetupForm({
                   onClick={() => form.setShowApiKey((current) => !current)}
                   size="icon-sm"
                 >
-                  {form.showApiKey ? <EyeOffIcon /> : <EyeIcon />}
+                  {form.showApiKey ? <ViewOffIcon /> : <ViewIcon />}
                 </InputGroupButton>
               </InputGroupAddon>
             </InputGroup>

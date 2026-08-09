@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from "lucide-react";
+import { ArrowDown01Icon } from "hugeicons-react";
 import { useMemo, useState } from "react";
 import {
   Command,
@@ -96,7 +96,7 @@ export function TimezoneSelect({
           {loading ? (
             <Spinner className="size-4 shrink-0" />
           ) : (
-            <ChevronDownIcon
+            <ArrowDown01Icon
               aria-hidden
               className="size-4 shrink-0 text-muted-foreground"
             />

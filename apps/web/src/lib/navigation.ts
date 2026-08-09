@@ -1,15 +1,15 @@
-import type { LucideIcon } from "lucide-react";
 import {
-  BellIcon,
-  BrainIcon,
-  CableIcon,
-  CircleFadingPlusIcon,
-  CircleUserRoundIcon,
-  ClockIcon,
-  CogIcon,
-  KanbanIcon,
-  WorkflowIcon,
-} from "lucide-react";
+  Brain03Icon,
+  Chat01Icon,
+  Notification01Icon,
+  PlusSignSquareIcon,
+  Settings01Icon,
+  SharedWifiIcon,
+  UserSquareIcon,
+  WebhookIcon,
+} from "hugeicons-react";
+
+type NavIcon = typeof SharedWifiIcon;
 
 export type PageId =
   | "chat"
@@ -24,6 +24,7 @@ export type PageId =
 
 export interface NavItem {
   description: string;
+  icon: NavIcon;
   id: PageId;
   label: string;
 }
@@ -34,62 +35,71 @@ export interface NavGroup {
   label: string;
 }
 
+const navItem = (
+  id: PageId,
+  label: string,
+  description: string,
+  icon: NavIcon
+): NavItem => ({
+  description,
+  icon,
+  id,
+  label,
+});
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: "chat",
     items: [
-      {
-        description: "New chat",
-        id: "chat",
-        label: "New chat",
-      },
-      {
-        description: "Browse and reopen saved chats",
-        id: "history",
-        label: "Chats",
-      },
+      navItem(
+        "chat",
+        "New chat",
+        "Start a new conversation",
+        PlusSignSquareIcon
+      ),
+      navItem("history", "Chats", "Browse and reopen saved chats", Chat01Icon),
     ],
     label: "Chat",
   },
   {
     id: "agent",
     items: [
-      {
-        description: "Manage bot configs and tool allowlists",
-        id: "profiles",
-        label: "Profiles",
-      },
-      {
-        description: "Draft workflows from natural language",
-        id: "automations",
-        label: "Automations",
-      },
-      {
-        description: "Agent swarm kanban board",
-        id: "tasks",
-        label: "Tasks",
-      },
+      navItem(
+        "profiles",
+        "Profiles",
+        "Manage bot configs and tool allowlists",
+        UserSquareIcon
+      ),
+      navItem(
+        "automations",
+        "Agent work",
+        "Manage automations and agent tasks",
+        SharedWifiIcon
+      ),
     ],
     label: "Agent",
   },
   {
     id: "system",
     items: [
-      {
-        description: "Bridges and Composio",
-        id: "integrations",
-        label: "Integrations",
-      },
-      {
-        description: "Identity stack files and registered agent tools",
-        id: "soul",
-        label: "System",
-      },
-      {
-        description: "Provider API key and model",
-        id: "settings",
-        label: "Settings",
-      },
+      navItem(
+        "integrations",
+        "Integrations",
+        "Bridges and Composio",
+        WebhookIcon
+      ),
+      navItem(
+        "soul",
+        "System",
+        "Identity stack files and registered agent tools",
+        Brain03Icon
+      ),
+      navItem(
+        "settings",
+        "Settings",
+        "Provider API key and model",
+        Settings01Icon
+      ),
     ],
     label: "System",
   },
@@ -98,23 +108,28 @@ export const NAV_GROUPS: NavGroup[] = [
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
 export const STANDALONE_PAGES: Partial<Record<PageId, NavItem>> = {
-  notifications: {
-    description: "Automation runs and org memory proposals",
-    id: "notifications",
-    label: "Notifications",
-  },
+  notifications: navItem(
+    "notifications",
+    "Notifications",
+    "Automation runs and org memory proposals",
+    Notification01Icon
+  ),
 };
 
-export const NAV_ITEM_ICONS: Record<PageId, LucideIcon> = {
-  automations: WorkflowIcon,
-  chat: CircleFadingPlusIcon,
-  history: ClockIcon,
-  integrations: CableIcon,
-  notifications: BellIcon,
-  profiles: CircleUserRoundIcon,
-  settings: CogIcon,
-  soul: BrainIcon,
-  tasks: KanbanIcon,
+const navItemsWithIcons = [
+  ...NAV_ITEMS,
+  ...Object.values(STANDALONE_PAGES).filter(
+    (item): item is NavItem => item !== undefined
+  ),
+];
+
+/** Compatibility lookup for consumers that only need an icon by page id. */
+export const NAV_ITEM_ICONS: Record<PageId, NavIcon> = {
+  ...(Object.fromEntries(
+    navItemsWithIcons.map((item) => [item.id, item.icon])
+  ) as Record<PageId, NavIcon>),
+  tasks:
+    NAV_ITEMS.find((item) => item.id === "automations")?.icon ?? SharedWifiIcon,
 };
 
 export const SETUP_PATH = "/setup";
@@ -137,81 +152,71 @@ export function canAccessIntegrationsPage(
   return orgRole === "admin" || orgRole === "member";
 }
 
-export function canUseToolPlayground(
-  isPlatformAdmin: boolean,
-  orgRole: string | undefined
-): boolean {
-  return isPlatformAdmin || orgRole === "admin";
-}
+export const canUseToolPlayground = canAccessSystemPage;
 
-export function toolsTabPath(): string {
-  return `${PAGE_PATHS.soul}?tab=tools`;
-}
+const queryPath = (path: string, params: Record<string, string>): string =>
+  `${path}?${new URLSearchParams(params)}`;
 
-export function statusTabPath(): string {
-  return `${PAGE_PATHS.soul}?tab=status`;
-}
+export const toolsTabPath = (): string =>
+  queryPath(PAGE_PATHS.soul, { tab: "tools" });
 
-export function profilePath(profileId: string): string {
-  return `${PAGE_PATHS.profiles}?profile=${encodeURIComponent(profileId)}`;
-}
+export const statusTabPath = (): string =>
+  queryPath(PAGE_PATHS.soul, { tab: "status" });
+
+export const profilePath = (profileId: string): string =>
+  queryPath(PAGE_PATHS.profiles, { profile: profileId });
 
 export function skillDetailPath(
   skillId: string,
   options?: { profileId?: string }
 ): string {
   const path = `${PAGE_PATHS.profiles}/skills/${encodeURIComponent(skillId)}`;
-  if (!options?.profileId) {
-    return path;
-  }
-
-  const params = new URLSearchParams({ profile: options.profileId });
-  return `${path}?${params.toString()}`;
+  return options?.profileId
+    ? queryPath(path, { profile: options.profileId })
+    : path;
 }
+
+const backTarget = (
+  profileId: string | null,
+  fallback: { href: string; label: string }
+): { href: string; label: string } =>
+  profileId ? { href: profilePath(profileId), label: "Profile" } : fallback;
 
 /** Resolve skill detail back-navigation from search params set by skillDetailPath. */
-export function skillDetailBackTarget(searchParams: URLSearchParams): {
+export const skillDetailBackTarget = (
+  searchParams: URLSearchParams
+): {
   href: string;
   label: string;
-} {
-  const profileId = searchParams.get("profile");
-  if (profileId) {
-    return { href: profilePath(profileId), label: "Profile" };
-  }
-
-  return { href: PAGE_PATHS.profiles, label: "Profiles" };
-}
+} =>
+  backTarget(searchParams.get("profile"), {
+    href: PAGE_PATHS.profiles,
+    label: "Profiles",
+  });
 
 export function toolPlaygroundPath(
   toolId: string,
   options?: { fromProfileId?: string }
 ): string {
   const path = `${PAGE_PATHS.soul}/playground/${encodeURIComponent(toolId)}`;
-  if (!options?.fromProfileId) {
-    return path;
-  }
-
-  const params = new URLSearchParams({
-    from: "profiles",
-    profile: options.fromProfileId,
-  });
-  return `${path}?${params.toString()}`;
+  return options?.fromProfileId
+    ? queryPath(path, { from: "profiles", profile: options.fromProfileId })
+    : path;
 }
 
 /** Resolve playground back-navigation from search params set by toolPlaygroundPath. */
-export function toolPlaygroundBackTarget(searchParams: URLSearchParams): {
+export const toolPlaygroundBackTarget = (
+  searchParams: URLSearchParams
+): {
   href: string;
   label: string;
-} {
-  const fromProfileId =
+} =>
+  backTarget(
     searchParams.get("from") === "profiles"
       ? searchParams.get("profile")
-      : null;
-  if (fromProfileId) {
-    return { href: profilePath(fromProfileId), label: "Profile" };
-  }
-  return { href: toolsTabPath(), label: "Tools" };
-}
+      : null,
+    { href: toolsTabPath(), label: "Tools" }
+  );
 
 export function orgSkillProposalsPath(profileId?: string): string {
   const params = new URLSearchParams({
@@ -235,6 +240,24 @@ export const PAGE_PATHS: Record<PageId, string> = {
   soul: "/system",
   tasks: "/tasks",
 };
+
+const PREFIX_PAGE_IDS: readonly [string, PageId][] = [
+  [PAGE_PATHS.chat, "chat"],
+  [PAGE_PATHS.soul, "soul"],
+  [PAGE_PATHS.profiles, "profiles"],
+];
+
+export type AgentWorkTab = "automations" | "tasks";
+
+export function agentWorkTabFromSearchParams(
+  searchParams: URLSearchParams
+): AgentWorkTab {
+  return searchParams.get("tab") === "tasks" ? "tasks" : "automations";
+}
+
+export function agentWorkTabPath(tab: AgentWorkTab): string {
+  return `${PAGE_PATHS.automations}?tab=${tab}`;
+}
 
 export function pathForPage(pageId: PageId): string {
   return PAGE_PATHS[pageId];
@@ -262,36 +285,20 @@ export function findNavItem(pageId: PageId): NavItem | undefined {
 }
 
 export function pageIdFromPath(pathname: string): PageId | null {
-  if (pathname === "/chat" || pathname.startsWith("/chat/")) {
-    return "chat";
+  if (pathname === PAGE_PATHS.tasks) {
+    return "automations";
   }
 
-  if (
-    pathname === PAGE_PATHS.soul ||
-    pathname.startsWith(`${PAGE_PATHS.soul}/`)
-  ) {
-    return "soul";
+  const prefixPage = PREFIX_PAGE_IDS.find(
+    ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+  if (prefixPage) {
+    return prefixPage[1];
   }
 
-  if (
-    pathname === PAGE_PATHS.profiles ||
-    pathname.startsWith(`${PAGE_PATHS.profiles}/`)
-  ) {
-    return "profiles";
-  }
-
-  for (const [pageId, path] of Object.entries(PAGE_PATHS) as [
-    PageId,
-    string,
-  ][]) {
-    if (pageId === "chat" || pageId === "profiles") {
-      continue;
-    }
-
-    if (pathname === path) {
-      return pageId;
-    }
-  }
-
-  return null;
+  return (
+    (Object.entries(PAGE_PATHS) as [PageId, string][]).find(
+      ([, path]) => pathname === path
+    )?.[0] ?? null
+  );
 }
