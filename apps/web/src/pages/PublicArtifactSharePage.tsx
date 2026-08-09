@@ -83,8 +83,8 @@ export function PublicArtifactSharePage() {
   return (
     <div
       className={cn(
-        "bg-background text-foreground",
-        isHtml ? "flex h-svh flex-col overflow-hidden" : "min-h-svh"
+        "artifact-share-page bg-background text-foreground",
+        isHtml ? "flex h-svh flex-col overflow-hidden" : "h-svh overflow-y-auto"
       )}
     >
       <header className="border-border border-b px-3 py-1.5">
