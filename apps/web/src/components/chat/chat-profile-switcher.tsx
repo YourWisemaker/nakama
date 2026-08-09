@@ -1,5 +1,5 @@
 import type { ProfileSummary } from "@nakama/core/contract";
-import { ChevronDownIcon } from "lucide-react";
+import { ArrowDown01Icon } from "hugeicons-react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,7 +83,7 @@ export function ChatProfileSwitcher({
             <span className="max-w-[10rem] truncate">
               {activeProfile ? profileLabel(activeProfile) : "Select profile"}
             </span>
-            <ChevronDownIcon
+            <ArrowDown01Icon
               aria-hidden
               className="size-3 shrink-0 text-muted-foreground"
             />

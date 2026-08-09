@@ -1,4 +1,4 @@
-import { CircleAlertIcon, LightbulbIcon } from "lucide-react";
+import { AlertCircleIcon, BulbIcon } from "hugeicons-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ export function ChatComposerError({ message }: { message: string }) {
   return (
     <ChatComposerNotice role="alert">
       <div className="flex items-start gap-2 text-muted-foreground text-xs sm:items-center">
-        <CircleAlertIcon
+        <AlertCircleIcon
           aria-hidden
           className="mt-0.5 size-3 shrink-0 text-destructive/80 sm:mt-0"
         />
@@ -65,10 +65,7 @@ export function ChatTips({ className }: { className?: string }) {
   return (
     <ChatComposerNotice className={className}>
       <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        <LightbulbIcon
-          aria-hidden
-          className="size-3 shrink-0 text-primary/80"
-        />
+        <BulbIcon aria-hidden className="size-3 shrink-0 text-primary/80" />
         <div className="relative min-h-4 flex-1 overflow-hidden">
           <span
             aria-live="polite"

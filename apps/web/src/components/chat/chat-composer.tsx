@@ -11,12 +11,12 @@ import type {
 import { MAX_IMAGE_BYTES } from "@nakama/core/message-content";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
-  ArrowUpIcon,
-  FileTextIcon,
-  PlusIcon,
-  WifiOffIcon,
-  XIcon,
-} from "lucide-react";
+  Add01Icon,
+  ArrowUp01Icon,
+  Cancel01Icon,
+  File01Icon,
+  WifiOff01Icon,
+} from "hugeicons-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   PromptInput,
@@ -184,7 +184,7 @@ export function ChatComposer(props: ChatComposerProps) {
           className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-amber-800 text-xs dark:text-amber-200"
           role="status"
         >
-          <WifiOffIcon aria-hidden className="size-3.5 shrink-0" />
+          <WifiOff01Icon aria-hidden className="size-3.5 shrink-0" />
           <span>
             No provider configured — limited responses.{" "}
             <button
@@ -583,7 +583,7 @@ function ChatComposerFullFooter({
           </div>
         ) : (
           <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 font-medium text-amber-800 text-xs dark:text-amber-200">
-            <WifiOffIcon aria-hidden className="size-3.5 shrink-0" />
+            <WifiOff01Icon aria-hidden className="size-3.5 shrink-0" />
             Offline
           </span>
         )}
@@ -667,7 +667,7 @@ function ChatComposerSubmitButton({
       disabled={disabled || !hasContent}
       status={chatStatus}
     >
-      <ArrowUpIcon className="size-3.5" />
+      <ArrowUp01Icon className="size-3.5" />
     </PromptInputSubmit>
   );
 }
@@ -719,7 +719,7 @@ function ChatAttachmentHeader({
                   onClick={() => attachments.remove(file.id)}
                   type="button"
                 >
-                  <XIcon className="size-3.5" />
+                  <Cancel01Icon className="size-3.5" />
                 </button>
               </div>
             );
@@ -740,7 +740,7 @@ function ChatAttachmentHeader({
               className="relative flex max-w-full shrink-0 items-center gap-2 overflow-hidden rounded-lg border border-border bg-muted px-3 py-2"
               key={file.id}
             >
-              <FileTextIcon
+              <File01Icon
                 aria-hidden
                 className="size-4 shrink-0 text-muted-foreground"
               />
@@ -753,7 +753,7 @@ function ChatAttachmentHeader({
                 onClick={() => attachments.remove(file.id)}
                 type="button"
               >
-                <XIcon className="size-3.5" />
+                <Cancel01Icon className="size-3.5" />
               </button>
             </div>
           );
@@ -793,7 +793,7 @@ function ChatAttachmentButton({ disabled }: { disabled: boolean }) {
                   type="button"
                   variant="ghost"
                 >
-                  <PlusIcon className="size-3.5" />
+                  <Add01Icon className="size-3.5" />
                 </Button>
               }
             />
