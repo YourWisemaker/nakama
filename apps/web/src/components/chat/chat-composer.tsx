@@ -12,7 +12,7 @@ import { MAX_IMAGE_BYTES } from "@nakama/core/message-content";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
   Add01Icon,
-  ArrowUp01Icon,
+  ArrowUp02Icon,
   Cancel01Icon,
   File01Icon,
   WifiOff01Icon,
@@ -667,7 +667,7 @@ function ChatComposerSubmitButton({
       disabled={disabled || !hasContent}
       status={chatStatus}
     >
-      <ArrowUp01Icon className="size-3.5" />
+      <ArrowUp02Icon className="size-3.5" />
     </PromptInputSubmit>
   );
 }
