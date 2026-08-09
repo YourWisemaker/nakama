@@ -246,6 +246,26 @@ describe("verifyAndPairDiscordUser", () => {
       ok: false,
     });
   });
+
+  test("returns already linked for paired users", async () => {
+    await useTempDiscordHome(
+      {
+        botToken: "discord-bot-token",
+        pairedUserIds: ["900100000000000001"],
+      },
+      async () => {
+        const result = await verifyAndPairDiscordUser(
+          "anything",
+          "900100000000000001"
+        );
+
+        expect(result).toEqual({
+          message: "This chat is already linked.",
+          ok: true,
+        });
+      }
+    );
+  });
 });
 
 describe("saveDiscordConfig", () => {
@@ -279,6 +299,60 @@ describe("saveDiscordConfig", () => {
       const saved = await loadDiscordConfigFile();
       expect(saved?.handshakeCode).toBe(result.handshakeCode);
       expect(saved?.allowedUserIds).toEqual([]);
+    });
+  });
+
+  test("does not generate a handshake code when allowlist is set", async () => {
+    await useTempDiscordHome(async () => {
+      const result = await saveDiscordConfig({
+        allowedUserIds: "123456789012345678, 987654321098765432",
+        botToken: "discord-bot-token",
+      });
+
+      expect(result.handshakeCode).toBeNull();
+
+      const saved = await loadDiscordConfigFile();
+      expect(saved?.allowedUserIds).toEqual([
+        "123456789012345678",
+        "987654321098765432",
+      ]);
+      expect(saved?.handshakeCode).toBeNull();
+    });
+  });
+});
+
+describe("loadDiscordConfigFile", () => {
+  let tempHome = "";
+  let homedirSpy: ReturnType<typeof spyOn<typeof os, "homedir">> | null = null;
+
+  afterEach(async () => {
+    homedirSpy?.mockRestore();
+    homedirSpy = null;
+
+    if (tempHome) {
+      await rm(tempHome, { force: true, recursive: true });
+      tempHome = "";
+    }
+  });
+
+  test("parses allowlist and paired ids from the config file", async () => {
+    tempHome = await mkdtemp(
+      path.join(os.tmpdir(), "nakama-core-discord-home-")
+    );
+    homedirSpy = spyOn(os, "homedir").mockReturnValue(tempHome);
+    await writeDiscordConfig(tempHome, {
+      allowedUserIds: ["123456789012345678", "987654321098765432"],
+      botToken: "discord-bot-token",
+      pairedUserIds: ["111111111111111111"],
+    });
+
+    const config = await loadDiscordConfigFile();
+    expect(config).toEqual({
+      allowedUserIds: ["123456789012345678", "987654321098765432"],
+      botToken: "discord-bot-token",
+      handshakeCode: null,
+      pairedUserIds: ["111111111111111111"],
+      profileId: "default",
     });
   });
 });
@@ -380,6 +454,25 @@ describe("resolveDiscordConfigFromSources", () => {
       pairedUserIds: ["111111111111111111"],
       profileId: "profile_from_file",
     });
+  });
+
+  test("falls back to file config when env token is absent", () => {
+    const resolved = resolveDiscordConfigFromSources({
+      env: {},
+      file: {
+        allowedUserIds: ["123456789012345678", "987654321098765432"],
+        botToken: "file-token",
+        handshakeCode: null,
+        pairedUserIds: [],
+        profileId: "profile_from_file",
+      },
+    });
+
+    expect(resolved?.botToken).toBe("file-token");
+    expect(resolved?.allowedUserIds).toEqual([
+      "123456789012345678",
+      "987654321098765432",
+    ]);
   });
 });
 
