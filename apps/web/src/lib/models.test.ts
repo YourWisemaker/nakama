@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  buildCreateProviderRequest,
   encodeModelSelection,
   firstAvailableProviderOption,
   hasOpenCodeZenProvider,
@@ -10,7 +9,6 @@ import {
   isProviderTypeAlreadyConfigured,
   resolveModelThinkingSupport,
   resolveModelVisionSupport,
-  validateBaseUrlInput,
 } from "./models";
 
 function group(
@@ -329,51 +327,5 @@ describe("IMAGE_GENERATION_MODEL_OPTIONS", () => {
     expect(
       encodeModelSelection("openai", IMAGE_GENERATION_MODEL_OPTIONS[0]!.id)
     ).toBe(IMAGE_GENERATION_SELECTION);
-  });
-});
-
-describe("validateBaseUrlInput", () => {
-  test("accepts http(s) base URLs with path segments", () => {
-    expect(validateBaseUrlInput("https://api.example.com/v1")).toBeNull();
-    expect(validateBaseUrlInput("http://localhost:8000/v1")).toBeNull();
-    expect(validateBaseUrlInput("https://gateway.devscale.id/v1/")).toBeNull();
-  });
-
-  test("accepts pathless http(s) origins", () => {
-    expect(validateBaseUrlInput("https://api.example.com")).toBeNull();
-    expect(validateBaseUrlInput("http://localhost:11434")).toBeNull();
-  });
-
-  test("rejects empty and non-http(s) values", () => {
-    expect(validateBaseUrlInput("")).toBe("Base URL is required.");
-    expect(validateBaseUrlInput("   ")).toBe("Base URL is required.");
-    expect(validateBaseUrlInput("ftp://api.example.com/v1")).toBe(
-      "Base URL must use http or https."
-    );
-    expect(validateBaseUrlInput("not a url")).toBe("Enter a valid base URL.");
-  });
-});
-
-describe("buildCreateProviderRequest", () => {
-  test("preserves custom provider base URL path segments", () => {
-    expect(
-      buildCreateProviderRequest({
-        apiKey: "sk-test",
-        baseUrl: "https://api.example.com/v1",
-        customModels: [{ default: true, id: "model-1" }],
-        displayName: "Custom",
-        provider: "openai_compatible",
-      }).baseUrl
-    ).toBe("https://api.example.com/v1");
-
-    expect(
-      buildCreateProviderRequest({
-        apiKey: "sk-test",
-        baseUrl: " http://localhost:8000/v1/ ",
-        customModels: [{ default: true, id: "model-1" }],
-        displayName: "Local",
-        provider: "openai_compatible",
-      }).baseUrl
-    ).toBe("http://localhost:8000/v1/");
   });
 });

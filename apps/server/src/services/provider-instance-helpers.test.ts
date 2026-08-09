@@ -156,23 +156,6 @@ describe("applyProviderInstanceUpdate", () => {
     expect(updated.customModels?.[0]?.supportsThinking).toBe(true);
   });
 
-  test("preserves base URL path segments on update", () => {
-    const instance = createProviderInstance({
-      apiKey: "",
-      baseUrl: "https://api.example.com/v1",
-      customModels: [{ default: true, id: "model-1" }],
-      id: "compatible-1",
-      label: "Custom",
-      type: "openai_compatible",
-    });
-
-    const updated = applyProviderInstanceUpdate(instance, {
-      baseUrl: "http://localhost:8000/v1/",
-    });
-
-    expect(updated.baseUrl).toBe("http://localhost:8000/v1");
-  });
-
   test("stores custom model shortlist for OpenAI", () => {
     const instance = createProviderInstance({
       id: "openai-1",

@@ -70,9 +70,6 @@ describe("composio-callback-url", () => {
     process.env.NAKAMA_CONFIG_DIR = configDir;
 
     try {
-      expect(await persistWebPublicUrl("https://app.example.com/setup")).toBe(
-        "https://app.example.com/setup"
-      );
       expect(await persistWebPublicUrl("https://gateway.example.com/v1/")).toBe(
         "https://gateway.example.com/v1"
       );

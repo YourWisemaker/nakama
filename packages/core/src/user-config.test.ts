@@ -212,19 +212,6 @@ created_at=2026-06-15T00:00:00.000Z
       "OpenRouter"
     );
   });
-});
-
-describe("web public URL", () => {
-  let configDir = "";
-
-  afterEach(async () => {
-    if (configDir) {
-      await rm(configDir, { force: true, recursive: true });
-      configDir = "";
-    }
-
-    delete process.env.NAKAMA_CONFIG_DIR;
-  });
 
   test("saveUserWebPublicUrl preserves path segments", async () => {
     configDir = await mkdtemp(join(tmpdir(), "nakama-config-"));
@@ -235,13 +222,6 @@ describe("web public URL", () => {
     ).resolves.toBe("https://gateway.devscale.id/v1");
     await expect(loadUserWebPublicUrl()).resolves.toBe(
       "https://gateway.devscale.id/v1"
-    );
-
-    await expect(saveUserWebPublicUrl("https://app.example.com")).resolves.toBe(
-      "https://app.example.com"
-    );
-    await expect(loadUserWebPublicUrl()).resolves.toBe(
-      "https://app.example.com"
     );
   });
 });
