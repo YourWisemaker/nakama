@@ -1,14 +1,14 @@
 import type { ArtifactFile } from "@nakama/core/contract";
 import {
-  FileDownIcon,
-  FileTextIcon,
-  FilmIcon,
-  ImageIcon,
+  Delete02Icon,
+  File02Icon,
+  FileDownloadIcon,
+  Film02Icon,
+  Image02Icon,
   MoreHorizontalIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  Trash2Icon,
-} from "lucide-react";
+  Refresh01Icon,
+  Search01Icon,
+} from "hugeicons-react";
 import { useMemo, useState } from "react";
 import { ArtifactAttachmentPreview } from "@/components/chat/artifact-attachment-preview";
 import {
@@ -105,18 +105,21 @@ function ArtifactIcon({
 
   if (kind === "image") {
     return (
-      <ImageIcon aria-hidden className="mt-0.5 size-4 text-muted-foreground" />
+      <Image02Icon
+        aria-hidden
+        className="mt-0.5 size-4 text-muted-foreground"
+      />
     );
   }
 
   if (kind === "video") {
     return (
-      <FilmIcon aria-hidden className="mt-0.5 size-4 text-muted-foreground" />
+      <Film02Icon aria-hidden className="mt-0.5 size-4 text-muted-foreground" />
     );
   }
 
   return (
-    <FileTextIcon aria-hidden className="mt-0.5 size-4 text-muted-foreground" />
+    <File02Icon aria-hidden className="mt-0.5 size-4 text-muted-foreground" />
   );
 }
 
@@ -165,7 +168,7 @@ function ArtifactRowMenu({
               link.remove();
             }}
           >
-            <FileDownIcon aria-hidden />
+            <FileDownloadIcon aria-hidden />
             Download
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -174,7 +177,7 @@ function ArtifactRowMenu({
             onClick={onDelete}
             variant="destructive"
           >
-            <Trash2Icon aria-hidden />
+            <Delete02Icon aria-hidden />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -271,7 +274,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
             {isFetching ? (
               <Spinner className="size-4" />
             ) : (
-              <RefreshCwIcon aria-hidden className="size-4" />
+              <Refresh01Icon aria-hidden className="size-4" />
             )}
             Refresh
           </Button>
@@ -280,7 +283,7 @@ export function ArtifactsTab({ profileId }: { profileId: string | null }) {
         {artifacts.length > 0 ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">
-              <SearchIcon
+              <Search01Icon
                 aria-hidden
                 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
               />

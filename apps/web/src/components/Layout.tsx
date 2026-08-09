@@ -160,6 +160,7 @@ export function Layout() {
                 page === "chat" ||
                   page === "tasks" ||
                   page === "automations" ||
+                  page === "files" ||
                   location.pathname.startsWith(`${PAGE_PATHS.soul}/playground/`)
                   ? "flex flex-col overflow-hidden"
                   : "overflow-y-auto",
@@ -169,6 +170,7 @@ export function Layout() {
                   page !== "chat" &&
                   page !== "tasks" &&
                   page !== "automations" &&
+                  page !== "files" &&
                   !location.pathname.startsWith(
                     `${PAGE_PATHS.soul}/playground/`
                   )

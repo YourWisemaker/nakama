@@ -48,11 +48,16 @@ export function ProfileRail() {
       return;
     }
 
-    if (location.pathname === PAGE_PATHS.history) {
+    if (
+      location.pathname === PAGE_PATHS.history ||
+      location.pathname === PAGE_PATHS.files
+    ) {
       setLiveChatProfileId(profileId);
-      const params = new URLSearchParams(location.search);
-      params.set("profile", profileId);
-      navigate(`${PAGE_PATHS.history}?${params.toString()}`);
+      if (location.pathname === PAGE_PATHS.history) {
+        const params = new URLSearchParams(location.search);
+        params.set("profile", profileId);
+        navigate(`${PAGE_PATHS.history}?${params.toString()}`);
+      }
       return;
     }
 

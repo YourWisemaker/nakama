@@ -2,7 +2,6 @@ import { Trash2Icon } from "lucide-react";
 import { ProfileAdminPlusButton } from "@/components/ProfileAdminPlusButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SkillProposalsPanel } from "@/components/profiles/SkillProposalsPanel";
-import { ArtifactsTab } from "@/components/soul-tools/ArtifactsTab";
 import { KnowledgeTab } from "@/components/soul-tools/KnowledgeTab";
 import { SoulTab } from "@/components/soul-tools/SoulTab";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChatAttachmentPanelProvider } from "@/context/chat-attachment-panel-context";
 import { useAuth } from "@/context/use-auth";
 import { useAppNavigation } from "@/hooks/use-app-navigation";
 import { useSkillProposals } from "@/hooks/use-skill-proposals";
@@ -220,14 +218,6 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                     >
                       Knowledge
                     </ProfileDetailTabButton>
-                    <ProfileDetailTabButton
-                      active={detailTab === "artifacts"}
-                      controls="profile-detail-panel-artifacts"
-                      id="profile-detail-tab-artifacts"
-                      onSelect={() => setDetailTab("artifacts")}
-                    >
-                      Artifacts
-                    </ProfileDetailTabButton>
                     {isOrgAdmin ? (
                       <ProfileDetailTabButton
                         active={detailTab === "proposals"}
@@ -302,18 +292,7 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                   >
                     <KnowledgeTab profileId={selectedId} />
                   </div>
-                ) : (
-                  <ChatAttachmentPanelProvider presentation="overlay">
-                    <div
-                      aria-labelledby="profile-detail-tab-artifacts"
-                      className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5"
-                      id="profile-detail-panel-artifacts"
-                      role="tabpanel"
-                    >
-                      <ArtifactsTab profileId={selectedId} />
-                    </div>
-                  </ChatAttachmentPanelProvider>
-                )}
+                ) : null}
               </>
             ) : (
               <div className="flex min-h-48 items-center justify-center p-4 text-muted-foreground text-sm sm:p-5">
