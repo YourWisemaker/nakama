@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import { Link01Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
 import { useEffect, useState } from "react";
 import { IntegrationCardShell } from "@/components/integration-settings.shared";
 import { Button } from "@/components/ui/button";
@@ -213,9 +213,9 @@ export function ComposioSettingsCard({
                 type="button"
               >
                 {showApiKey ? (
-                  <EyeOffIcon className="size-4" />
+                  <ViewOffIcon className="size-4" />
                 ) : (
-                  <EyeIcon className="size-4" />
+                  <ViewIcon className="size-4" />
                 )}
               </InputGroupButton>
             </InputGroupAddon>
@@ -255,7 +255,7 @@ export function ComposioSettingsCard({
           rel="noreferrer"
           target="_blank"
         >
-          <ExternalLinkIcon aria-hidden className="size-3.5 shrink-0" />
+          <Link01Icon aria-hidden className="size-3.5 shrink-0" />
           <span>
             Get a project API key:{" "}
             <span className={cn("font-medium text-primary")}>

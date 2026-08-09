@@ -1,5 +1,10 @@
 import type { ProfileSummary } from "@nakama/core/contract";
-import { CopyIcon, EyeIcon, EyeOffIcon, RefreshCwIcon } from "lucide-react";
+import {
+  Copy01Icon,
+  RefreshIcon,
+  ViewIcon,
+  ViewOffIcon,
+} from "hugeicons-react";
 import {
   IntegrationSettingsFooter,
   IntegrationStatusHeader,
@@ -205,9 +210,9 @@ export function TelegramSettingsCardContent({
               type="button"
             >
               {showBotToken ? (
-                <EyeOffIcon className="size-4" />
+                <ViewOffIcon className="size-4" />
               ) : (
-                <EyeIcon className="size-4" />
+                <ViewIcon className="size-4" />
               )}
             </InputGroupButton>
           </InputGroupAddon>
@@ -240,7 +245,7 @@ export function TelegramSettingsCardContent({
                   type="button"
                   variant="outline"
                 >
-                  <CopyIcon className="size-4" />
+                  <Copy01Icon className="size-4" />
                   Copy
                 </Button>
                 <Button
@@ -254,7 +259,7 @@ export function TelegramSettingsCardContent({
                     <Spinner />
                   ) : (
                     <>
-                      <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                      <RefreshIcon aria-hidden="true" className="size-3.5" />
                       New code
                     </>
                   )}
@@ -272,7 +277,7 @@ export function TelegramSettingsCardContent({
                   <Spinner />
                 ) : (
                   <>
-                    <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                    <RefreshIcon aria-hidden="true" className="size-3.5" />
                     New code
                   </>
                 )}

@@ -1,5 +1,10 @@
 import type { NotificationDestinationWithSecret } from "@nakama/core/contract";
-import { CheckIcon, CopyIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckmarkCircle01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  RefreshIcon,
+} from "hugeicons-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +30,7 @@ function CopyButtonIcon({ copied }: { copied: boolean }) {
 
   return (
     <span aria-hidden className="relative size-3.5 shrink-0">
-      <CopyIcon
+      <Copy01Icon
         className={cn(
           iconTransition,
           copied
@@ -33,7 +38,7 @@ function CopyButtonIcon({ copied }: { copied: boolean }) {
             : "scale-100 opacity-100 blur-0"
         )}
       />
-      <CheckIcon
+      <CheckmarkCircle01Icon
         className={cn(
           iconTransition,
           "text-emerald-600 dark:text-emerald-400",
@@ -394,7 +399,7 @@ export function NotificationDestinationsCard() {
                     type="button"
                     variant="outline"
                   >
-                    <RefreshCwIcon aria-hidden className="size-3.5" />
+                    <RefreshIcon aria-hidden className="size-3.5" />
                     Rotate key
                   </Button>
                   <Button
@@ -405,7 +410,7 @@ export function NotificationDestinationsCard() {
                     type="button"
                     variant="destructive"
                   >
-                    <Trash2Icon aria-hidden className="size-3.5" />
+                    <Delete02Icon aria-hidden className="size-3.5" />
                     Delete
                   </Button>
                 </div>

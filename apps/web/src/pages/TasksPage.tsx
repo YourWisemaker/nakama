@@ -1,6 +1,6 @@
 import type { StoredTask, TaskStatus } from "@nakama/core/contract";
 import { useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
+import { KanbanIcon, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
@@ -225,18 +225,26 @@ export function TasksPage() {
           showHistoryPanel && "bg-muted/10"
         )}
       >
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 space-y-1">
-            <h1 className="type-page-title">Agent Swarm</h1>
-            <p className="type-body max-w-2xl">
-              Kanban board for multi-agent work. Start tasks with play, drag
-              across columns, and open done or failed cards to review run chat.
-            </p>
+        <header className="flex flex-wrap items-center justify-between gap-4 border-border/60 border-b pb-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <KanbanIcon aria-hidden className="size-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <h1 className="type-page-title text-balance">Agent Swarm</h1>
+              <p className="type-body max-w-xl text-pretty">
+                Plan, run, and review work across your agent team.
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <Button onClick={() => setCreateOpen(true)} size="sm" type="button">
-              <PlusIcon aria-hidden className="size-4" />
+          <div className="flex shrink-0 items-center">
+            <Button onClick={() => setCreateOpen(true)} type="button">
+              <PlusIcon
+                aria-hidden
+                className="size-4"
+                data-icon="inline-start"
+              />
               New task
             </Button>
           </div>

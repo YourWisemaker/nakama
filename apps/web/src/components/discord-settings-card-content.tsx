@@ -1,5 +1,5 @@
 import type { ProfileSummary } from "@nakama/core/contract";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { ViewIcon, ViewOffIcon } from "hugeicons-react";
 import { SettingsRow } from "@/components/discord-settings-card.shared";
 import {
   DiscordSettingsConfiguredRows,
@@ -163,9 +163,9 @@ export function DiscordSettingsCardContent({
               type="button"
             >
               {showBotToken ? (
-                <EyeOffIcon className="size-4" />
+                <ViewOffIcon className="size-4" />
               ) : (
-                <EyeIcon className="size-4" />
+                <ViewIcon className="size-4" />
               )}
             </InputGroupButton>
           </InputGroupAddon>

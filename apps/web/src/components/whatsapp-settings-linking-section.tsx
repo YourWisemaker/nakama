@@ -1,9 +1,9 @@
 import {
-  CheckIcon,
-  CopyIcon,
-  RefreshCwIcon,
-  ScanQrCodeIcon,
-} from "lucide-react";
+  CheckmarkCircle01Icon,
+  Copy01Icon,
+  QrCodeScanIcon,
+  RefreshIcon,
+} from "hugeicons-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SettingsRow } from "@/components/integration-settings.shared";
 import { Button } from "@/components/ui/button";
@@ -72,12 +72,12 @@ export function WhatsAppSettingsLinkingSection({
               variant="outline"
             >
               {copied ? (
-                <CheckIcon
+                <CheckmarkCircle01Icon
                   aria-hidden
                   className="size-3.5 text-emerald-600 dark:text-emerald-400"
                 />
               ) : (
-                <CopyIcon aria-hidden className="size-3.5" />
+                <Copy01Icon aria-hidden className="size-3.5" />
               )}
               {copied ? "Copied" : "Copy"}
             </Button>
@@ -92,7 +92,7 @@ export function WhatsAppSettingsLinkingSection({
                 <Spinner />
               ) : (
                 <>
-                  <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                  <RefreshIcon aria-hidden="true" className="size-3.5" />
                   New code
                 </>
               )}
@@ -110,7 +110,7 @@ export function WhatsAppSettingsLinkingSection({
               <Spinner />
             ) : (
               <>
-                <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                <RefreshIcon aria-hidden="true" className="size-3.5" />
                 New code
               </>
             )}
@@ -151,7 +151,7 @@ export function WhatsAppSettingsLinkingSection({
       {showQr ? (
         <div className={cn("space-y-3", !compact && "px-4 py-4")}>
           <div className="flex items-center gap-2">
-            <ScanQrCodeIcon aria-hidden className="size-4 text-primary" />
+            <QrCodeScanIcon aria-hidden className="size-4 text-primary" />
             <p className="font-medium text-foreground text-sm">Scan QR code</p>
           </div>
           <div className="flex justify-center">
@@ -223,7 +223,7 @@ export function WhatsAppSettingsLinkingSection({
               </>
             ) : (
               <>
-                <ScanQrCodeIcon aria-hidden="true" className="size-3.5" />
+                <QrCodeScanIcon aria-hidden="true" className="size-3.5" />
                 Reconnect with QR
               </>
             )}

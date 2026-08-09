@@ -1,5 +1,9 @@
 import type { ProfileSummary } from "@nakama/core/contract";
-import { CheckIcon, CopyIcon, RefreshCwIcon } from "lucide-react";
+import {
+  CheckmarkCircle01Icon,
+  Copy01Icon,
+  RefreshIcon,
+} from "hugeicons-react";
 import {
   DiscordPairingGuide,
   SettingsRow,
@@ -68,12 +72,12 @@ export function DiscordSettingsPairingSection({
               variant="outline"
             >
               {copied ? (
-                <CheckIcon
+                <CheckmarkCircle01Icon
                   aria-hidden
                   className="size-3.5 text-emerald-600 dark:text-emerald-400"
                 />
               ) : (
-                <CopyIcon aria-hidden className="size-3.5" />
+                <Copy01Icon aria-hidden className="size-3.5" />
               )}
               {copied ? "Copied" : "Copy"}
             </Button>
@@ -88,7 +92,7 @@ export function DiscordSettingsPairingSection({
                 <Spinner />
               ) : (
                 <>
-                  <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                  <RefreshIcon aria-hidden="true" className="size-3.5" />
                   New code
                 </>
               )}
@@ -106,7 +110,7 @@ export function DiscordSettingsPairingSection({
               <Spinner />
             ) : (
               <>
-                <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                <RefreshIcon aria-hidden="true" className="size-3.5" />
                 New code
               </>
             )}

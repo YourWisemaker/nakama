@@ -5,7 +5,7 @@ import type {
   ComposioUserConnectionSummary,
   ListComposioToolkitsResponse,
 } from "@nakama/core/contract";
-import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
+import { MoreHorizontalIcon, Search01Icon } from "hugeicons-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { ComposioToolkitLogo } from "@/components/ComposioToolkitLogo";
 import { IntegrationCardShell } from "@/components/integration-settings.shared";
@@ -329,7 +329,7 @@ function ComposioToolkitList({
         </div>
 
         <div className="relative">
-          <SearchIcon
+          <Search01Icon
             aria-hidden
             className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
           />

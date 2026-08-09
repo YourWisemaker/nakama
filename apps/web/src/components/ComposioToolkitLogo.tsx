@@ -1,4 +1,4 @@
-import { PlugIcon } from "lucide-react";
+import { Plug01Icon } from "hugeicons-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,7 @@ export function ComposioToolkitLogo({
           src={logoUrl ?? undefined}
         />
       ) : (
-        <PlugIcon aria-hidden className="size-4 text-muted-foreground" />
+        <Plug01Icon aria-hidden className="size-4 text-muted-foreground" />
       )}
       <span className="sr-only">{name}</span>
     </span>

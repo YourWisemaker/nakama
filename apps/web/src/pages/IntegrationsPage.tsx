@@ -1,12 +1,11 @@
-import type { LucideIcon } from "lucide-react";
 import {
-  BellRingIcon,
-  HashIcon,
-  KeyRoundIcon,
-  MessageCircleMoreIcon,
-  PlugIcon,
-  SendIcon,
-} from "lucide-react";
+  HashtagIcon,
+  Key01Icon,
+  Notification01Icon,
+  Plug01Icon,
+  TelegramIcon,
+  WhatsappIcon,
+} from "hugeicons-react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { ComposioConnectionsCard } from "@/components/ComposioConnectionsCard";
 import { ComposioSettingsCard } from "@/components/ComposioSettingsCard";
@@ -24,37 +23,37 @@ const sectionClass = "rounded-md border border-border bg-card";
 const INTEGRATION_SECTIONS = [
   {
     description: "Bot and pairing",
-    icon: SendIcon,
+    icon: TelegramIcon,
     id: "telegram",
     label: "Telegram",
   },
   {
     description: "Bridge and device link",
-    icon: MessageCircleMoreIcon,
+    icon: WhatsappIcon,
     id: "whatsapp",
     label: "WhatsApp",
   },
   {
     description: "Bot and pairing",
-    icon: HashIcon,
+    icon: HashtagIcon,
     id: "discord",
     label: "Discord",
   },
   {
     description: "Telegram webhooks",
-    icon: BellRingIcon,
+    icon: Notification01Icon,
     id: "notifications",
     label: "Notifications",
   },
   {
     description: "SaaS app connections",
-    icon: PlugIcon,
+    icon: Plug01Icon,
     id: "composio",
     label: "Composio",
   },
   {
     description: "CLI and bridge access",
-    icon: KeyRoundIcon,
+    icon: Key01Icon,
     id: "token",
     label: "Local token",
   },
@@ -175,7 +174,7 @@ function SidebarButton({
 }: {
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon: typeof TelegramIcon;
   active: boolean;
   onClick: () => void;
 }) {

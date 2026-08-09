@@ -1,4 +1,4 @@
-import { CopyIcon, RefreshCwIcon } from "lucide-react";
+import { Copy01Icon, RefreshIcon } from "hugeicons-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,7 +77,7 @@ export function LocalAuthTokenCard() {
               <Spinner />
             ) : (
               <>
-                <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                <RefreshIcon aria-hidden="true" className="size-3.5" />
                 Rotate token
               </>
             )}
@@ -100,7 +100,7 @@ export function LocalAuthTokenCard() {
                 type="button"
                 variant="outline"
               >
-                <CopyIcon className="size-4" />
+                <Copy01Icon className="size-4" />
                 Copy
               </Button>
             </div>
