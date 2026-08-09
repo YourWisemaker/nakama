@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import type { ElementType } from "react";
 import { useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
@@ -234,7 +234,7 @@ function SidebarNavButton({
   className,
 }: {
   item: NavItem;
-  icon: LucideIcon;
+  icon: ElementType;
   active: boolean;
   collapsed: boolean;
   to: string;
