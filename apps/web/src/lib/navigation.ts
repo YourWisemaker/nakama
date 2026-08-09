@@ -1,7 +1,6 @@
 import {
   Brain03Icon,
   Chat01Icon,
-  KanbanIcon,
   Notification01Icon,
   PlusSignSquareIcon,
   Settings01Icon,
@@ -25,6 +24,7 @@ export type PageId =
 
 export interface NavItem {
   description: string;
+  icon: NavIcon;
   id: PageId;
   label: string;
 }
@@ -35,8 +35,14 @@ export interface NavGroup {
   label: string;
 }
 
-const navItem = (id: PageId, label: string, description: string): NavItem => ({
+const navItem = (
+  id: PageId,
+  label: string,
+  description: string,
+  icon: NavIcon
+): NavItem => ({
   description,
+  icon,
   id,
   label,
 });
@@ -45,19 +51,30 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: "chat",
     items: [
-      navItem("chat", "New chat", "New chat"),
-      navItem("history", "Chats", "Browse and reopen saved chats"),
+      navItem(
+        "chat",
+        "New chat",
+        "Start a new conversation",
+        PlusSignSquareIcon
+      ),
+      navItem("history", "Chats", "Browse and reopen saved chats", Chat01Icon),
     ],
     label: "Chat",
   },
   {
     id: "agent",
     items: [
-      navItem("profiles", "Profiles", "Manage bot configs and tool allowlists"),
+      navItem(
+        "profiles",
+        "Profiles",
+        "Manage bot configs and tool allowlists",
+        UserSquareIcon
+      ),
       navItem(
         "automations",
         "Agent work",
-        "Manage automations and agent tasks"
+        "Manage automations and agent tasks",
+        SharedWifiIcon
       ),
     ],
     label: "Agent",
@@ -65,13 +82,24 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: "system",
     items: [
-      navItem("integrations", "Integrations", "Bridges and Composio"),
+      navItem(
+        "integrations",
+        "Integrations",
+        "Bridges and Composio",
+        WebhookIcon
+      ),
       navItem(
         "soul",
         "System",
-        "Identity stack files and registered agent tools"
+        "Identity stack files and registered agent tools",
+        Brain03Icon
       ),
-      navItem("settings", "Settings", "Provider API key and model"),
+      navItem(
+        "settings",
+        "Settings",
+        "Provider API key and model",
+        Settings01Icon
+      ),
     ],
     label: "System",
   },
@@ -83,20 +111,25 @@ export const STANDALONE_PAGES: Partial<Record<PageId, NavItem>> = {
   notifications: navItem(
     "notifications",
     "Notifications",
-    "Automation runs and org memory proposals"
+    "Automation runs and org memory proposals",
+    Notification01Icon
   ),
 };
 
+const navItemsWithIcons = [
+  ...NAV_ITEMS,
+  ...Object.values(STANDALONE_PAGES).filter(
+    (item): item is NavItem => item !== undefined
+  ),
+];
+
+/** Compatibility lookup for consumers that only need an icon by page id. */
 export const NAV_ITEM_ICONS: Record<PageId, NavIcon> = {
-  automations: SharedWifiIcon,
-  chat: PlusSignSquareIcon,
-  history: Chat01Icon,
-  integrations: WebhookIcon,
-  notifications: Notification01Icon,
-  profiles: UserSquareIcon,
-  settings: Settings01Icon,
-  soul: Brain03Icon,
-  tasks: KanbanIcon,
+  ...(Object.fromEntries(
+    navItemsWithIcons.map((item) => [item.id, item.icon])
+  ) as Record<PageId, NavIcon>),
+  tasks:
+    NAV_ITEMS.find((item) => item.id === "automations")?.icon ?? SharedWifiIcon,
 };
 
 export const SETUP_PATH = "/setup";

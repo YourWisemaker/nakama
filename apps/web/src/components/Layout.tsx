@@ -23,7 +23,6 @@ import {
   canAccessSystemPage,
   findNavItem,
   NAV_GROUPS,
-  NAV_ITEM_ICONS,
   type NavItem,
   navHrefForPage,
   PAGE_PATHS,
@@ -115,7 +114,7 @@ export function Layout() {
                             : undefined
                         }
                         collapsed={collapsed}
-                        icon={NAV_ITEM_ICONS[item.id]}
+                        icon={item.icon}
                         item={item}
                         key={item.id}
                         onPrefetch={
