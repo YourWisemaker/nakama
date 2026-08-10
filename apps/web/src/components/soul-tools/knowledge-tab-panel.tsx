@@ -3,12 +3,12 @@ import type {
   KnowledgeBaseSource,
 } from "@nakama/core/contract";
 import {
-  ExternalLinkIcon,
-  FileTextIcon,
-  LinkIcon,
-  Trash2Icon,
-  UploadIcon,
-} from "lucide-react";
+  Delete02Icon,
+  File01Icon,
+  Link01Icon,
+  LinkSquare02Icon,
+  Upload04Icon,
+} from "hugeicons-react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -83,7 +83,7 @@ export function KnowledgeTabPanel({
                 key={source.id}
               >
                 <div className="flex min-w-0 items-start gap-3">
-                  <LinkIcon
+                  <Link01Icon
                     aria-hidden
                     className="mt-0.5 size-4 shrink-0 text-muted-foreground"
                   />
@@ -101,7 +101,7 @@ export function KnowledgeTabPanel({
                       target="_blank"
                     >
                       <span className="truncate">{source.url}</span>
-                      <ExternalLinkIcon
+                      <LinkSquare02Icon
                         aria-hidden
                         className="size-3 shrink-0"
                       />
@@ -144,7 +144,7 @@ export function KnowledgeTabPanel({
               {uploadPending ? (
                 <Spinner className="size-3.5" />
               ) : (
-                <UploadIcon aria-hidden className="size-3.5" />
+                <Upload04Icon aria-hidden className="size-3.5" />
               )}
               Upload
             </Button>
@@ -163,7 +163,7 @@ export function KnowledgeTabPanel({
                 key={document.id}
               >
                 <div className="flex min-w-0 items-start gap-3">
-                  <FileTextIcon
+                  <File01Icon
                     aria-hidden
                     className="mt-0.5 size-4 shrink-0 text-muted-foreground"
                   />
@@ -206,7 +206,7 @@ export function KnowledgeTabPanel({
                     type="button"
                     variant="ghost"
                   >
-                    <Trash2Icon aria-hidden className="size-4" />
+                    <Delete02Icon aria-hidden className="size-4" />
                   </Button>
                 </div>
               </li>
