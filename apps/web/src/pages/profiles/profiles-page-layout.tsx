@@ -1,4 +1,4 @@
-import { Trash2Icon } from "lucide-react";
+import { Delete02Icon } from "hugeicons-react";
 import { ProfileAdminPlusButton } from "@/components/ProfileAdminPlusButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SkillProposalsPanel } from "@/components/profiles/SkillProposalsPanel";
@@ -240,7 +240,7 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                         type="button"
                         variant="outline"
                       >
-                        <Trash2Icon aria-hidden className="size-3.5" />
+                        <Delete02Icon aria-hidden className="size-3.5" />
                         <span className="hidden sm:inline">Delete</span>
                       </Button>
                     </div>
