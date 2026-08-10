@@ -23,6 +23,8 @@ outputs/
 pitch-deck.pdf
 pitch-deck.md
 .commandcode
+.claude/
+.local-poc/
 design-plans/
 tmp-repro-artifacts/
 tmp-repro-setup-auth.mjs
