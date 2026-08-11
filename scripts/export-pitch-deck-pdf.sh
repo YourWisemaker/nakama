@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Export docs/pitch-deck.html to docs/pitch-deck.pdf (one page per slide, 16:9).
+# Export docs/deck/pitch-deck.html to docs/deck/pitch-deck.pdf (one page per slide, 16:9).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="${ROOT}/docs/pitch-deck.html"
-OUT="${ROOT}/docs/pitch-deck.pdf"
-PRINT_HTML="${ROOT}/docs/.pitch-deck-print.html"
+SRC="${ROOT}/docs/deck/pitch-deck.html"
+OUT="${ROOT}/docs/deck/pitch-deck.pdf"
+PRINT_HTML="${ROOT}/docs/deck/.pitch-deck-print.html"
 
 find_chrome() {
   if [[ -n "${CHROME_PATH:-}" && -x "${CHROME_PATH}" ]]; then
