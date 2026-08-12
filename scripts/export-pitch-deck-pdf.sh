@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Export docs/deck/pitch-deck.html to docs/deck/pitch-deck.pdf (one page per slide, 16:9).
+# Export docs/website/public/pitch-deck.html to docs/deck/pitch-deck.pdf (one page per slide, 16:9).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="${ROOT}/docs/deck/pitch-deck.html"
+SRC="${ROOT}/docs/website/public/pitch-deck.html"
 OUT="${ROOT}/docs/deck/pitch-deck.pdf"
-PRINT_HTML="${ROOT}/docs/deck/.pitch-deck-print.html"
+PRINT_HTML="${ROOT}/docs/website/public/.pitch-deck-print.html"
 
 find_chrome() {
   if [[ -n "${CHROME_PATH:-}" && -x "${CHROME_PATH}" ]]; then
@@ -64,7 +64,7 @@ if "</head>" not in html:
 
 print_css = r"""
 <style id="print-export">
-@page { size: 13.333in 7.5in; margin: 0; }
+@page { size: 10in 5.625in; margin: 0; }
 @media print, screen {
   html, body {
     height: auto !important;
@@ -88,10 +88,10 @@ print_css = r"""
     transform: none !important;
     animation: none !important;
     transition: none !important;
-    width: 13.333in !important;
-    height: 7.5in !important;
-    min-height: 7.5in !important;
-    max-height: 7.5in !important;
+    width: 10in !important;
+    height: 5.625in !important;
+    min-height: 5.625in !important;
+    max-height: 5.625in !important;
     overflow: hidden !important;
     page-break-after: always !important;
     break-after: page !important;
