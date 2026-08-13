@@ -69,28 +69,22 @@
 
     .brand-mark {
       display: flex;
-      flex-direction: row;
       gap: 0.7rem;
       align-items: center;
-      font-size: 2.15rem;
-      line-height: 1;
     }
 
     .brand-mark img {
-      display: block;
-      flex-shrink: 0;
-      width: 1em;
-      height: 1em;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
-      border: 0;
       mix-blend-mode: multiply;
     }
 
     .brand-mark .wordmark {
-      padding-top: 0.12em;
+      padding-top: 0.2rem;
       margin: 0;
       font-family: var(--serif);
-      font-size: 0.88em;
+      font-size: 1.5rem;
       font-style: normal;
       font-weight: 400;
       line-height: 1;
@@ -108,7 +102,7 @@
       font-family: var(--sans);
       font-size: 1.05rem;
       font-weight: 600;
-      color: var(--ink);
+      color: var(--accent);
     }
 
     .tbd {
@@ -137,7 +131,8 @@
       font-size: clamp(3.2rem, 7.4vw, 5.6rem);
     }
 
-    .slide-cover h1 {
+    .slide-cover h1,
+    .slide-close h1 {
       max-width: 18ch;
     }
 
@@ -150,12 +145,12 @@
       margin: 0 0 0.75rem;
       font-family: var(--sans);
       font-size: 1.65rem;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .lede,
     .sub {
-      max-width: 32ch;
+      max-width: 36ch;
       margin: 0;
       font-size: clamp(1.3rem, 2.1vw, 1.55rem);
       line-height: 1.35;
@@ -210,11 +205,11 @@
       text-wrap: pretty;
     }
 
-    .islands span {
+    .islands li > span:not(.n) {
       display: block;
-      font-size: 1.35rem;
+      font-size: 1.15rem;
       line-height: 1.4;
-      color: var(--ink);
+      color: var(--ink-muted);
       text-wrap: pretty;
     }
 
@@ -230,7 +225,6 @@
 
     .pane + .pane {
       padding: 1.1rem 0 0 1.75rem;
-      border-left: 1px solid var(--ink);
     }
 
     .steps {
@@ -288,37 +282,55 @@
       font-weight: 600;
     }
 
-    .compare {
+    .compare-wrap {
       width: 100%;
       margin: 1.25rem 0 0;
+      overflow-x: auto;
+    }
+
+    .compare {
+      width: 100%;
       font-family: var(--sans);
-      font-size: 1.4rem;
-      border-spacing: 0 0.55rem;
-      border-collapse: separate;
+      font-size: 1.25rem;
+      border-spacing: 0;
+      border-collapse: collapse;
+      background: transparent;
+      border: 1px solid var(--ink);
     }
 
     .compare th,
     .compare td {
-      padding: 0.35rem 1.4rem 0.35rem 0;
-      vertical-align: baseline;
+      padding: 0.7rem 1.15rem;
+      vertical-align: middle;
       text-align: left;
       border: none;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .compare th:last-child,
+    .compare td:last-child {
+      border-right: none;
+    }
+
+    .compare tr:last-child td {
+      border-bottom: none;
     }
 
     .compare th {
-      padding-bottom: 0.85rem;
-      font-family: var(--sans);
-      font-size: 1.2rem;
-      font-weight: 700;
+      font-size: 1.05rem;
+      font-weight: 600;
       color: var(--ink);
-    }
-
-    .compare td.nakama {
-      font-weight: 700;
+      background: transparent;
     }
 
     .compare td:first-child {
       font-weight: 600;
+    }
+
+    .compare th.nakama,
+    .compare td.nakama {
+      font-weight: 700;
     }
 
     .manifest {
@@ -337,24 +349,10 @@
       letter-spacing: -0.02em;
     }
 
-    .stats-hero .v {
-      font-family: var(--mono);
-      font-size: clamp(5.5rem, 14vw, 9.5rem);
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-      line-height: 0.9;
-    }
-
-    .stats-hero .l {
-      margin-top: 0.45rem;
-      font-size: 1.2rem;
-      color: var(--ink-muted);
-    }
-
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      max-width: 28rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      max-width: 46rem;
       margin: 0.5rem 0 0;
       border-top: 1px solid var(--ink);
     }
@@ -380,11 +378,12 @@
       margin-top: 0.3rem;
       font-size: 1.05rem;
       color: var(--ink-muted);
+      text-wrap: pretty;
     }
 
     .ask {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       margin: 0.2rem 0 0;
       border-top: 1px solid var(--ink);
     }
@@ -394,7 +393,7 @@
     }
 
     .ask article + article {
-      padding: 1.1rem 0 0 1.6rem;
+      padding: 1.1rem 1.6rem 0;
       border-left: 1px solid var(--ink);
     }
 
@@ -408,7 +407,7 @@
 
     .ask p {
       margin: 0;
-      font-size: 1.55rem;
+      font-size: 1.35rem;
       line-height: 1.3;
       text-wrap: pretty;
     }
@@ -429,6 +428,46 @@
         border-top: 1px solid var(--rule);
         border-left: none;
       }
+
+      .compare thead {
+        display: none;
+      }
+
+      .compare,
+      .compare tbody,
+      .compare tr,
+      .compare th,
+      .compare td {
+        display: block;
+        width: 100%;
+        border-right: none;
+        box-shadow: none;
+      }
+
+      .compare tr {
+        padding: 0.85rem 0;
+        border-bottom: 1px solid var(--ink);
+      }
+
+      .compare td {
+        padding: 0.2rem 0;
+      }
+
+      .compare td:first-child {
+        margin-bottom: 0.35rem;
+        font-family: var(--serif);
+        font-size: 1.3rem;
+        font-weight: 400;
+      }
+
+      .compare td:not(:first-child)::before {
+        display: block;
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--accent);
+        content: attr(data-label);
+      }
     }
 
     .footer-bar {
@@ -443,17 +482,21 @@
       justify-content: space-between;
       padding: 0.7rem 1.25rem;
       font-family: var(--mono);
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       font-variant-numeric: tabular-nums;
-      color: var(--ink-muted);
+      color: var(--ink);
       background: var(--bg);
       border-top: 1px solid var(--ink);
+    }
+
+    .nav-hint {
+      color: var(--ink-muted);
     }
 
     .progress {
       flex: 1;
       max-width: 7.5rem;
-      height: 1px;
+      height: 3px;
       overflow: hidden;
       background: var(--rule);
     }
@@ -463,6 +506,7 @@
       width: 10%;
       height: 100%;
       background: var(--ink);
+      transition: width 150ms ease-out;
     }
 
     .nav-hint kbd {
@@ -474,11 +518,10 @@
       border-radius: 2px;
     }
 
-    *,
-    *::before,
-    *::after {
-      transition: none !important;
-      animation: none !important;
+    @media (prefers-reduced-motion: reduce) {
+      .progress > span {
+        transition: none;
+      }
     }
     </style>
   </head>
@@ -487,7 +530,7 @@
       <section class="slide slide-cover active" data-slide="1">
         <div class="brand-mark">
           <img alt="" src="favicon-light.png">
-          <span class="wordmark">Nakama</span>
+          <p class="wordmark">Nakama</p>
         </div>
         <div>
           <h1>AI agents that work with your team.</h1>
@@ -497,66 +540,70 @@
 
       <section class="slide" data-slide="2">
         <p class="eyebrow">Problem</p>
-        <h2>ChatGPT is personal. The team owns none of it.</h2>
+        <h2>Teams already pay for ChatGPT. They still do not own the agent.</h2>
         <ol class="islands">
           <li>
             <span class="n">01</span>
             <strong>Copied work</strong>
+            <span>Prompts live in private tabs.</span>
           </li>
           <li>
             <span class="n">02</span>
             <strong>Lost context</strong>
+            <span>No shared memory the org can keep.</span>
           </li>
           <li>
             <span class="n">03</span>
             <strong>No rules</strong>
+            <span>No roles, permissions, or blast radius.</span>
           </li>
         </ol>
       </section>
 
       <section class="slide" data-slide="3">
         <p class="eyebrow">Why it fails</p>
-        <h2>Easy or powerful. Not both.</h2>
-        <div class="split">
-          <article class="pane">
-            <h3>ChatGPT and Claude</h3>
-            <ul class="bullets">
-              <li>Anyone can open a tab.</li>
-              <li>A Team plan is still separate chats.</li>
-              <li>No shared agent on Telegram or WhatsApp.</li>
-            </ul>
-          </article>
-          <article class="pane">
-            <h3>OpenClaw / Hermes</h3>
-            <ul class="bullets">
-              <li>They can do the work.</li>
-              <li>One laptop. One person.</li>
-              <li>A teammate cannot sign in.</li>
-            </ul>
-          </article>
-        </div>
+        <h2>A Team plan is still personal chat.</h2>
+        <ul class="bullets">
+          <li>Anyone can open a tab.</li>
+          <li>A Team plan is still separate threads.</li>
+          <li>No shared agent on Telegram or WhatsApp.</li>
+          <li>The workspace is not the agent.</li>
+        </ul>
       </section>
 
       <section class="slide" data-slide="4">
         <p class="eyebrow">Solution</p>
-        <h2>The same power. As a team product.</h2>
+        <h2>
+          Nakama: ChatGPT-simple dashboard. Real agents. Orgs from day one.
+        </h2>
+        <p class="lede">
+          Tools, skills, memory, and channels — each agent with its own identity
+          and permissions.
+        </p>
       </section>
 
       <section class="slide" data-slide="5">
         <p class="eyebrow">Product</p>
-        <h2>Agents left the chat box.</h2>
+        <h2>One server. Many orgs.</h2>
         <ol class="steps">
           <li>
             <span class="n">01</span>
             <strong>Chat</strong>
+            <span
+              >Dashboard like ChatGPT. Also CLI, Telegram, WhatsApp, Discord.</span
+            >
           </li>
           <li>
             <span class="n">02</span>
             <strong>Act</strong>
+            <span>Tools, skills, memory, coding agents.</span>
           </li>
           <li>
             <span class="n">03</span>
             <strong>Isolate</strong>
+            <span
+              >Each profile has its own identity, tools, and blast radius.</span
+            >
           </li>
         </ol>
       </section>
@@ -568,102 +615,173 @@
           <li>
             <span class="n">01</span>
             <strong>Roles</strong>
+            <span>Admin, member, viewer.</span>
           </li>
           <li>
             <span class="n">02</span>
             <strong>Profiles</strong>
+            <span>One bot with email. One that cannot leave the org.</span>
           </li>
           <li>
             <span class="n">03</span>
             <strong>Tenants</strong>
+            <span>Orgs isolated on the same server.</span>
           </li>
         </ol>
       </section>
 
       <section class="slide" data-slide="7">
-        <p class="eyebrow">Competition</p>
-        <h2>Where Nakama wins.</h2>
-        <table class="compare">
-          <thead>
-            <tr>
-              <th></th>
-              <th>ChatGPT / Claude</th>
-              <th>OpenClaw-style</th>
-              <th>Nakama</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Shared agents</td>
-              <td>Limited</td>
-              <td>One operator</td>
-              <td class="nakama">Yes</td>
-            </tr>
-            <tr>
-              <td>Multi-tenant</td>
-              <td>No</td>
-              <td>No</td>
-              <td class="nakama">Yes</td>
-            </tr>
-            <tr>
-              <td>Deploy</td>
-              <td>SaaS only</td>
-              <td>One laptop</td>
-              <td class="nakama">Docker or Cloud</td>
-            </tr>
-            <tr>
-              <td>Models</td>
-              <td>Vendor cloud</td>
-              <td>One laptop</td>
-              <td class="nakama">Yours</td>
-            </tr>
-          </tbody>
-        </table>
+        <p class="eyebrow">Why now</p>
+        <h2>Agents left the chat box. Teams still have a chatbot.</h2>
+        <ol class="steps">
+          <li>
+            <span class="n">01</span>
+            <strong>Tools</strong>
+            <span
+              >Skills, coding agents, and channels are the product now.</span
+            >
+          </li>
+          <li>
+            <span class="n">02</span>
+            <strong>Seats</strong>
+            <span>Workplace AI is already a line item.</span>
+          </li>
+          <li>
+            <span class="n">03</span>
+            <strong>Ops</strong>
+            <span>A personal CLI is not a team workspace.</span>
+          </li>
+        </ol>
       </section>
 
       <section class="slide" data-slide="8">
+        <p class="eyebrow">Competition</p>
+        <h2>Team agents vs personal chat vs a laptop CLI.</h2>
+        <div class="compare-wrap">
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Capability</th>
+                <th>ChatGPT / Claude</th>
+                <th>OpenClaw-style</th>
+                <th class="nakama">Nakama</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Shared agents</td>
+                <td data-label="ChatGPT / Claude">Workspace GPTs</td>
+                <td data-label="OpenClaw-style">One operator</td>
+                <td class="nakama" data-label="Nakama">Org profiles</td>
+              </tr>
+              <tr>
+                <td>Tenancy</td>
+                <td data-label="ChatGPT / Claude">One company workspace</td>
+                <td data-label="OpenClaw-style">No</td>
+                <td class="nakama" data-label="Nakama">
+                  Many orgs, one server
+                </td>
+              </tr>
+              <tr>
+                <td>Channels</td>
+                <td data-label="ChatGPT / Claude">Their apps</td>
+                <td data-label="OpenClaw-style">DIY</td>
+                <td class="nakama" data-label="Nakama">
+                  Web, Telegram, WhatsApp, Discord
+                </td>
+              </tr>
+              <tr>
+                <td>Deploy</td>
+                <td data-label="ChatGPT / Claude">SaaS</td>
+                <td data-label="OpenClaw-style">Self-host</td>
+                <td class="nakama" data-label="Nakama">Docker or Cloud</td>
+              </tr>
+              <tr>
+                <td>Models</td>
+                <td data-label="ChatGPT / Claude">Vendor cloud</td>
+                <td data-label="OpenClaw-style">Your keys</td>
+                <td class="nakama" data-label="Nakama">Your keys</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="9">
         <p class="eyebrow">Model</p>
         <ol class="manifest">
           <li>Your server.</li>
           <li>Your data.</li>
           <li>Your model.</li>
         </ol>
-        <p class="lede">Open source. Docker, or Nakama Cloud.</p>
-      </section>
-
-      <section class="slide" data-slide="9">
-        <p class="eyebrow">Market</p>
-        <h2>Workplace AI is already paid. Team agents are still missing.</h2>
-        <div class="stats-hero">
-          <div class="v">$10.9B</div>
-          <div class="l">AI agents market in 2026 · Grand View Research</div>
-        </div>
-        <div class="stats-row">
-          <div class="stat">
-            <div class="v">7M+</div>
-            <div class="l">ChatGPT workplace seats · OpenAI</div>
-          </div>
-          <div class="stat">
-            <div class="v">$20</div>
-            <div class="l">/ user / mo ChatGPT Business (annual)</div>
-          </div>
-        </div>
+        <p class="lede">
+          Open source like WordPress. Docker yourself, or Nakama Cloud.
+        </p>
       </section>
 
       <section class="slide" data-slide="10">
-        <p class="eyebrow">Traction</p>
-        <div class="stats-hero">
-          <div class="v">207</div>
-          <div class="l">GitHub stars since May 2026</div>
+        <div class="eyebrow-row">
+          <p class="eyebrow">Market</p>
+          <p class="tbd">Category context</p>
         </div>
+        <h2>Workplace AI is already paid. Team agents are still missing.</h2>
         <div class="stats-row">
+          <div class="stat">
+            <div class="v">$10.9B</div>
+            <div class="l">AI agents category, 2026. Not our SAM.</div>
+          </div>
+          <div class="stat">
+            <div class="v">7M+</div>
+            <div class="l">ChatGPT workplace seats, Dec 2025</div>
+          </div>
+          <div class="stat">
+            <div class="v">$20</div>
+            <div class="l">/ user / mo ChatGPT Business, annual</div>
+          </div>
+        </div>
+        <p class="meta">
+          Sources:
+          <a
+            href="https://www.grandviewresearch.com/industry-analysis/ai-agents-market-report"
+            rel="noopener"
+            target="_blank"
+            >Grand View Research, AI Agents Market</a
+          >
+          ·
+          <a
+            href="https://openai.com/business/guides-and-resources/the-state-of-enterprise-ai-2025-report/"
+            rel="noopener"
+            target="_blank"
+            >OpenAI, State of Enterprise AI 2025</a
+          >
+          ·
+          <a
+            href="https://openai.com/chatgpt/pricing/"
+            rel="noopener"
+            target="_blank"
+            >OpenAI, ChatGPT pricing</a
+          >
+        </p>
+      </section>
+
+      <section class="slide" data-slide="11">
+        <div class="eyebrow-row">
+          <p class="eyebrow">Traction</p>
+          <p class="tbd">Public repo</p>
+        </div>
+        <h2>Public product. No revenue slide yet.</h2>
+        <div class="stats-row">
+          <div class="stat">
+            <div class="v">207</div>
+            <div class="l">GitHub stars since May 2026</div>
+          </div>
           <div class="stat">
             <div class="v">28</div>
             <div class="l">Releases</div>
           </div>
           <div class="stat">
-            <div class="v">7</div>
-            <div class="l">Contributors</div>
+            <div class="v">Demo</div>
+            <div class="l">demo.getnakama.cloud</div>
           </div>
         </div>
         <p class="meta">
@@ -676,13 +794,13 @@
         </p>
       </section>
 
-      <section class="slide slide-person" data-slide="11">
+      <section class="slide slide-person" data-slide="12">
         <p class="eyebrow">Team</p>
         <div>
           <h1>Ahmad Rosid</h1>
           <p class="lede">
-            Creator of Nakama. First engineer at Orchids, later acquired by
-            Figma.
+            Creator of Nakama. First engineer at Orchids (Bud). Figma acquired
+            the company; I was not in that deal.
           </p>
           <p class="meta">
             <a
@@ -695,30 +813,35 @@
         </div>
       </section>
 
-      <section class="slide" data-slide="12">
-        <p class="eyebrow">The ask</p>
-        <h2>Pre-seed. Make Nakama Cloud the way teams run agents.</h2>
-        <ol class="islands">
-          <li>
-            <span class="n">01</span>
-            <strong>Cloud</strong>
-          </li>
-          <li>
-            <span class="n">02</span>
-            <strong>Distribution</strong>
-          </li>
-          <li>
-            <span class="n">03</span>
-            <strong>Team</strong>
-          </li>
-        </ol>
+      <section class="slide placeholder" data-slide="13">
+        <div class="eyebrow-row">
+          <p class="eyebrow">The ask</p>
+          <p class="tbd">Placeholder · amount TBD</p>
+        </div>
+        <h2>Pre-seed. Self-host for adoption. Cloud for revenue.</h2>
+        <div class="ask">
+          <article>
+            <span class="when">Cloud</span>
+            <p>Hosted Nakama for teams that will not run Docker.</p>
+          </article>
+          <article>
+            <span class="when">Distribution</span>
+            <p>Demo and open source into paying Cloud.</p>
+          </article>
+          <article>
+            <span class="when">Team</span>
+            <p>A second engineer after the product holds.</p>
+          </article>
+        </div>
       </section>
 
-      <section class="slide slide-close" data-slide="13">
+      <section class="slide slide-close" data-slide="14">
         <p class="eyebrow">Close</p>
         <div>
           <h1>Your next hire will still be human.</h1>
-          <p class="sub">Nakama runs the agents.</p>
+          <p class="sub">
+            Nakama runs the agents. Open the demo, then we talk Cloud.
+          </p>
           <p class="meta">
             <a
               href="https://demo.getnakama.cloud"
@@ -762,6 +885,7 @@
     const slides = [...document.querySelectorAll(".slide")];
     const progress = document.getElementById("progress");
     const counter = document.getElementById("counter");
+    const deck = document.getElementById("deck");
     let index = 0;
 
     function show(next) {
@@ -818,6 +942,12 @@
       },
       { passive: true }
     );
+    deck.addEventListener("click", (e) => {
+      if (e.target.closest("a")) {
+        return;
+      }
+      show(index + (e.clientX >= window.innerWidth / 2 ? 1 : -1));
+    });
 
     const fromHash = Number(location.hash.replace("#", ""));
     show(Number.isFinite(fromHash) && fromHash >= 1 ? fromHash - 1 : 0);
