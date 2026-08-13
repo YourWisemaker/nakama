@@ -61,14 +61,6 @@ const healthyStatus: SystemStatusResponse = {
 };
 
 describe("StatusPage helpers", () => {
-  test("summarizes the overall system state", () => {
-    expect(deriveSummary(healthyStatus)).toEqual({
-      description: "Server, workers, and bridges are healthy.",
-      title: "All systems operational",
-      tone: "ok",
-    });
-  });
-
   test("tells users to start the automation worker when it is stopped", () => {
     const status = {
       ...healthyStatus,

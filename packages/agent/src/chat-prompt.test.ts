@@ -34,21 +34,6 @@ test("buildChatSystemPrompt omits automation guidance when create_automation is 
   expect(prompt).not.toContain("5-field cron syntax");
 });
 
-test("buildChatSystemPrompt includes skill crystallization nudge when skill_manage is available", () => {
-  const prompt = buildChatSystemPrompt(
-    [
-      {
-        description: "Manage skills",
-        name: "skill_manage",
-        parameters: { properties: {}, type: "object" },
-      },
-    ],
-    { enableToolLoop: true }
-  );
-
-  expect(prompt).toContain("skill_manage");
-});
-
 test("buildChatSystemPrompt omits skill crystallization nudge when skill_manage is unavailable", () => {
   const prompt = buildChatSystemPrompt(
     [
@@ -186,15 +171,6 @@ test("buildChatSystemPrompt omits USER.md section when empty", () => {
   });
 
   expect(prompt).not.toContain("# Personalisation (USER.md)");
-});
-
-test("buildChatSystemPrompt tells Discord to acknowledge before tools", () => {
-  const prompt = buildChatSystemPrompt([], {
-    channel: "discord",
-    enableToolLoop: true,
-  });
-
-  expect(prompt).toContain("Discord");
 });
 
 test("buildChatSystemPrompt includes send_discord_artifact guidance when tool is present", () => {

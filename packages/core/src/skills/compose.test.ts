@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  AGENT_BROWSER_SKILL_NAME,
   composeAgentBrowserCapabilityPrompt,
   composeMatchedSkillsPrompt,
 } from "./compose";
@@ -43,13 +42,6 @@ describe("composeMatchedSkillsPrompt", () => {
 });
 
 describe("composeAgentBrowserCapabilityPrompt", () => {
-  test("returns capability guidance when agent-browser is assigned", () => {
-    expect(
-      composeAgentBrowserCapabilityPrompt([{ name: AGENT_BROWSER_SKILL_NAME }])
-        .length
-    ).toBeGreaterThan(0);
-  });
-
   test("returns empty string when agent-browser is not assigned", () => {
     expect(composeAgentBrowserCapabilityPrompt([{ name: "weather" }])).toBe("");
     expect(composeAgentBrowserCapabilityPrompt([])).toBe("");

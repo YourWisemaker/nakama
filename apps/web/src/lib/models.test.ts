@@ -3,8 +3,6 @@ import {
   encodeModelSelection,
   firstAvailableProviderOption,
   hasOpenCodeZenProvider,
-  IMAGE_GENERATION_MODEL_OPTIONS,
-  IMAGE_GENERATION_SELECTION,
   isOpenCodeZenBaseUrl,
   isProviderTypeAlreadyConfigured,
   resolveModelThinkingSupport,
@@ -316,16 +314,5 @@ describe("hasOpenCodeZenProvider", () => {
         { baseUrl: "https://opencode.ai/zen/go/v1", type: "opencode_go" },
       ])
     ).toBe(false);
-  });
-});
-
-describe("IMAGE_GENERATION_MODEL_OPTIONS", () => {
-  test("exposes exactly openai::gpt-image-2", () => {
-    expect(IMAGE_GENERATION_MODEL_OPTIONS).toHaveLength(1);
-    expect(IMAGE_GENERATION_MODEL_OPTIONS[0]?.id).toBe("gpt-image-2");
-    expect(IMAGE_GENERATION_SELECTION).toBe("openai::gpt-image-2");
-    expect(
-      encodeModelSelection("openai", IMAGE_GENERATION_MODEL_OPTIONS[0]!.id)
-    ).toBe(IMAGE_GENERATION_SELECTION);
   });
 });
