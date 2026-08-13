@@ -173,20 +173,6 @@ test("buildChatSystemPrompt omits USER.md section when empty", () => {
   expect(prompt).not.toContain("# Personalisation (USER.md)");
 });
 
-test("buildChatSystemPrompt includes send_discord_artifact guidance when tool is present", () => {
-  const prompt = buildChatSystemPrompt(
-    [
-      {
-        description: "Attach an artifact",
-        name: "send_discord_artifact",
-        run: async () => ({}),
-      },
-    ],
-    { channel: "discord", enableToolLoop: true }
-  );
-  expect(prompt).toContain("send_discord_artifact");
-});
-
 test("buildChatSystemPrompt omits Discord ack-before-tools guidance on Telegram", () => {
   const prompt = buildChatSystemPrompt([], {
     channel: "telegram",

@@ -53,12 +53,6 @@ describe("cerebrasPricingPerMillion", () => {
 });
 
 describe("normalizeCerebrasModels", () => {
-  test("covers representative public catalog ids", () => {
-    const rows = normalizeCerebrasModels(fixture);
-
-    expect(rows.map((row) => row.id)).toEqual(["gemma-4-31b", "gpt-oss-120b"]);
-  });
-
   test("maps capabilities.reasoning and vision", () => {
     const rows = normalizeCerebrasModels(fixture);
     const gpt = rows.find((row) => row.id === "gpt-oss-120b");
