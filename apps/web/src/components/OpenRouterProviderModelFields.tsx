@@ -34,10 +34,13 @@ export function OpenRouterProviderModelFields({
           onSelect={onSelect}
         />
       )}
+      showThinking
+      showVision
       toModelRow={(row: OpenRouterModelRow) => ({
         id: row.id,
         name: row.name,
         supportsThinking: row.reasoning,
+        supportsVision: row.vision,
         ...(row.inputPerMillionUsd === undefined
           ? {}
           : { inputPerMillionUsd: row.inputPerMillionUsd }),
@@ -45,6 +48,7 @@ export function OpenRouterProviderModelFields({
           ? {}
           : { outputPerMillionUsd: row.outputPerMillionUsd }),
       })}
+      visionDefaultOn
     />
   );
 }

@@ -226,6 +226,8 @@ export function ProviderSetupForm({
                   />
                 )}
                 showPricing={false}
+                showThinking
+                showVision
                 toModelRow={(row: { id: string; name: string }) => ({
                   id: row.id,
                   name: row.name,

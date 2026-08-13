@@ -148,27 +148,29 @@ describe("resolveModelThinkingSupport", () => {
 });
 
 describe("resolveModelVisionSupport", () => {
-  test("treats openai-compatible and opencode_go models as opt-in only", () => {
+  test("defaults openai-compatible models to vision-capable", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("compat-1", "model-1"),
         group("compat-1", "openai_compatible")
       )
-    ).toBe(false);
+    ).toBe(true);
 
+    expect(
+      resolveModelVisionSupport(
+        encodeModelSelection("compat-1", "model-1"),
+        group("compat-1", "openai_compatible", { supportsVision: false })
+      )
+    ).toBe(false);
+  });
+
+  test("treats opencode_go models as opt-in only for vision", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("go-1", "model-1"),
         group("go-1", "opencode_go")
       )
     ).toBe(false);
-
-    expect(
-      resolveModelVisionSupport(
-        encodeModelSelection("compat-1", "model-1"),
-        group("compat-1", "openai_compatible", { supportsVision: true })
-      )
-    ).toBe(true);
   });
 
   test("defaults first-party models to vision-capable", () => {

@@ -67,7 +67,11 @@ export function CustomProviderFields({
     modelId: string,
     row: ModelsDevRow
   ) => {
-    const nextModel = { id: modelId, name: row.modelName };
+    const nextModel = {
+      id: modelId,
+      name: row.modelName,
+      supportsVision: row.vision,
+    };
     if (customModels.some((model) => model.id === nextModel.id)) {
       setIsBrowsing(false);
       return;
@@ -195,6 +199,8 @@ export function CustomProviderFields({
               onChange={onCustomModelsChange}
               showPricing={false}
               showThinking
+              showVision
+              visionDefaultOn={remoteProvider !== "ollama"}
             />
           )}
         </FormField>

@@ -587,11 +587,7 @@ export function modelSupportsVision(
     return custom.supportsVision;
   }
 
-  if (
-    provider === "openai_compatible" ||
-    provider === "opencode_go" ||
-    provider === "deepseek"
-  ) {
+  if (provider === "opencode_go" || provider === "deepseek") {
     return false;
   }
 
@@ -617,7 +613,8 @@ export function modelSupportsVision(
   if (
     provider === "openai" ||
     provider === "anthropic" ||
-    provider === "gemini"
+    provider === "gemini" ||
+    provider === "openai_compatible"
   ) {
     return true;
   }

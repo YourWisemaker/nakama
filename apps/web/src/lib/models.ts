@@ -881,7 +881,6 @@ export function resolveModelVisionSupport(
   }
 
   if (
-    model.provider === "openai_compatible" ||
     model.provider === "opencode_go" ||
     model.provider === "deepseek" ||
     model.provider === "cerebras" ||
