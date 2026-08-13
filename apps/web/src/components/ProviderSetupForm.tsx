@@ -228,9 +228,16 @@ export function ProviderSetupForm({
                 showPricing={false}
                 showThinking
                 showVision
-                toModelRow={(row: { id: string; name: string }) => ({
+                toModelRow={(row: {
+                  id: string;
+                  name: string;
+                  supportsVision?: boolean;
+                }) => ({
                   id: row.id,
                   name: row.name,
+                  ...(row.supportsVision === undefined
+                    ? {}
+                    : { supportsVision: row.supportsVision }),
                 })}
               />
             </>
