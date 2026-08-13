@@ -380,6 +380,11 @@
       color: var(--ink);
     }
 
+    .card .bullets {
+      gap: 0.45rem;
+      max-width: none;
+    }
+
     .compare {
       display: grid;
       grid-template-columns: 1.2fr repeat(3, 1fr);
@@ -536,18 +541,21 @@
         <div class="split reveal">
           <article class="card">
             <h3>ChatGPT and Claude</h3>
-            <p>
-              Anyone can open a tab. A Team plan still means separate chats.
-              There is no shared agent the company owns, with its own tools, on
-              Telegram or WhatsApp.
-            </p>
+            <ul class="bullets">
+              <li>Anyone can open a tab.</li>
+              <li>A Team plan is still separate chats.</li>
+              <li>No shared company agent with its own tools.</li>
+              <li>Does not live on Telegram or WhatsApp.</li>
+            </ul>
           </article>
           <article class="card">
             <h3>OpenClaw and Hermes</h3>
-            <p>
-              These can actually do work. You install them on one laptop, for
-              one person. Setup is heavy. A teammate cannot just sign in.
-            </p>
+            <ul class="bullets">
+              <li>They can actually do the work.</li>
+              <li>Installed on one laptop, for one person.</li>
+              <li>Setup is heavy.</li>
+              <li>A teammate cannot just sign in.</li>
+            </ul>
           </article>
         </div>
       </section>
