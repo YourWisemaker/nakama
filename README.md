@@ -14,15 +14,15 @@
 [Documentation](https://ahmadrosid.github.io/nakama/) · [Demo](https://demo.getnakama.cloud) · [Managed hosting](https://getnakama.cloud/)
 
 > Your next hire will still be human.
-> With Nakama, that person works on important tasks.
-> Let the AI agents do the trivial tasks.
+> Nakama runs the agents. Your team keeps the important work.
 
-Nakama is a small, self-hosted service for AI agents. You can imagine that nakama is like [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes Agent](https://github.com/nousresearch/hermes-agent) but it design to work with your teams.
+[OpenClaw](https://github.com/openclaw/openclaw) and [Hermes Agent](https://github.com/nousresearch/hermes-agent) are powerful. Getting them running is a maze — and both assume one operator on one machine.
 
-- Nakama is multi-tenant by design.
-- Those projects serve one operator on one machine.
-- Nakama is one server for many orgs.
-- Each org has isolated profiles, sessions, member invites, and roles.
+Nakama is that same class of agent: tools, skills, memory, channels. The interface is as easy as ChatGPT. It was built for a team from day one.
+
+- **Easy to set up** — demo, managed cloud, or one Docker container. Configure in the browser, not a pile of config files.
+- **Built for teams** — one server, many orgs. Invites, roles, and a shared dashboard.
+- **Isolated agents** — each profile has its own identity, tools, memory, and permissions. One bot can be narrow and safe; another can be fully capable.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/nakama_demo_dark.png" />
