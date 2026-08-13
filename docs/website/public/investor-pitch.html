@@ -69,20 +69,27 @@
 
     .brand-mark {
       display: flex;
+      flex-direction: row;
       gap: 0.7rem;
       align-items: center;
+      font-size: 2.15rem;
+      line-height: 1;
     }
 
     .brand-mark img {
-      width: 40px;
-      height: 40px;
+      display: block;
+      flex-shrink: 0;
+      width: 1em;
+      height: 1em;
       object-fit: contain;
+      border: 0;
+      mix-blend-mode: multiply;
     }
 
     .brand-mark .wordmark {
       margin: 0;
       font-family: var(--serif);
-      font-size: 2.15rem;
+      font-size: 1em;
       font-style: normal;
       font-weight: 400;
       line-height: 1;
@@ -479,7 +486,7 @@
       <section class="slide slide-cover active" data-slide="1">
         <div class="brand-mark">
           <img alt="" src="favicon-light.png">
-          <p class="wordmark">Nakama</p>
+          <span class="wordmark">Nakama</span>
         </div>
         <div>
           <h1>AI agents that work with your team.</h1>
