@@ -13,9 +13,9 @@
 
 [Documentation](https://ahmadrosid.github.io/nakama/) · [Demo](https://demo.getnakama.cloud) · [Managed hosting](https://getnakama.cloud/)
 
-Your next hire will still be human.
-With Nakama, that person works on important tasks.
-The AI agents do the trivial tasks.
+> Your next hire will still be human.
+> With Nakama, that person works on important tasks.
+> The AI agents do the trivial tasks.
 
 Nakama is a small, self-hosted service for AI agents. You can imagine that nakama is like [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes Agent](https://github.com/nousresearch/hermes-agent) but it design to work with your teams.
 
