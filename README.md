@@ -16,13 +16,11 @@
 > Your next hire will still be human.
 > Nakama runs the agents. Your team keeps the important work.
 
-[OpenClaw](https://github.com/openclaw/openclaw) and [Hermes Agent](https://github.com/nousresearch/hermes-agent) are powerful. Getting them running is a maze — and both assume one operator on one machine.
+Nakama is an AI agent platform for your team. You chat in a dashboard that feels like ChatGPT. Behind that, each agent can use tools, skills, memory, and channels (Telegram, WhatsApp, Discord) — with its own identity and permissions.
 
-Nakama is that same class of agent: tools, skills, memory, channels. The interface is as easy as ChatGPT. It was built for a team from day one.
+It was built for teams from day one: one server, many orgs, invites and roles, agents isolated from each other. Set it up in the browser — demo, managed cloud, or one Docker container.
 
-- **Easy to set up** — demo, managed cloud, or one Docker container. Configure in the browser, not a pile of config files.
-- **Built for teams** — one server, many orgs. Invites, roles, and a shared dashboard.
-- **Isolated agents** — each profile has its own identity, tools, memory, and permissions. One bot can be narrow and safe; another can be fully capable.
+Coming from [OpenClaw](https://github.com/openclaw/openclaw) or [Hermes Agent](https://github.com/nousresearch/hermes-agent)? Same class of capability, without the setup maze, and not limited to one operator on one machine.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/nakama_demo_dark.png" />
