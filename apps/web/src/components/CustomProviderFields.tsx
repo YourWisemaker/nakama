@@ -81,13 +81,26 @@ export function CustomProviderFields({
     setIsBrowsing(false);
   };
 
-  const handleRemoteSelect = (row: { id: string; name: string }) => {
+  const handleRemoteSelect = (row: {
+    id: string;
+    name: string;
+    supportsVision?: boolean;
+  }) => {
     if (customModels.some((model) => model.id === row.id)) {
       setIsBrowsing(false);
       return;
     }
 
-    onCustomModelsChange([...customModels, { id: row.id, name: row.name }]);
+    onCustomModelsChange([
+      ...customModels,
+      {
+        id: row.id,
+        name: row.name,
+        ...(row.supportsVision === undefined
+          ? {}
+          : { supportsVision: row.supportsVision }),
+      },
+    ]);
     setIsBrowsing(false);
   };
 
@@ -200,7 +213,6 @@ export function CustomProviderFields({
               showPricing={false}
               showThinking
               showVision
-              visionDefaultOn={remoteProvider !== "ollama"}
             />
           )}
         </FormField>

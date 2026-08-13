@@ -48,7 +48,6 @@ export function OpenRouterProviderModelFields({
           ? {}
           : { outputPerMillionUsd: row.outputPerMillionUsd }),
       })}
-      visionDefaultOn
     />
   );
 }

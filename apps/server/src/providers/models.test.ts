@@ -132,18 +132,16 @@ describe("resolveModel", () => {
 });
 
 describe("modelSupportsVision", () => {
-  test("defaults openai-compatible models to vision-capable", () => {
+  test("treats openai-compatible models as opt-in only", () => {
     expect(
       modelSupportsVision("qwen-vl", "openai_compatible", [{ id: "qwen-vl" }])
-    ).toBe(true);
-  });
-
-  test("honors an explicit vision opt-out on openai-compatible models", () => {
-    expect(
-      modelSupportsVision("text-only", "openai_compatible", [
-        { id: "text-only", supportsVision: false },
-      ])
     ).toBe(false);
+
+    expect(
+      modelSupportsVision("qwen-vl", "openai_compatible", [
+        { id: "qwen-vl", supportsVision: true },
+      ])
+    ).toBe(true);
   });
 
   test("keeps OpenCode Go models opt-in only", () => {

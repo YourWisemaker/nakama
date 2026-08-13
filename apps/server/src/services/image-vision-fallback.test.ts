@@ -53,7 +53,7 @@ describe("resolveVisionProviderSelection", () => {
     );
   });
 
-  test("accepts openai-compatible model without an explicit vision flag", () => {
+  test("rejects openai-compatible models that are not marked vision-capable", () => {
     const config: UserConfig = {
       defaultProviderId: "p-custom",
       providers: [
@@ -61,6 +61,27 @@ describe("resolveVisionProviderSelection", () => {
           apiKey: "key",
           createdAt: "2026-01-01T00:00:00.000Z",
           customModels: [{ id: "qwen-vl" }],
+          id: "p-custom",
+          label: "Custom",
+          type: "openai_compatible",
+        },
+      ],
+      visionModel: "p-custom::qwen-vl",
+    };
+
+    expect(() => resolveVisionProviderSelection(config)).toThrow(
+      'Configured image parsing model "qwen-vl" does not support vision.'
+    );
+  });
+
+  test("accepts openai-compatible models marked vision-capable", () => {
+    const config: UserConfig = {
+      defaultProviderId: "p-custom",
+      providers: [
+        {
+          apiKey: "key",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          customModels: [{ id: "qwen-vl", supportsVision: true }],
           id: "p-custom",
           label: "Custom",
           type: "openai_compatible",
@@ -98,7 +119,7 @@ describe("resolvePrimaryModelVisionSupport", () => {
     ).toBe(false);
   });
 
-  test("defaults openai-compatible profile models to vision-capable", () => {
+  test("returns false for unmarked openai-compatible profile models", () => {
     const config: UserConfig = {
       defaultProviderId: "p-custom",
       providers: [
@@ -114,7 +135,7 @@ describe("resolvePrimaryModelVisionSupport", () => {
     };
 
     expect(resolvePrimaryModelVisionSupport(config, "p-custom::qwen-vl")).toBe(
-      true
+      false
     );
   });
 });

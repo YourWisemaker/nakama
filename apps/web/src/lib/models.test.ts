@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   encodeModelSelection,
+  filterVisionCapableProviderGroups,
   firstAvailableProviderOption,
   hasOpenCodeZenProvider,
   isOpenCodeZenBaseUrl,
@@ -148,29 +149,27 @@ describe("resolveModelThinkingSupport", () => {
 });
 
 describe("resolveModelVisionSupport", () => {
-  test("defaults openai-compatible models to vision-capable", () => {
+  test("treats openai-compatible and opencode_go models as opt-in only", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("compat-1", "model-1"),
         group("compat-1", "openai_compatible")
       )
-    ).toBe(true);
-
-    expect(
-      resolveModelVisionSupport(
-        encodeModelSelection("compat-1", "model-1"),
-        group("compat-1", "openai_compatible", { supportsVision: false })
-      )
     ).toBe(false);
-  });
 
-  test("treats opencode_go models as opt-in only for vision", () => {
     expect(
       resolveModelVisionSupport(
         encodeModelSelection("go-1", "model-1"),
         group("go-1", "opencode_go")
       )
     ).toBe(false);
+
+    expect(
+      resolveModelVisionSupport(
+        encodeModelSelection("compat-1", "model-1"),
+        group("compat-1", "openai_compatible", { supportsVision: true })
+      )
+    ).toBe(true);
   });
 
   test("defaults first-party models to vision-capable", () => {
@@ -219,6 +218,40 @@ describe("resolveModelVisionSupport", () => {
         group("fw-1", "fireworks", { supportsVision: true })
       )
     ).toBe(true);
+  });
+
+  test("treats openrouter models as opt-in only for vision", () => {
+    expect(
+      resolveModelVisionSupport(
+        encodeModelSelection("or-1", "model-1"),
+        group("or-1", "openrouter")
+      )
+    ).toBe(false);
+
+    expect(
+      resolveModelVisionSupport(
+        encodeModelSelection("or-1", "model-1"),
+        group("or-1", "openrouter", { supportsVision: true })
+      )
+    ).toBe(true);
+  });
+});
+
+describe("filterVisionCapableProviderGroups", () => {
+  test("keeps only models with vision capability", () => {
+    const groups = [
+      ...group("openai-1", "openai"),
+      ...group("compat-1", "openai_compatible"),
+      ...group("compat-2", "openai_compatible", { supportsVision: true }),
+    ];
+
+    const filtered = filterVisionCapableProviderGroups(groups);
+
+    expect(filtered.map((entry) => entry.providerId)).toEqual([
+      "openai-1",
+      "compat-2",
+    ]);
+    expect(filtered[1]?.models.map((model) => model.id)).toEqual(["model-1"]);
   });
 });
 
