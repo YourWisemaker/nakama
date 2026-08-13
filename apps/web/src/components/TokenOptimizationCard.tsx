@@ -221,7 +221,6 @@ export function TokenOptimizationCard() {
 
   return (
     <div className="tokenopt space-y-5 p-4">
-      {/** biome-ignore lint/security/noDangerouslySetInnerHtml: static palette, no interpolation */}
       <style dangerouslySetInnerHTML={{ __html: CHART_STYLE }} />
 
       <div className="flex items-center justify-between gap-4">
