@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Export a public HTML deck to docs/deck/<basename>.pdf (one page per slide, 16:9).
 # Usage: scripts/export-pitch-deck-pdf.sh [basename]
-#   basename defaults to pitch-deck (customer deck).
+#   basename defaults to investor-pitch.
 #   Example: scripts/export-pitch-deck-pdf.sh investor-pitch
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DECK="${1:-pitch-deck}"
+DECK="${1:-investor-pitch}"
 
 if [[ ! "${DECK}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
   echo "Invalid deck basename: ${DECK}" >&2

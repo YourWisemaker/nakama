@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { getDefaultModel, isOpenRouterModelSlug, resolveModel } from "./models";
+import {
+  getDefaultModel,
+  isOpenRouterModelSlug,
+  modelSupportsVision,
+  resolveModel,
+} from "./models";
 
 describe("isOpenRouterModelSlug", () => {
   test("accepts vendor/model slugs", () => {
