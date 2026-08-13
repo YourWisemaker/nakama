@@ -189,6 +189,7 @@ import {
   readStreamEvents,
   resolveSendMessageBody,
   retryWhileTurnIsStopping,
+  withStreamFetchIdle,
 } from "./stream";
 import type {
   BinaryBufferSource,
@@ -500,12 +501,12 @@ export class NakamaClient {
     });
     const response = await this.fetchImpl(
       `${this.baseUrl}/v1/sessions/${encodeURIComponent(sessionId)}/stream`,
-      {
+      withStreamFetchIdle({
         credentials: this.credentials,
         headers,
         method: "GET",
         signal: options?.signal,
-      }
+      })
     );
 
     if (response.status === 204) {
@@ -1118,13 +1119,13 @@ export class NakamaClient {
           async () => {
             const attempt = await this.fetchImpl(
               `${this.baseUrl}/v1/sessions/${sessionId}/messages?stream=true`,
-              {
+              withStreamFetchIdle({
                 body: JSON.stringify(body),
                 credentials: this.credentials,
                 headers,
                 method: "POST",
                 signal: options?.signal,
-              }
+              })
             );
 
             if (!attempt.ok) {
@@ -1668,14 +1669,14 @@ export class NakamaClient {
   ): Promise<AgentBrowserStatusResponse> {
     const response = await this.fetchImpl(
       `${this.baseUrl}/v1/settings/agent-browser/install`,
-      {
+      withStreamFetchIdle({
         credentials: this.credentials,
         headers: this.buildHeaders("POST", {
           Accept: "text/event-stream",
         }),
         method: "POST",
         signal: options?.signal,
-      }
+      })
     );
 
     if (!response.ok) {

@@ -23,6 +23,7 @@ import {
   seedDatabase,
 } from "@nakama/db";
 import { createHonoApp } from "./http/app";
+import { disableBunIdleTimeoutForSse } from "./http/sse-idle-timeout";
 import { runFirstBootSeed } from "./seed";
 import { AgentService } from "./services/agent-service";
 import { AuthService } from "./services/auth-service";
@@ -321,7 +322,10 @@ function startServer(options: {
   for (let port = options.preferredPort; port <= lastPort; port += 1) {
     try {
       return Bun.serve({
-        fetch: options.fetch,
+        fetch(request, bunServer) {
+          disableBunIdleTimeoutForSse(request, bunServer);
+          return options.fetch(request);
+        },
         hostname: options.host,
         idleTimeout: 255,
         port,
