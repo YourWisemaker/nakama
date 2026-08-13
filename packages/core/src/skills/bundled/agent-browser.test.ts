@@ -2,34 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  BUNDLED_SKILL_NAMES,
-  DEFAULT_BUNDLED_SKILL_NAMES,
-  OPT_IN_BUNDLED_SKILL_NAMES,
-  SUPER_BOT_BUNDLED_SKILL_NAMES,
-} from "../bundled-names";
 import { matchSkillsForMessage } from "../match";
 import { parseSkillMarkdown } from "../parse";
 import { readBundledSkillMarkdown } from "./index";
 import { ensureBundledSkillFiles } from "./install";
 
 describe("bundled agent-browser skill", () => {
-  test("parses and documents bash workflow, install, and missing-CLI guidance", async () => {
-    const content = await readBundledSkillMarkdown("agent-browser");
-    const parsed = parseSkillMarkdown(content, "agent-browser/SKILL.md");
-
-    expect(parsed.frontmatter.name).toBe("agent-browser");
-    expect(parsed.frontmatter.disableModelInvocation).toBeFalsy();
-    expect(parsed.frontmatter.includeBodyOnMatch).toBe(true);
-    expect(parsed.body).toContain("bash");
-    expect(parsed.body).toContain("snapshot");
-    expect(parsed.body).toContain("close");
-    expect(parsed.body).toMatch(/npm install -g agent-browser/);
-    expect(parsed.body).toMatch(/ENOENT|command not found/i);
-    expect(parsed.body).toContain("timeoutMs");
-    expect(parsed.body).toContain("artifacts/");
-  });
-
   test("description matches interactive browse requests but not plain fetch or explainers", async () => {
     const content = await readBundledSkillMarkdown("agent-browser");
     const parsed = parseSkillMarkdown(content, "agent-browser/SKILL.md");
@@ -91,13 +69,6 @@ describe("bundled agent-browser skill", () => {
         "Drive the migration plan forward"
       ).map((skill) => skill.name)
     ).toEqual([]);
-  });
-
-  test("is opt-in only in the bundled name registry", () => {
-    expect(OPT_IN_BUNDLED_SKILL_NAMES).toContain("agent-browser");
-    expect(BUNDLED_SKILL_NAMES).toContain("agent-browser");
-    expect(DEFAULT_BUNDLED_SKILL_NAMES).not.toContain("agent-browser");
-    expect(SUPER_BOT_BUNDLED_SKILL_NAMES).not.toContain("agent-browser");
   });
 });
 

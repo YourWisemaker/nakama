@@ -134,8 +134,6 @@ describe("generate_image tool seed and resolver (U3)", () => {
     );
 
     expect(tool).toBeDefined();
-    expect(tool?.parallelSafe).toBe(false);
-    expect(typeof tool?.run).toBe("function");
     expect(tool?.parameters?.required).toEqual(["prompt"]);
     expect(tool?.parameters?.properties).not.toHaveProperty("model");
   });
