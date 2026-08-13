@@ -130,3 +130,25 @@ describe("resolveModel", () => {
     );
   });
 });
+
+describe("modelSupportsVision", () => {
+  test("defaults openai-compatible models to vision-capable", () => {
+    expect(
+      modelSupportsVision("qwen-vl", "openai_compatible", [{ id: "qwen-vl" }])
+    ).toBe(true);
+  });
+
+  test("honors an explicit vision opt-out on openai-compatible models", () => {
+    expect(
+      modelSupportsVision("text-only", "openai_compatible", [
+        { id: "text-only", supportsVision: false },
+      ])
+    ).toBe(false);
+  });
+
+  test("keeps OpenCode Go models opt-in only", () => {
+    expect(
+      modelSupportsVision("opencode-go/kimi-k2.7-code", "opencode_go")
+    ).toBe(false);
+  });
+});
