@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta content="no-store" http-equiv="Cache-Control">
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>Nakama — Investor Pitch</title>
     <link href="https://fonts.googleapis.com" rel="preconnect">
@@ -21,7 +22,6 @@
       --line: color-mix(in oklab, #1c1917 12%, transparent);
       --surface: color-mix(in oklab, #ffffff 72%, #f7f4ee);
       --ok: #166534;
-      --ease: cubic-bezier(0.2, 0, 0, 1);
       --slide-pad: clamp(2rem, 6vw, 5rem);
     }
 
@@ -56,73 +56,15 @@
     .slide {
       position: absolute;
       inset: 0;
-      display: grid;
-      visibility: hidden;
+      display: none;
       gap: 1.25rem;
       align-content: center;
       padding: var(--slide-pad);
       padding-bottom: calc(var(--slide-pad) + 2.5rem);
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(18px);
-      transition:
-        opacity 420ms var(--ease),
-        transform 420ms var(--ease),
-        visibility 0ms 420ms;
     }
 
     .slide.active {
-      visibility: visible;
-      pointer-events: auto;
-      opacity: 1;
-      transform: translateY(0);
-      transition:
-        opacity 420ms var(--ease),
-        transform 420ms var(--ease),
-        visibility 0ms 0ms;
-    }
-
-    .slide.active .reveal {
-      animation: rise 520ms var(--ease) both;
-    }
-
-    .slide.active .reveal:nth-child(1) {
-      animation-delay: 40ms;
-    }
-    .slide.active .reveal:nth-child(2) {
-      animation-delay: 120ms;
-    }
-    .slide.active .reveal:nth-child(3) {
-      animation-delay: 200ms;
-    }
-    .slide.active .reveal:nth-child(4) {
-      animation-delay: 280ms;
-    }
-    .slide.active .reveal:nth-child(5) {
-      animation-delay: 360ms;
-    }
-
-    @keyframes rise {
-      from {
-        opacity: 0;
-        transform: translateY(14px);
-        filter: blur(4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .slide,
-      .slide.active .reveal {
-        filter: none !important;
-        transform: none !important;
-        transition: none !important;
-        animation: none !important;
-      }
+      display: grid;
     }
 
     .brand-mark {
@@ -446,7 +388,6 @@
       width: 10%;
       height: 100%;
       background: linear-gradient(90deg, var(--brand), var(--brand-strong));
-      transition: width 320ms var(--ease);
     }
 
     .nav-hint kbd {
@@ -462,6 +403,13 @@
       margin-top: 0.75rem;
       font-size: 1.15rem;
       font-weight: 600;
+    }
+
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
     }
     </style>
   </head>
