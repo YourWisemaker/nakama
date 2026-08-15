@@ -468,11 +468,15 @@ export function AutomationsEmptyState() {
 export function RunHistoryList({
   runs,
   busy,
+  running,
   onDeleteRun,
+  onRerun,
 }: {
   runs: AutomationRunRecord[];
   busy: boolean;
+  running: boolean;
   onDeleteRun: (run: AutomationRunRecord) => void;
+  onRerun: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(
     () => runs.find((run) => run.status === "running")?.id ?? null
@@ -502,12 +506,14 @@ export function RunHistoryList({
                 expanded={expandedId === run.id}
                 key={run.id}
                 onDelete={() => onDeleteRun(run)}
+                onRerun={onRerun}
                 onToggle={() => {
                   setExpandedId((current) =>
                     current === run.id ? null : run.id
                   );
                 }}
                 run={run}
+                running={running}
               />
             ))}
           </ul>
@@ -521,21 +527,26 @@ function RunHistoryItem({
   run,
   expanded,
   busy,
+  running,
   onToggle,
   onDelete,
+  onRerun,
 }: {
   run: AutomationRunRecord;
   expanded: boolean;
   busy: boolean;
+  running: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onRerun: () => void;
 }) {
   const isRunning = run.status === "running";
+  const isFailed = run.status === "failed";
   const isUnread = run.read === false;
   const hasOutput = Boolean(run.output?.trim());
   const hasError = Boolean(run.error?.trim());
   const hasDeliveryError = Boolean(run.deliveryError?.trim());
-  const hasBody = hasOutput || hasError || isRunning;
+  const hasBody = hasOutput || hasError || isRunning || isFailed;
   const previewText = runPreviewText(run);
   const duration = formatRunDuration(run.startedAt, run.completedAt);
   const statusLabel =
@@ -658,21 +669,43 @@ function RunHistoryItem({
                   ? " · running"
                   : ""}
             </p>
-            {copyText ? (
-              <Button
-                className="h-7 gap-1.5 px-2 text-muted-foreground text-xs"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void handleCopy();
-                }}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                <Copy01Icon aria-hidden className="size-3.5" />
-                Copy
-              </Button>
-            ) : null}
+            <div className="flex items-center gap-1">
+              {isFailed ? (
+                <Button
+                  className="h-7 gap-1.5 px-2 text-muted-foreground text-xs"
+                  disabled={busy || running}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRerun();
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  {running ? (
+                    <Spinner className="size-3.5" />
+                  ) : (
+                    <PlayIcon aria-hidden className="ml-px size-3.5" />
+                  )}
+                  Run again
+                </Button>
+              ) : null}
+              {copyText ? (
+                <Button
+                  className="h-7 gap-1.5 px-2 text-muted-foreground text-xs"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleCopy();
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Copy01Icon aria-hidden className="size-3.5" />
+                  Copy
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           {hasDeliveryError ? (

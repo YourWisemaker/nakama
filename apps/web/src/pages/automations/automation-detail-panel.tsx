@@ -127,6 +127,8 @@ export function AutomationDetailPanel(state: DetailState) {
           <RunHistoryList
             busy={busy}
             onDeleteRun={setDeleteRunTarget}
+            onRerun={() => void handleRun(selected.id)}
+            running={runningId === selected.id}
             runs={runs}
           />
         )}
