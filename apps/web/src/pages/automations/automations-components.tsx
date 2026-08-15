@@ -13,8 +13,8 @@ import {
   CheckmarkCircle01Icon,
   Copy01Icon,
   Delete02Icon,
+  Edit03Icon,
   Loading03Icon,
-  PencilIcon,
   PlayIcon,
   Search01Icon,
 } from "hugeicons-react";
@@ -75,7 +75,7 @@ export function AutomationDetailActions({
         {runningId === automation.id ? (
           <Spinner className="size-3.5" />
         ) : (
-          <PlayIcon aria-hidden className="size-3.5" />
+          <PlayIcon aria-hidden className="ml-px size-3.5" />
         )}
       </Button>
       <Button
@@ -86,7 +86,7 @@ export function AutomationDetailActions({
         type="button"
         variant="ghost"
       >
-        <PencilIcon aria-hidden className="size-3.5" />
+        <Edit03Icon aria-hidden className="size-3.5" />
       </Button>
       <Button
         aria-label="Delete"
@@ -422,7 +422,7 @@ export function AutomationDetailSkeleton() {
       className="flex min-h-0 flex-1 flex-col"
     >
       <div className="mb-5 flex shrink-0 flex-col gap-4 sm:flex-row sm:justify-between">
-        <div className="min-h-[4.75rem] flex-1 space-y-2">
+        <div className="flex-1 space-y-2">
           <div className="h-5 w-48 animate-pulse rounded bg-muted/50" />
           <div className="h-10 animate-pulse rounded bg-muted/40" />
           <div className="h-3 w-64 animate-pulse rounded bg-muted/35" />
@@ -832,14 +832,21 @@ function DeliverySettingsFields({
   );
 }
 
-export function AutomationStateBadge({ enabled }: { enabled: boolean }) {
+export function AutomationStateBadge({
+  enabled,
+  className,
+}: {
+  enabled: boolean;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-[11px]",
         enabled
           ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-          : "bg-muted text-muted-foreground"
+          : "bg-muted text-muted-foreground",
+        className
       )}
     >
       <span
