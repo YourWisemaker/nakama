@@ -127,7 +127,7 @@ Use org memory for facts everyone should know. Use skills for how a specific bot
 
 After your team has been chatting for a while, you may wonder which skills actually help and which just sit on the shelf. Nakama tracks that automatically for each **assigned** skill on a profile.
 
-Open **Agent → Profiles**, select a bot, and scroll to **Skills**. Each skill shows a short hint such as **Last matched 2 days ago · 5 uses**, or **Never matched** when it has not been selected for a turn yet. Skills with no match in the last 30 days get an **Unused** badge — that is advisory only; nothing is deleted or archived automatically. **Bundled system skills** (shipped with Nakama, such as `manage-skills` and `save-artifact`) never get the Unused badge; they stay assigned by design.
+Open **Agent → Profiles**, select a bot, and scroll to **Skills**. Each skill shows a short hint such as **Last matched 2 days ago · 5 uses**, or **Never matched** when it has not been selected for a turn yet. Skills with no match in the last 30 days get an **Unused** badge. **Bundled system skills** (shipped with Nakama, such as `manage-skills` and `save-artifact`) never get the Unused badge; they stay assigned by design.
 
 Click a skill to open its detail dialog for the full breakdown:
 
@@ -138,7 +138,28 @@ Click a skill to open its detail dialog for the full breakdown:
 
 These numbers update during **web** and **CLI** chat. They do not change from Telegram, WhatsApp, Discord, or automations — those channels do not run the skill-authoring flow today.
 
-Automated cleanup (archiving unused skills, curator reports) is planned for a later release and will apply only to **agent- or human-authored** skills — not bundled system skills. For now, use the usage hints to decide what to unassign, edit, or keep.
+## Skill curator (optional)
+
+When a profile collects unused playbooks, the catalog gets noisy and wastes tokens. The **skill curator** is an opt-in janitor for **agent- and human-authored** profile skills.
+
+### What it does
+
+- **Stale (30 days unused):** listed in the last report. Files stay in place.
+- **Archive (90 days unused):** the skill folder is **moved** to `skills/.archive/` on that profile. Nothing is deleted. The skill is unassigned so it leaves the chat catalog. An admin can restore it later from disk (restore UI is not in this release).
+- **Never-matched grace:** a skill with no matches is judged from when it was created, so a brand-new skill is not archived.
+- **Skipped:** bundled / library skills, and any skill on a profile that has an **enabled automation** (usage is not recorded on those runs yet).
+
+Default is **off**. The first scheduled pass after you enable it only records a baseline (no archives). After that, a live pass runs about every **7 days**. Write approval does not block curator archives — they are an admin/system action, not an agent edit.
+
+### Turn it on
+
+Org admins: **System → Organization → Skill curator**.
+
+- Flip the toggle to enable the weekly pass.
+- **Dry run** writes a preview report without moving files.
+- **Run now** archives eligible skills immediately (not deferred to the next weekly window).
+
+The card shows last-run time and counts (stale / archived / skipped).
 
 ## Related
 
