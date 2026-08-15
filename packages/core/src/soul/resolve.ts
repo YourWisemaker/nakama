@@ -76,6 +76,14 @@ export function getOrgMemoryFilePath(
   return join(getOrgMemoryDir(orgId, configDir), "MEMORY.md");
 }
 
+/** Org curator reports: ~/.nakama/orgs/{orgId}/logs/curator/ */
+export function getOrgCuratorLogDir(
+  orgId: string,
+  configDir = getUserConfigDir()
+): string {
+  return join(getOrgMemoryDir(orgId, configDir), "logs", "curator");
+}
+
 /** Org memory archive dir: ~/.nakama/orgs/{orgId}/memory-archive/ */
 export function getOrgMemoryArchiveDir(
   orgId: string,
