@@ -1,3 +1,4 @@
+export * from "./archive";
 export {
   readBundledSkillBody,
   readBundledSkillMarkdown,

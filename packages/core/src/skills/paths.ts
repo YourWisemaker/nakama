@@ -4,6 +4,7 @@ import { getUserConfigDir } from "../user-config";
 
 export const SKILL_FILE_NAME = "SKILL.md";
 export const SKILL_TOOL_FILES = ["tool.ts", "tool.js"] as const;
+export const SKILL_ARCHIVE_DIR_NAME = ".archive";
 
 export function getGlobalSkillsDir(): string {
   return path.join(getUserConfigDir(), "agent", "skills");
@@ -11,6 +12,16 @@ export function getGlobalSkillsDir(): string {
 
 export function getProfileSkillsDir(orgId: string, profileId: string): string {
   return path.join(getProfileSoulDir(orgId, profileId), "skills");
+}
+
+export function getProfileSkillsArchiveDir(
+  orgId: string,
+  profileId: string
+): string {
+  return path.join(
+    getProfileSkillsDir(orgId, profileId),
+    SKILL_ARCHIVE_DIR_NAME
+  );
 }
 
 export async function resolveSkillDiscoveryDirs(
