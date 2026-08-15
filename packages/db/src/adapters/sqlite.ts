@@ -309,6 +309,8 @@ interface OrganizationRow {
   created_at: string;
   id: string;
   name: string;
+  skills_curator_enabled: number;
+  skills_curator_last_run_at: string | null;
   skills_post_turn_review: number;
   skills_write_approval: number;
   slug: string;
@@ -1205,28 +1207,30 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     WHERE id = ?
   `);
   const upsertOrganizationStmt = db.prepare(`
-    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = excluded.slug,
       skills_write_approval = excluded.skills_write_approval,
       skills_post_turn_review = excluded.skills_post_turn_review,
+      skills_curator_enabled = excluded.skills_curator_enabled,
+      skills_curator_last_run_at = excluded.skills_curator_last_run_at,
       updated_at = excluded.updated_at
   `);
   const listOrganizationsStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at
     FROM organizations
     ORDER BY name ASC
   `);
   const getOrganizationBySlugStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at
     FROM organizations
     WHERE slug = ?
     LIMIT 1
   `);
   const getOrganizationByIdStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at
     FROM organizations
     WHERE id = ?
     LIMIT 1
@@ -1487,6 +1491,8 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       o.slug,
       o.skills_write_approval,
       o.skills_post_turn_review,
+      o.skills_curator_enabled,
+      o.skills_curator_last_run_at,
       o.created_at,
       o.updated_at,
       om.role,
@@ -2496,6 +2502,8 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
           slug: string;
           skills_write_approval: number;
           skills_post_turn_review: number;
+          skills_curator_enabled: number;
+          skills_curator_last_run_at: string | null;
           created_at: string;
           updated_at: string;
           role: string;
@@ -2508,6 +2516,8 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
             createdAt: record.created_at,
             id: record.id,
             name: record.name,
+            skillsCuratorEnabled: record.skills_curator_enabled !== 0,
+            skillsCuratorLastRunAt: record.skills_curator_last_run_at,
             skillsPostTurnReview: record.skills_post_turn_review !== 0,
             skillsWriteApproval: record.skills_write_approval !== 0,
             slug: record.slug,
@@ -2778,6 +2788,8 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.slug,
         record.skillsWriteApproval ? 1 : 0,
         record.skillsPostTurnReview ? 1 : 0,
+        record.skillsCuratorEnabled ? 1 : 0,
+        record.skillsCuratorLastRunAt ?? null,
         record.createdAt,
         record.updatedAt
       );
@@ -3460,6 +3472,8 @@ function toOrganizationRecord(row: OrganizationRow): StoredOrganizationRecord {
     createdAt: row.created_at,
     id: row.id,
     name: row.name,
+    skillsCuratorEnabled: row.skills_curator_enabled !== 0,
+    skillsCuratorLastRunAt: row.skills_curator_last_run_at,
     skillsPostTurnReview: row.skills_post_turn_review !== 0,
     skillsWriteApproval: row.skills_write_approval !== 0,
     slug: row.slug,

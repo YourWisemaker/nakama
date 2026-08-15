@@ -379,6 +379,8 @@ export interface OrganizationSummary {
   createdAt: string;
   id: string;
   name: string;
+  skillsCuratorEnabled?: boolean;
+  skillsCuratorLastRunAt?: string | null;
   skillsPostTurnReview?: boolean;
   skillsWriteApproval?: boolean;
   slug: string;
@@ -397,8 +399,54 @@ export interface CreateOrganizationRequest {
 
 export interface UpdateOrganizationRequest {
   name?: string;
+  skillsCuratorEnabled?: boolean;
   skillsPostTurnReview?: boolean;
   skillsWriteApproval?: boolean;
+}
+
+export type SkillCuratorTrigger = "schedule" | "manual" | "seed";
+
+export interface SkillCuratorRunResult {
+  archived: number;
+  dryRun: boolean;
+  finishedAt: string;
+  orgId: string;
+  scanned: number;
+  skippedAutomation: number;
+  skippedBundled: number;
+  skippedError: number;
+  skippedTooNew: number;
+  stale: number;
+  startedAt: string;
+  status: "completed" | "in_flight";
+  trigger: SkillCuratorTrigger;
+}
+
+export interface RunSkillCuratorRequest {
+  dryRun?: boolean;
+}
+
+export interface SkillCuratorRunResponse {
+  result: SkillCuratorRunResult;
+}
+
+export interface SkillCuratorLatestResponse {
+  lastRunAt: string | null;
+  result: SkillCuratorRunResult | null;
+}
+
+export interface SkillCuratorOrgSchedule {
+  id: string;
+  skillsCuratorEnabled: boolean;
+  skillsCuratorLastRunAt: string | null;
+}
+
+export interface ListSkillCuratorOrgsResponse {
+  orgs: SkillCuratorOrgSchedule[];
+}
+
+export interface RunSkillCuratorInternalRequest {
+  trigger: "seed" | "schedule";
 }
 
 export interface ListOrganizationsResponse {

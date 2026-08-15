@@ -10,32 +10,20 @@ import {
   restoreArchivedSkillDirectory,
   writePrivateTextFile,
 } from "@nakama/core";
+import type {
+  SkillCuratorRunResult,
+  SkillCuratorTrigger,
+} from "@nakama/core/contract";
 import type { DatabaseAdapter, StoredSkillRecord } from "@nakama/db";
 import type { SkillsService } from "./skills-service";
 
 const bundledSkillNames = new Set<string>(BUNDLED_SKILL_NAMES);
 
-export type SkillCuratorTrigger = "schedule" | "manual" | "seed";
+export type { SkillCuratorRunResult, SkillCuratorTrigger };
 
 export interface SkillCuratorRunOptions {
   dryRun?: boolean;
   now?: Date;
-  trigger: SkillCuratorTrigger;
-}
-
-export interface SkillCuratorRunResult {
-  archived: number;
-  dryRun: boolean;
-  finishedAt: string;
-  orgId: string;
-  scanned: number;
-  skippedAutomation: number;
-  skippedBundled: number;
-  skippedError: number;
-  skippedTooNew: number;
-  stale: number;
-  startedAt: string;
-  status: "completed" | "in_flight";
   trigger: SkillCuratorTrigger;
 }
 

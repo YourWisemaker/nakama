@@ -74,6 +74,7 @@ import type {
   ListProfilesResponse,
   ListProvidersResponse,
   ListSessionsResponse,
+  ListSkillCuratorOrgsResponse,
   ListSkillProposalsResponse,
   ListSkillSuggestionsResponse,
   ListSkillsResponse,
@@ -108,6 +109,8 @@ import type {
   RevokeArtifactShareResponse,
   RotateLocalAuthTokenResponse,
   RunAutomationResponse,
+  RunSkillCuratorInternalRequest,
+  RunSkillCuratorRequest,
   RunTaskResponse,
   RunToolRequest,
   RunToolResponse,
@@ -119,6 +122,8 @@ import type {
   SetActiveOrgRequest,
   SetupAuthRequest,
   SetupRestoreDataImportResponse,
+  SkillCuratorLatestResponse,
+  SkillCuratorRunResponse,
   SkillProposalResponse,
   SkillResponse,
   SoulStackResponse,
@@ -1787,6 +1792,50 @@ export class NakamaClient {
       body: JSON.stringify(request),
       method: "POST",
     });
+  }
+
+  async runOrgSkillCurator(
+    orgId: string,
+    request: RunSkillCuratorRequest = {}
+  ): Promise<SkillCuratorRunResponse> {
+    return this.request<SkillCuratorRunResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/curator/run`,
+      {
+        body: JSON.stringify(request),
+        headers: { "X-Org-Id": orgId },
+        method: "POST",
+      }
+    );
+  }
+
+  async getOrgSkillCuratorLatest(
+    orgId: string
+  ): Promise<SkillCuratorLatestResponse> {
+    return this.request<SkillCuratorLatestResponse>(
+      `/v1/orgs/${encodeURIComponent(orgId)}/curator/latest`,
+      {
+        headers: { "X-Org-Id": orgId },
+      }
+    );
+  }
+
+  async listSkillCuratorOrgs(): Promise<ListSkillCuratorOrgsResponse> {
+    return this.request<ListSkillCuratorOrgsResponse>(
+      "/v1/internal/curator/orgs"
+    );
+  }
+
+  async runSkillCuratorInternal(
+    orgId: string,
+    request: RunSkillCuratorInternalRequest
+  ): Promise<SkillCuratorRunResponse> {
+    return this.request<SkillCuratorRunResponse>(
+      `/v1/internal/curator/orgs/${encodeURIComponent(orgId)}/run`,
+      {
+        body: JSON.stringify(request),
+        method: "POST",
+      }
+    );
   }
 
   async updateOrganization(

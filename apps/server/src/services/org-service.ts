@@ -53,6 +53,11 @@ export class OrgService {
     return organizations.map(toOrganizationSummary);
   }
 
+  async getOrganization(orgId: string): Promise<OrganizationSummary | null> {
+    const org = await this.databaseAdapter.getOrganizationById(orgId);
+    return org ? toOrganizationSummary(org) : null;
+  }
+
   async updateOrganization(
     orgId: string,
     request: UpdateOrganizationRequest
@@ -71,6 +76,11 @@ export class OrgService {
     const updated: StoredOrganizationRecord = {
       ...org,
       name,
+      skillsCuratorEnabled:
+        request.skillsCuratorEnabled === undefined
+          ? (org.skillsCuratorEnabled ?? false)
+          : request.skillsCuratorEnabled,
+      skillsCuratorLastRunAt: org.skillsCuratorLastRunAt ?? null,
       skillsPostTurnReview:
         request.skillsPostTurnReview === undefined
           ? (org.skillsPostTurnReview ?? false)
@@ -84,6 +94,36 @@ export class OrgService {
 
     await this.databaseAdapter.upsertOrganization(updated);
     return toOrganizationSummary(updated);
+  }
+
+  async markSkillsCuratorRan(orgId: string, ranAt: string): Promise<void> {
+    const org = await this.databaseAdapter.getOrganizationById(orgId);
+    if (!org) {
+      throw new NakamaApiError("Not found", 404);
+    }
+
+    await this.databaseAdapter.upsertOrganization({
+      ...org,
+      skillsCuratorLastRunAt: ranAt,
+      updatedAt: ranAt,
+    });
+  }
+
+  async listSkillCuratorOrgs(): Promise<
+    Array<{
+      id: string;
+      skillsCuratorEnabled: boolean;
+      skillsCuratorLastRunAt: string | null;
+    }>
+  > {
+    const organizations = await this.databaseAdapter.listOrganizations();
+    return organizations
+      .filter((org) => org.skillsCuratorEnabled)
+      .map((org) => ({
+        id: org.id,
+        skillsCuratorEnabled: true,
+        skillsCuratorLastRunAt: org.skillsCuratorLastRunAt ?? null,
+      }));
   }
 
   async createOrganization(
@@ -830,6 +870,8 @@ function toOrganizationSummary(
     createdAt: record.createdAt,
     id: record.id,
     name: record.name,
+    skillsCuratorEnabled: record.skillsCuratorEnabled ?? false,
+    skillsCuratorLastRunAt: record.skillsCuratorLastRunAt ?? null,
     skillsPostTurnReview: record.skillsPostTurnReview ?? false,
     skillsWriteApproval: record.skillsWriteApproval ?? false,
     slug: record.slug,
