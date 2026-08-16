@@ -41,6 +41,7 @@ import type {
   ImageGenerationSettingsResponse,
   InitSoulResponse,
   InitUserContextResponse,
+  InstallSkillRequest,
   ListArtifactsOptions,
   ListArtifactsResponse,
   ListKnowledgeBaseResponse,
@@ -2580,6 +2581,13 @@ export class AgentService {
     request: CreateSkillRequest
   ): Promise<SkillResponse> {
     return this.requireSkillsService().createSkill(orgId, request);
+  }
+
+  async installSkillFromGitHub(
+    orgId: string,
+    request: InstallSkillRequest
+  ): Promise<SkillResponse> {
+    return this.requireSkillsService().installSkillFromGitHub(orgId, request);
   }
 
   async patchSkill(

@@ -59,6 +59,7 @@ import type {
   ImageGenerationSettingsResponse,
   InitSoulResponse,
   InitUserContextResponse,
+  InstallSkillRequest,
   InviteOrgMemberRequest,
   ListArtifactsResponse,
   ListAutomationRunsResponse,
@@ -791,6 +792,13 @@ export class NakamaClient {
 
   async createSkill(request: CreateSkillRequest): Promise<SkillResponse> {
     return this.request<SkillResponse>("/v1/skills", {
+      body: JSON.stringify(request),
+      method: "POST",
+    });
+  }
+
+  async installSkill(request: InstallSkillRequest): Promise<SkillResponse> {
+    return this.request<SkillResponse>("/v1/skills/install", {
       body: JSON.stringify(request),
       method: "POST",
     });
