@@ -82,7 +82,7 @@ function SkillStatusBadge({ skill }: { skill: SkillSummary }) {
   }
 
   return (
-    <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+    <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 font-medium text-2xs text-muted-foreground uppercase tracking-wide">
       Unused
     </span>
   );
@@ -124,7 +124,7 @@ function ProfileSkillRow({
       </button>
       <Button
         aria-label={`Delete ${skill.name}`}
-        className="shrink-0 text-muted-foreground/60 hover:text-destructive"
+        className="shrink-0 text-muted-foreground hover:text-destructive"
         disabled={busy}
         onClick={() =>
           onRemove({ id: skill.id, kind: "skill", name: skill.name })
@@ -153,6 +153,7 @@ export function ProfileSkillsSection({
   allSkills,
   assignedSkillIds,
   onCreateOpen,
+  onInstallOpen,
   onAssign,
   onDelete,
   onViewDetail,
@@ -164,6 +165,7 @@ export function ProfileSkillsSection({
   allSkills: SkillSummary[];
   assignedSkillIds: ReadonlySet<string>;
   onCreateOpen: () => void;
+  onInstallOpen: () => void;
   onAssign: (skillId: string) => void;
   onDelete: (skillId: string) => void;
   onViewDetail: (skillId: string) => void;
@@ -204,6 +206,15 @@ export function ProfileSkillsSection({
             variant="outline"
           >
             Create skill
+          </Button>
+          <Button
+            disabled={busy}
+            onClick={onInstallOpen}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Install from GitHub
           </Button>
           <SkillAssignPicker
             assignedSkillIds={assignedSkillIds}

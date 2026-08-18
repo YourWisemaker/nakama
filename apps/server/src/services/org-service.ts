@@ -195,7 +195,7 @@ export class OrgService {
       ? memberships.find((membership) => membership.organization.id === trimmed)
       : undefined;
     const activeOrgId =
-      matched?.organization.id ?? memberships[0]!.organization.id;
+      matched?.organization.id ?? memberships[0].organization.id;
 
     if (sessionId && activeOrgId !== (trimmed ?? null)) {
       await this.databaseAdapter.updateBrowserSessionActiveOrgId(

@@ -5,6 +5,7 @@ import {
   createAgentHarness,
   draftTaskPromptFromFields,
   executeToolCall,
+  expandLearnInLastUserMessage,
   suggestToolParamsFromPrompt,
 } from "@nakama/agent";
 import type {
@@ -17,6 +18,7 @@ import type {
   BranchSessionResponse,
   ChatContextUsage,
   ChatMessage,
+  CloneProfileRequest,
   CompactionResponse,
   ComposioSettingsResponse,
   ConfigureProviderRequest,
@@ -40,6 +42,7 @@ import type {
   ImageGenerationSettingsResponse,
   InitSoulResponse,
   InitUserContextResponse,
+  InstallSkillRequest,
   ListArtifactsOptions,
   ListArtifactsResponse,
   ListKnowledgeBaseResponse,
@@ -2566,11 +2569,26 @@ export class AgentService {
     return this.requireSkillsService().getSkill(skillId);
   }
 
+  async cloneProfile(
+    orgId: string,
+    sourceId: string,
+    request: CloneProfileRequest
+  ): Promise<ProfileResponse> {
+    return this.profileService.cloneProfile(orgId, sourceId, request);
+  }
+
   async createSkill(
     orgId: string,
     request: CreateSkillRequest
   ): Promise<SkillResponse> {
     return this.requireSkillsService().createSkill(orgId, request);
+  }
+
+  async installSkillFromGitHub(
+    orgId: string,
+    request: InstallSkillRequest
+  ): Promise<SkillResponse> {
+    return this.requireSkillsService().installSkillFromGitHub(orgId, request);
   }
 
   async patchSkill(
@@ -3176,8 +3194,20 @@ export class AgentService {
 
         return replaceImagePartsWithDescriptions(forVision, descriptions);
       },
-      rehydrateMessagesForProvider: (messages) =>
-        rehydrateAttachmentMessages(messages, loadAttachment),
+      rehydrateMessagesForProvider: async (messages) => {
+        const rehydrated = await rehydrateAttachmentMessages(
+          messages,
+          loadAttachment
+        );
+
+        // Expand /learn only for the provider. History stays raw so skill
+        // matching, the web UI, and later turns keep the short command.
+        if (includeSkillManageTools && hasSkillManage) {
+          return expandLearnInLastUserMessage(rehydrated);
+        }
+
+        return rehydrated;
+      },
       resolvePromptContext: async (context) => {
         const parts: string[] = [];
         const todoContext =

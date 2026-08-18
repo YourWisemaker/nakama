@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   CreateSkillRequest,
+  InstallSkillRequest,
   ListSkillsResponse,
   PatchSkillRequest,
   SkillDetail,
@@ -27,10 +28,13 @@ import {
   discoverSkillDirectory,
   discoverSkills,
   extractExplicitSkillName,
+  fetchGitHubSkillMarkdown,
   isGlobalSkillSourcePath,
   isPathWithinProfileSkillsDir,
   loadSkillTools,
   matchSkillsForMessage,
+  NakamaApiError,
+  orgIdFromSkillSourcePath,
   parseRawProfileSkillContent,
   parseSkillMarkdown,
   patchSkillFile,
@@ -179,18 +183,20 @@ export class SkillsService {
     const skillFilePath = path.join(record.sourcePath, SKILL_FILE_NAME);
     const existing = await readFile(skillFilePath, "utf8");
     const parsed = parseSkillMarkdown(existing, skillFilePath);
-    const description = hasDescription
-      ? request.description!.trim()
-      : parsed.frontmatter.description;
+    const description =
+      request.description === undefined
+        ? parsed.frontmatter.description
+        : request.description.trim();
 
     if (!description) {
       throw new Error("Skill description is required.");
     }
 
-    const body = hasBody ? request.body! : parsed.body;
-    const disableModelInvocation = hasDisableModelInvocation
-      ? request.disableModelInvocation!
-      : parsed.frontmatter.disableModelInvocation;
+    const body = request.body === undefined ? parsed.body : request.body;
+    const disableModelInvocation =
+      request.disableModelInvocation === undefined
+        ? parsed.frontmatter.disableModelInvocation
+        : request.disableModelInvocation;
 
     const content = composeSkillMarkdown({
       body,
@@ -231,6 +237,67 @@ export class SkillsService {
     return created;
   }
 
+  async installSkillFromGitHub(
+    orgId: string,
+    request: InstallSkillRequest
+  ): Promise<SkillResponse> {
+    const profileId = request.profileId?.trim() ?? "";
+    const url = request.url?.trim() ?? "";
+
+    if (!profileId) {
+      throw new NakamaApiError("profileId is required.", 400);
+    }
+
+    if (!url) {
+      throw new NakamaApiError("url is required.", 400);
+    }
+
+    const profile = await this.db.getProfileForOrg(profileId, orgId);
+    if (!profile) {
+      throw new NakamaApiError("Profile not found.", 404);
+    }
+
+    const content = await fetchGitHubSkillMarkdown(url);
+
+    try {
+      parseSkillMarkdown(content, url);
+    } catch (error) {
+      throw new NakamaApiError(
+        error instanceof Error
+          ? error.message
+          : "Skill file is missing or has invalid frontmatter.",
+        400
+      );
+    }
+
+    try {
+      const installed = await this.createAndAssignRawSkillToProfile(
+        orgId,
+        profileId,
+        content,
+        { createdBy: "human" }
+      );
+      return { skill: installed.skill };
+    } catch (error) {
+      if (error instanceof NakamaApiError) {
+        throw error;
+      }
+
+      const message =
+        error instanceof Error ? error.message : "Failed to install skill.";
+
+      if (
+        /already exists|already assigned|cannot be attached|bundled/i.test(
+          message
+        )
+      ) {
+        throw new NakamaApiError(message, 409);
+      }
+
+      throw new NakamaApiError(message, 400);
+    }
+  }
+
   /**
    * Single-write create/adopt path for agents: write raw SKILL.md under the profile
    * skills dir, upsert discovered metadata, and assign. Does not call createSkill
@@ -239,11 +306,13 @@ export class SkillsService {
   async createAndAssignRawSkillToProfile(
     orgId: string,
     profileId: string,
-    content: string
+    content: string,
+    options?: { createdBy?: SkillCreatedBy }
   ): Promise<SkillResponse & { created: boolean }> {
     const { name } = parseRawProfileSkillContent(content, orgId, profileId);
+    const createdBy = options?.createdBy ?? "agent";
 
-    const existingByName = await this.db.getSkillByName(name);
+    const existingByName = await this.db.getSkillByName(name, orgId);
     if (
       existingByName &&
       !isPathWithinProfileSkillsDir(orgId, profileId, existingByName.sourcePath)
@@ -284,7 +353,7 @@ export class SkillsService {
       written.directory,
       written.name,
       "written",
-      "agent"
+      createdBy
     );
 
     if (!isPathWithinProfileSkillsDir(orgId, profileId, record.sourcePath)) {
@@ -417,7 +486,7 @@ export class SkillsService {
     const skillName = assertValidSkillName(name);
     assertNotBundledSkillName(skillName);
 
-    const record = await this.db.getSkillByName(skillName);
+    const record = await this.db.getSkillByName(skillName, orgId);
     if (!record) {
       throw new Error(`Skill "${skillName}" not found.`);
     }
@@ -635,7 +704,7 @@ export class SkillsService {
 
     const record =
       (await this.db.getSkillBySourcePath(directory)) ??
-      (await this.db.getSkillByName(name));
+      (await this.db.getSkillByName(name, orgIdFromSkillSourcePath(directory)));
 
     if (!record) {
       throw new Error(`Skill was ${verb} but could not be synced.`);
@@ -657,13 +726,21 @@ export class SkillsService {
   ): Promise<{ created: boolean }> {
     const existingByPath = await this.db.getSkillBySourcePath(skill.directory);
     const existing =
-      existingByPath ?? (await this.db.getSkillByName(skill.name)) ?? null;
+      existingByPath ??
+      (await this.db.getSkillByName(
+        skill.name,
+        orgIdFromSkillSourcePath(skill.directory)
+      )) ??
+      null;
     const now = new Date().toISOString();
     const defaultCreatedBy: SkillCreatedBy = isGlobalSkillSourcePath(
       skill.directory
     )
       ? "bundled"
       : "human";
+    const sourcePath = existing
+      ? pickPreferredSkillSourcePath(existing.sourcePath, skill.directory)
+      : skill.directory;
     const record: StoredSkillRecord = {
       createdAt: existing?.createdAt ?? now,
       createdBy: existing?.createdBy ?? createdByOverride ?? defaultCreatedBy,
@@ -673,9 +750,9 @@ export class SkillsService {
       hasTool: skill.hasTool,
       id: existing?.id ?? createId("skill"),
       name: skill.name,
-      sourcePath: existing
-        ? pickPreferredSkillSourcePath(existing.sourcePath, skill.directory)
-        : skill.directory,
+      // Ownership always follows the winning path, so org_id cannot drift from it.
+      orgId: orgIdFromSkillSourcePath(sourcePath),
+      sourcePath,
       updatedAt: now,
     };
 
@@ -701,7 +778,7 @@ export class SkillsService {
   ): Promise<StoredSkillRecord> {
     assertNotBundledSkillName(name);
 
-    const record = await this.db.getSkillByName(name);
+    const record = await this.db.getSkillByName(name, orgId);
     if (!record) {
       throw new Error(`Skill "${name}" not found.`);
     }

@@ -1,11 +1,13 @@
 import type {
   AutomationRunRecord,
+  DiscordOutboundAdapter,
   EmailOutboundAdapter,
   StoredAutomation,
   TelegramOutboundAdapter,
   WhatsAppOutboundAdapter,
 } from "@nakama/core";
 import {
+  createDiscordOutboundAdapter,
   createEmailOutboundAdapter,
   createTelegramOutboundAdapter,
   createWhatsAppOutboundAdapter,
@@ -16,12 +18,14 @@ import {
 import type { AutomationService } from "./automation-service";
 
 export interface AutomationDeliveryServiceOptions {
+  discord?: DiscordOutboundAdapter;
   email?: EmailOutboundAdapter;
   telegram?: TelegramOutboundAdapter;
   whatsapp?: WhatsAppOutboundAdapter;
 }
 
 export class AutomationDeliveryService {
+  private readonly discord: DiscordOutboundAdapter;
   private readonly email: EmailOutboundAdapter;
   private readonly telegram: TelegramOutboundAdapter;
   private readonly whatsapp: WhatsAppOutboundAdapter;
@@ -30,6 +34,7 @@ export class AutomationDeliveryService {
     private readonly automationService: AutomationService,
     options: AutomationDeliveryServiceOptions = {}
   ) {
+    this.discord = options.discord ?? createDiscordOutboundAdapter();
     this.email = options.email ?? createEmailOutboundAdapter();
     this.telegram = options.telegram ?? createTelegramOutboundAdapter();
     this.whatsapp = options.whatsapp ?? createWhatsAppOutboundAdapter();
@@ -70,16 +75,27 @@ export class AutomationDeliveryService {
     let result: { ok: boolean; error?: string };
 
     if (delivery.channel === "email") {
+      const to = delivery.to?.trim();
+      if (!to) {
+        throw new Error(
+          "delivery.to is required when delivery.channel is email."
+        );
+      }
       result = await this.email.send({
         orgId: automation.orgId,
         profileId: automation.profileId,
         subject: formatted.subject,
         text: formatted.text,
-        to: delivery.to!.trim(),
+        to,
       });
     } else if (delivery.channel === "telegram") {
       result = await this.telegram.send({
         chatIds: delivery.chatId ? [delivery.chatId] : undefined,
+        text: formatted.text,
+      });
+    } else if (delivery.channel === "discord") {
+      result = await this.discord.send({
+        channelId: delivery.channelId,
         text: formatted.text,
       });
     } else {
