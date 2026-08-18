@@ -9,6 +9,7 @@ export * from "./compose";
 export * from "./curator-schedule";
 export * from "./dedupe";
 export * from "./discover";
+export * from "./freshness";
 export * from "./github-skill-fetch";
 export * from "./github-skill-url";
 export * from "./load-tool";

@@ -3,13 +3,13 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathExists } from "../fs";
+import { archiveSkillDirectory } from "./archive";
+import { discoverSkills } from "./discover";
 import {
-  archiveSkillDirectory,
   classifySkillFreshness,
   SKILL_ARCHIVE_AFTER_MS,
   SKILL_STALE_AFTER_MS,
-} from "./archive";
-import { discoverSkills } from "./discover";
+} from "./freshness";
 import { SKILL_ARCHIVE_DIR_NAME } from "./paths";
 
 const ORG_ID = "org_test";
