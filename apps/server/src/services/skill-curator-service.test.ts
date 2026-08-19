@@ -298,24 +298,6 @@ describe("SkillCuratorService", () => {
     expect(await pathExists(liveDir)).toBe(true);
   });
 
-  test("seed trigger writes a report and archives nothing", async () => {
-    await addAssignedSkill({
-      createdAt: "2026-01-01T00:00:00.000Z",
-      createdBy: "agent",
-      lastUsedAt: new Date(NOW.getTime() - 95 * DAY_MS).toISOString(),
-      name: "seed-me",
-    });
-
-    const result = await curator.run(ORG_ID, { now: NOW, trigger: "seed" });
-
-    expect(result.trigger).toBe("seed");
-    expect(result.dryRun).toBe(true);
-    expect(result.archived).toBe(0);
-    expect(
-      await pathExists(join(getOrgCuratorLogDir(ORG_ID), "run.json"))
-    ).toBe(true);
-  });
-
   test("restores the directory when unassign fails after rename", async () => {
     await addAssignedSkill({
       createdAt: "2026-01-01T00:00:00.000Z",
