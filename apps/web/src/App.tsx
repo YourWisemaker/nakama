@@ -1,29 +1,66 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { type ComponentType, lazy, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Layout } from "@/components/Layout";
 import { PlatformAdminGuard } from "@/components/PlatformAdminGuard";
+import { RouteBoundary } from "@/components/RouteBoundary";
 import { SetupGuard } from "@/components/SetupGuard";
 import { AppProvider } from "@/context/app-context";
 import { AuthProvider } from "@/context/auth-context";
 import { AppQueryPrefetch } from "@/hooks/use-app-queries";
 import { statusTabPath } from "@/lib/navigation";
 import { onGlobalQueryError, queryClient } from "@/lib/query-client";
-import { AutomationsPage } from "@/pages/AutomationsPage";
-import { ChatPage } from "@/pages/ChatPage";
-import { FilesPage } from "@/pages/FilesPage";
-import { HistoryPage } from "@/pages/HistoryPage";
-import { IntegrationsPage } from "@/pages/IntegrationsPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { NotificationsPage } from "@/pages/NotificationsPage";
-import { ProfilesPage } from "@/pages/ProfilesPage";
-import { PublicArtifactSharePage } from "@/pages/PublicArtifactSharePage";
-import { SettingsPage } from "@/pages/SettingsPage";
-import { SetupWizardPage } from "@/pages/SetupWizardPage";
-import { SkillDetailPage } from "@/pages/SkillDetailPage";
-import { SystemPage } from "@/pages/SystemPage";
-import { ToolPlaygroundPage } from "@/pages/ToolPlaygroundPage";
+
+const lazyPage = <Name extends string>(
+  load: () => Promise<Record<Name, ComponentType>>,
+  name: Name
+) => lazy(async () => ({ default: (await load())[name] }));
+
+const AutomationsPage = lazyPage(
+  () => import("@/pages/AutomationsPage"),
+  "AutomationsPage"
+);
+const ChatPage = lazyPage(() => import("@/pages/ChatPage"), "ChatPage");
+const FilesPage = lazyPage(() => import("@/pages/FilesPage"), "FilesPage");
+const HistoryPage = lazyPage(
+  () => import("@/pages/HistoryPage"),
+  "HistoryPage"
+);
+const IntegrationsPage = lazyPage(
+  () => import("@/pages/IntegrationsPage"),
+  "IntegrationsPage"
+);
+const LoginPage = lazyPage(() => import("@/pages/LoginPage"), "LoginPage");
+const NotificationsPage = lazyPage(
+  () => import("@/pages/NotificationsPage"),
+  "NotificationsPage"
+);
+const ProfilesPage = lazyPage(
+  () => import("@/pages/ProfilesPage"),
+  "ProfilesPage"
+);
+const PublicArtifactSharePage = lazyPage(
+  () => import("@/pages/PublicArtifactSharePage"),
+  "PublicArtifactSharePage"
+);
+const SettingsPage = lazyPage(
+  () => import("@/pages/SettingsPage"),
+  "SettingsPage"
+);
+const SetupWizardPage = lazyPage(
+  () => import("@/pages/SetupWizardPage"),
+  "SetupWizardPage"
+);
+const SkillDetailPage = lazyPage(
+  () => import("@/pages/SkillDetailPage"),
+  "SkillDetailPage"
+);
+const SystemPage = lazyPage(() => import("@/pages/SystemPage"), "SystemPage");
+const ToolPlaygroundPage = lazyPage(
+  () => import("@/pages/ToolPlaygroundPage"),
+  "ToolPlaygroundPage"
+);
 
 function QueryCacheListener() {
   useEffect(() => {
@@ -41,9 +78,30 @@ function AppShell() {
         <AppQueryPrefetch />
         <AppProvider>
           <Routes>
-            <Route element={<SetupWizardPage />} path="/setup" />
-            <Route element={<LoginPage />} path="/login" />
-            <Route element={<PublicArtifactSharePage />} path="/s/:token" />
+            <Route
+              element={
+                <RouteBoundary fullScreen>
+                  <SetupWizardPage />
+                </RouteBoundary>
+              }
+              path="/setup"
+            />
+            <Route
+              element={
+                <RouteBoundary fullScreen>
+                  <LoginPage />
+                </RouteBoundary>
+              }
+              path="/login"
+            />
+            <Route
+              element={
+                <RouteBoundary fullScreen>
+                  <PublicArtifactSharePage />
+                </RouteBoundary>
+              }
+              path="/s/:token"
+            />
             <Route element={<AuthGuard />}>
               <Route element={<SetupGuard />}>
                 <Route element={<Layout />}>
