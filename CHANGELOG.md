@@ -9,10 +9,14 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-20
+
 ### Added
 
-- Skill curator: archive profile skills unused for 90 days, opt-in per org, with dry run, Run now, and a 7 day scheduled tick ([#274], in review)
-- Repeated in-flight tool polls are waited out inside the tool loop, so a long MCP job costs one turn instead of one per poll ([#300], in review)
+- Cloudflare Workers AI as an LLM provider option ([#312])
+- Optional harness-native vendor login for coding agents ([#311])
+- Group nested artifacts into folders ([#320])
+- Skill curator: archive profile skills unused for 90 days, opt-in per org, with dry run, Run now, and a 7 day scheduled tick ([#274])
 - Table of contents above long markdown artifacts, built from the h1 to h3 headings ([#298])
 - Markdown artifacts can be edited by hand from the artifact panel, and saving refreshes the public share snapshot ([#299])
 - `/learn` skill that distills a reusable skill from a source ([#284])
@@ -23,20 +27,28 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 - Rerun an automation from the run history list, with clearer failed run states
 - Abort handling in `readStreamEvents`
 - Narrow viewports now say the console needs a wider window ([#269])
+- Docs: pages for artifacts, automations, image generation, and the token optimiser ([#303])
 - Docs: private access to a self-hosted instance over Tailscale ([#290])
 - `CHANGELOG.md`, covering every tagged release ([#301])
 
 ### Changed
 
 - Pinned tool-output optimiser bumped to 0.7.5, with both pins guarded ([#263])
+- Route pages lazy-loaded ([#310])
 - Asserts reviewed across the codebase: dead ones removed, contract asserts added ([#266], [#286], [#295])
 - Eight unused CSS rules dropped from `index.css` ([#267])
 - Automation detail panel and its components cleaned up
 - Low-value tests removed ([#282], [#283])
 - Discord concurrency test waits for turns instead of sleeping a fixed 20ms ([#260])
+- Docs: local web dashboard URL points to port 3003 ([#306]), and contributing notes now say to claim an issue before building it ([#313])
 
 ### Fixed
 
+- Persist the Cloudflare account ID in `config.ini` ([#318])
+- Use the official Cloudflare Llama 3.1 8B model ids ([#319])
+- Require an admin for workspace-global settings writes ([#305])
+- Require `orgId` on by-id session operations ([#321])
+- Keep chat mounted when the session URL updates ([#317])
 - Skill name lookups scoped to the owning org, so the first org to install a public skill no longer takes that name from every other tenant ([#288])
 - Install-wide tool and MCP name uniqueness restored ([#291])
 - Gemini tool schemas sanitized where `exclusiveMinimum` is rejected ([#293])
@@ -49,6 +61,7 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 - Long automation fetches survive Bun idle timeouts ([#265])
 - Telegram and WhatsApp stop the typing indicator once the agent finishes ([#258])
 - MDX no longer parses documentation heading IDs as JSX
+
 
 ## [0.3.15] - 2026-08-14
 
@@ -458,7 +471,8 @@ First tagged release. The baseline it established:
 - Export and import for data portability
 - Docker image published from GitHub Actions, and a VitePress documentation site
 
-[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.3.15...main
+[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.0...main
+[0.4.0]: https://github.com/ahmadrosid/nakama/compare/v0.3.15...v0.4.0
 [0.3.15]: https://github.com/ahmadrosid/nakama/compare/v0.3.14...v0.3.15
 [0.3.14]: https://github.com/ahmadrosid/nakama/compare/v0.3.13...v0.3.14
 [0.3.13]: https://github.com/ahmadrosid/nakama/compare/v0.3.12...v0.3.13
@@ -552,5 +566,16 @@ First tagged release. The baseline it established:
 [#295]: https://github.com/ahmadrosid/nakama/pull/295
 [#298]: https://github.com/ahmadrosid/nakama/pull/298
 [#299]: https://github.com/ahmadrosid/nakama/pull/299
-[#300]: https://github.com/ahmadrosid/nakama/pull/300
 [#301]: https://github.com/ahmadrosid/nakama/pull/301
+[#303]: https://github.com/ahmadrosid/nakama/pull/303
+[#305]: https://github.com/ahmadrosid/nakama/pull/305
+[#306]: https://github.com/ahmadrosid/nakama/pull/306
+[#310]: https://github.com/ahmadrosid/nakama/pull/310
+[#311]: https://github.com/ahmadrosid/nakama/pull/311
+[#312]: https://github.com/ahmadrosid/nakama/pull/312
+[#313]: https://github.com/ahmadrosid/nakama/pull/313
+[#317]: https://github.com/ahmadrosid/nakama/pull/317
+[#318]: https://github.com/ahmadrosid/nakama/pull/318
+[#319]: https://github.com/ahmadrosid/nakama/pull/319
+[#320]: https://github.com/ahmadrosid/nakama/pull/320
+[#321]: https://github.com/ahmadrosid/nakama/pull/321
