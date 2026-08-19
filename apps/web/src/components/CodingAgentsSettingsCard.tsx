@@ -1,12 +1,5 @@
-import type {
-  CodingHarnessLoginCommand,
-  CodingHarnessSettingsResponse,
-} from "@nakama/core/contract";
-import {
-  CheckmarkCircle01Icon,
-  Copy01Icon,
-  Shield01Icon,
-} from "hugeicons-react";
+import type { CodingHarnessSettingsResponse } from "@nakama/core/contract";
+import { CheckmarkCircle01Icon, Copy01Icon } from "hugeicons-react";
 import { useEffect, useState } from "react";
 import { CodingAgentLogo } from "@/components/coding-agent-logos";
 import { Button } from "@/components/ui/button";
@@ -78,17 +71,33 @@ function CopyCommandButton({ command }: { command: string }) {
   );
 }
 
-function LoginCommandRow({ item }: { item: CodingHarnessLoginCommand }) {
+function AgentRow({
+  command,
+  name,
+  method,
+}: {
+  command: string;
+  name: string;
+  method: "command" | "host" | "nakama";
+}) {
   return (
     <li className="flex items-center gap-3 px-3.5 py-2.5 transition-[background-color] duration-150 ease-out hover:bg-muted/40">
-      <CodingAgentLogo command={item.command} name={item.name} />
+      <CodingAgentLogo command={command} name={name} />
       <span className="min-w-0 truncate font-medium text-foreground text-sm sm:shrink-0">
-        {item.name}
+        {name}
       </span>
-      <code className="min-w-0 flex-1 truncate text-right font-mono text-muted-foreground text-xs">
-        {item.command}
-      </code>
-      <CopyCommandButton command={item.command} />
+      {method === "command" ? (
+        <>
+          <code className="min-w-0 flex-1 truncate text-right font-mono text-muted-foreground text-xs">
+            {command}
+          </code>
+          <CopyCommandButton command={command} />
+        </>
+      ) : (
+        <span className="min-w-0 flex-1 text-right text-muted-foreground text-xs">
+          {method === "nakama" ? "Nakama keys" : "Always host login"}
+        </span>
+      )}
     </li>
   );
 }
@@ -153,57 +162,39 @@ export function CodingAgentsSettingsCard() {
         Coding agents
       </h2>
 
-      <div className="overflow-hidden rounded-md border border-primary/20 bg-primary/5">
-        <div className="flex items-center justify-between gap-4 p-3.5">
-          <div className="flex min-w-0 items-start gap-3">
-            <span
-              aria-hidden
-              className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary"
-            >
-              <Shield01Icon className="size-5" strokeWidth={2} />
-            </span>
-            <div className="min-w-0 space-y-0.5">
-              <p className="font-medium text-foreground text-sm">
-                Use Nakama keys
-              </p>
-              <p className="text-pretty text-muted-foreground text-xs leading-relaxed">
-                Coding agents use the API keys already set up in Nakama. Turn
-                off to use each CLI's own login.
-              </p>
-            </div>
-          </div>
-          <Switch
-            aria-label="Use Nakama keys"
-            checked={passthrough}
-            className={cn(
-              "relative border-foreground/20 after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2 [&>span]:bg-white",
-              passthrough ? "bg-primary" : "bg-foreground/25"
-            )}
-            disabled={saving || !settings}
-            onCheckedChange={toggle}
-          />
+      <div className="flex items-center justify-between gap-4 rounded-md border border-primary/40 px-3.5 py-3">
+        <div className="min-w-0 space-y-0.5">
+          <p className="font-medium text-foreground text-sm">Use Nakama keys</p>
+          <p className="text-pretty text-muted-foreground text-xs leading-relaxed">
+            Give Codex, Claude Code, OpenCode, and pi the keys already set up
+            here. Cursor always uses the host login.
+          </p>
         </div>
+        <Switch
+          aria-label="Use Nakama keys"
+          checked={passthrough}
+          className="relative after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2"
+          disabled={saving || !settings}
+          onCheckedChange={toggle}
+        />
       </div>
 
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
 
       <section className="space-y-2">
         <h3 className="px-0.5 font-medium text-2xs text-muted-foreground uppercase tracking-[0.12em]">
-          Vendor login
+          {passthrough ? "What each agent uses" : "Log in on this host"}
         </h3>
         <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
           {loginCommands.map((item) => (
-            <LoginCommandRow item={item} key={item.command} />
+            <AgentRow
+              command={item.command}
+              key={item.command}
+              method={passthrough ? "nakama" : "command"}
+              name={item.name}
+            />
           ))}
-          <li className="flex items-center gap-3 px-3.5 py-2.5">
-            <CodingAgentLogo command="agent" name="Cursor Agent" />
-            <span className="min-w-0 truncate font-medium text-foreground text-sm sm:shrink-0">
-              Cursor Agent
-            </span>
-            <span className="min-w-0 flex-1 text-pretty text-right text-muted-foreground text-xs">
-              Uses host session
-            </span>
-          </li>
+          <AgentRow command="agent" method="host" name="Cursor Agent" />
         </ul>
       </section>
     </div>
