@@ -340,7 +340,62 @@ describe("SkillCuratorService", () => {
 
     expect(result.archived).toBe(0);
     expect(result.skippedError).toBe(1);
+    expect(result.restoreMisses).toEqual([]);
     expect(await pathExists(liveDir)).toBe(true);
+  });
+
+  test("records skill id and archived path when restore after unassign failure also fails", async () => {
+    const skillId = await addAssignedSkill({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      createdBy: "agent",
+      lastUsedAt: new Date(NOW.getTime() - 95 * DAY_MS).toISOString(),
+      name: "stuck-playbook",
+    });
+    const liveDir = join(
+      configDir,
+      "orgs",
+      ORG_ID,
+      "profiles",
+      profileId,
+      "skills",
+      "stuck-playbook"
+    );
+    const archivedSkillMd = join(
+      configDir,
+      "orgs",
+      ORG_ID,
+      "profiles",
+      profileId,
+      "skills",
+      SKILL_ARCHIVE_DIR_NAME,
+      "stuck-playbook",
+      "SKILL.md"
+    );
+    skillsService.unassignArchivedProfileSkill = async () => {
+      await mkdir(liveDir, { recursive: true });
+      await writeFile(join(liveDir, "SKILL.md"), "collision\n");
+      throw new Error("db down");
+    };
+
+    const result = await curator.run(ORG_ID, { now: NOW, trigger: "manual" });
+
+    expect(result.archived).toBe(0);
+    expect(result.skippedError).toBe(1);
+    expect(result.restoreMisses).toHaveLength(1);
+    expect(result.restoreMisses[0]?.skillId).toBe(skillId);
+    expect(result.restoreMisses[0]?.archivedDirectory).toContain(
+      `${SKILL_ARCHIVE_DIR_NAME}/stuck-playbook`
+    );
+    expect(await pathExists(archivedSkillMd)).toBe(true);
+
+    const logDir = getOrgCuratorLogDir(ORG_ID);
+    const runJson = JSON.parse(
+      await readFile(join(logDir, "run.json"), "utf8")
+    );
+    expect(runJson.restoreMisses[0].skillId).toBe(skillId);
+    const report = await readFile(join(logDir, "REPORT.md"), "utf8");
+    expect(report).toContain(skillId);
+    expect(report).toContain("stuck-playbook");
   });
 
   test("overlapping runs for the same org do not double-archive", async () => {

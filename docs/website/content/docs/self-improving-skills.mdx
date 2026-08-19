@@ -171,7 +171,8 @@ When a profile collects unused playbooks, the catalog gets noisy and wastes toke
 ### What it does
 
 - **Stale (30 days unused):** listed in the last report. Files stay in place.
-- **Archive (90 days unused):** the skill folder is **moved** to `skills/.archive/` on that profile. Nothing is deleted. The skill is unassigned so it leaves the chat catalog. An admin can restore it later from disk (restore UI is not in this release).
+- **Archive (90 days unused):** the skill folder is **moved**, never deleted, to `~/.nakama/orgs/{orgId}/profiles/{profileId}/skills/.archive/` (or `$NAKAMA_CONFIG_DIR/orgs/...` if you set that). The skill is unassigned so it leaves the chat catalog. Restore UI is not in this release: move the folder back to `skills/`, then assign it on the profile again.
+- **Unused means match or patch, not a catalog view:** the 30/90-day clock uses last **match** or last **update**. Catalog views do not reset it. A skill the bot keeps seeing in the list but never selects still archives at 90 days.
 - **Never-matched grace:** a skill with no matches is judged from when it was created, so a brand-new skill is not archived.
 - **Skipped:** bundled / library skills, and any skill on a profile that has an **enabled automation** (usage is not recorded on those runs yet).
 

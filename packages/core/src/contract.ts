@@ -412,11 +412,17 @@ export interface UpdateOrganizationRequest {
 
 export type SkillCuratorTrigger = "schedule" | "manual" | "seed";
 
+export interface SkillCuratorRestoreMiss {
+  archivedDirectory: string;
+  skillId: string;
+}
+
 export interface SkillCuratorRunResult {
   archived: number;
   dryRun: boolean;
   finishedAt: string;
   orgId: string;
+  restoreMisses: SkillCuratorRestoreMiss[];
   scanned: number;
   skippedAutomation: number;
   skippedBundled: number;

@@ -11,6 +11,7 @@ import {
   writePrivateTextFile,
 } from "@nakama/core";
 import type {
+  SkillCuratorRestoreMiss,
   SkillCuratorRunResult,
   SkillCuratorTrigger,
 } from "@nakama/core/contract";
@@ -58,6 +59,7 @@ export class SkillCuratorService {
         dryRun,
         finishedAt: startedAt,
         orgId,
+        restoreMisses: [],
         startedAt,
         status: "in_flight",
         trigger: options.trigger,
@@ -92,7 +94,10 @@ export class SkillCuratorService {
       return null;
     }
 
-    return parsed;
+    return {
+      ...parsed,
+      restoreMisses: parsed.restoreMisses ?? [],
+    };
   }
 
   private async runLocked(
@@ -100,7 +105,10 @@ export class SkillCuratorService {
     options: SkillCuratorRunOptions & { dryRun: boolean; startedAt: string }
   ): Promise<SkillCuratorRunResult> {
     const now = options.now ?? new Date();
-    const counts = { ...emptyCounts };
+    const counts = {
+      ...emptyCounts,
+      restoreMisses: [] as SkillCuratorRestoreMiss[],
+    };
     const profiles = await this.db.listProfilesForOrg(orgId);
     const enabledAutomationProfileIds = new Set(
       (await this.db.listAutomationsForOrg(orgId))
@@ -152,17 +160,20 @@ export class SkillCuratorService {
           continue;
         }
 
-        const archived = await this.archiveAssignedSkill({
+        const outcome = await this.archiveAssignedSkill({
           now,
           orgId,
           profileId: profile.id,
           skill,
         });
 
-        if (archived) {
+        if (outcome.archived) {
           counts.archived += 1;
         } else {
           counts.skippedError += 1;
+          if (outcome.restoreMiss) {
+            counts.restoreMisses.push(outcome.restoreMiss);
+          }
         }
       }
     }
@@ -183,7 +194,10 @@ export class SkillCuratorService {
     profileId: string;
     skill: StoredSkillRecord;
     now: Date;
-  }): Promise<boolean> {
+  }): Promise<
+    | { archived: true }
+    | { archived: false; restoreMiss?: SkillCuratorRestoreMiss }
+  > {
     let archivedDirectory: string | null = null;
 
     try {
@@ -200,7 +214,7 @@ export class SkillCuratorService {
         input.skill.id,
         archived.archivedDirectory
       );
-      return true;
+      return { archived: true };
     } catch {
       if (archivedDirectory && (await pathExists(archivedDirectory))) {
         try {
@@ -211,11 +225,17 @@ export class SkillCuratorService {
             skillName: input.skill.name,
           });
         } catch {
-          // Report the original failure; a restore miss is still an error skip.
+          return {
+            archived: false,
+            restoreMiss: {
+              archivedDirectory,
+              skillId: input.skill.id,
+            },
+          };
         }
       }
 
-      return false;
+      return { archived: false };
     }
   }
 
@@ -244,7 +264,7 @@ function isExemptFromCurator(skill: StoredSkillRecord): boolean {
 }
 
 function formatCuratorReport(result: SkillCuratorRunResult): string {
-  return [
+  const lines = [
     "# Skill curator",
     "",
     `- org: ${result.orgId}`,
@@ -257,6 +277,19 @@ function formatCuratorReport(result: SkillCuratorRunResult): string {
     `- skippedAutomation: ${result.skippedAutomation}`,
     `- skippedTooNew: ${result.skippedTooNew}`,
     `- skippedError: ${result.skippedError}`,
-    "",
-  ].join("\n");
+    `- restoreMisses: ${result.restoreMisses.length}`,
+  ];
+
+  if (result.restoreMisses.length > 0) {
+    lines.push(
+      "",
+      "Restore misses (folder stayed in .archive; catalog row still points at the live path):"
+    );
+    for (const miss of result.restoreMisses) {
+      lines.push(`- ${miss.skillId} ${miss.archivedDirectory}`);
+    }
+  }
+
+  lines.push("");
+  return lines.join("\n");
 }
