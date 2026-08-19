@@ -1,3 +1,4 @@
+import { resolveCloudflareAccountInput } from "./cloudflare-provider-config";
 import {
   isValidBaseUrl,
   normalizeBaseUrl,
@@ -34,7 +35,7 @@ const PROVIDER_CHOICES: Array<{ id: UserProviderName; label: string }> = [
   { id: "gemini", label: "Gemini" },
   { id: "deepseek", label: "DeepSeek" },
   { id: "cerebras", label: "Cerebras" },
-  { id: "cloudflare", label: "Cloudflare" },
+  { id: "cloudflare", label: "Cloudflare Worker AI" },
   { id: "fireworks", label: "Fireworks" },
   { id: "ollama", label: "Ollama" },
   { id: "opencode_go", label: "OpenCode Go" },
@@ -89,6 +90,21 @@ export async function promptForProviderConfig(
       continue;
     }
 
+    let cloudflareBaseUrl: string | undefined;
+
+    if (provider === "cloudflare") {
+      const resolved = resolveCloudflareAccountInput(
+        (await question("Account ID: ")).trim()
+      );
+
+      if (!resolved) {
+        writeLine("Enter a Cloudflare account ID or Workers AI URL.\n");
+        continue;
+      }
+
+      cloudflareBaseUrl = resolved;
+    }
+
     const models = getModelsForProvider(provider);
     writeLine(`\nSelected provider: ${provider}`);
     writeLine("\nAvailable models:");
@@ -134,6 +150,7 @@ export async function promptForProviderConfig(
       id: createProviderInstanceId(),
       label: defaultProviderLabel(provider, []),
       type: getModelById(selectedModel)?.provider ?? provider,
+      ...(cloudflareBaseUrl ? { baseUrl: cloudflareBaseUrl } : {}),
       ...(customModels ? { customModels } : {}),
     };
 
