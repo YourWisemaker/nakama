@@ -6,7 +6,6 @@ import {
   CheckmarkCircle01Icon,
   Copy01Icon,
   Shield01Icon,
-  SparklesIcon,
 } from "hugeicons-react";
 import { useEffect, useState } from "react";
 import { CodingAgentLogo } from "@/components/coding-agent-logos";
@@ -43,12 +42,12 @@ function CopyCommandButton({ command }: { command: string }) {
   }
 
   const iconTransition =
-    "absolute inset-0 size-3.5 transition-[opacity,transform,filter] duration-150 ease-[cubic-bezier(0.2,0,0,1)]";
+    "absolute inset-0 size-3.5 transition-[opacity,transform,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]";
 
   return (
     <Button
       aria-label={copied ? `Copied ${command}` : `Copy ${command}`}
-      className="relative size-8 text-muted-foreground after:absolute after:inset-[-6px] hover:text-foreground"
+      className="relative size-8 text-muted-foreground after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2 hover:text-foreground"
       onClick={() => void handleCopy()}
       size="icon"
       type="button"
@@ -62,7 +61,7 @@ function CopyCommandButton({ command }: { command: string }) {
               ? "scale-[0.25] opacity-0 blur-[4px]"
               : "scale-100 opacity-100 blur-0"
           )}
-          strokeWidth={1.75}
+          strokeWidth={1.5}
         />
         <CheckmarkCircle01Icon
           className={cn(
@@ -72,7 +71,7 @@ function CopyCommandButton({ command }: { command: string }) {
               ? "scale-100 opacity-100 blur-0"
               : "scale-[0.25] opacity-0 blur-[4px]"
           )}
-          strokeWidth={1.75}
+          strokeWidth={1.5}
         />
       </span>
     </Button>
@@ -81,7 +80,7 @@ function CopyCommandButton({ command }: { command: string }) {
 
 function LoginCommandRow({ item }: { item: CodingHarnessLoginCommand }) {
   return (
-    <li className="flex items-center gap-3 px-3.5 py-2.5">
+    <li className="flex items-center gap-3 px-3.5 py-2.5 transition-[background-color] duration-150 ease-out hover:bg-muted/40">
       <CodingAgentLogo command={item.command} name={item.name} />
       <span className="min-w-0 truncate font-medium text-foreground text-sm sm:shrink-0">
         {item.name}
@@ -150,38 +149,36 @@ export function CodingAgentsSettingsCard() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h2 className="font-semibold text-foreground text-xl leading-tight [text-wrap:balance]">
-          Coding agents
-        </h2>
-        <p className="text-muted-foreground text-sm leading-snug [text-wrap:pretty]">
-          Control how Nakama integrates with coding agent CLIs.
-        </p>
-      </header>
+      <h2 className="text-balance font-semibold text-foreground text-xl leading-tight">
+        Coding agents
+      </h2>
 
-      <div className="overflow-hidden rounded-xl border border-primary/35">
-        <div className="flex items-start justify-between gap-4 px-4 py-4">
+      <div className="overflow-hidden rounded-md border border-primary/20 bg-primary/5">
+        <div className="flex items-center justify-between gap-4 p-3.5">
           <div className="flex min-w-0 items-start gap-3">
             <span
               aria-hidden
-              className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary"
+              className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary"
             >
-              <Shield01Icon className="size-5" strokeWidth={1.75} />
+              <Shield01Icon className="size-5" strokeWidth={2} />
             </span>
             <div className="min-w-0 space-y-0.5">
               <p className="font-medium text-foreground text-sm">
-                Use Nakama provider
+                Use Nakama keys
               </p>
-              <p className="text-muted-foreground text-xs leading-relaxed [text-wrap:pretty]">
-                Inject Nakama provider credentials into coding agent CLIs when
-                they are spawned.
+              <p className="text-pretty text-muted-foreground text-xs leading-relaxed">
+                Coding agents use the API keys already set up in Nakama. Turn
+                off to use each CLI's own login.
               </p>
             </div>
           </div>
           <Switch
-            aria-label="Use Nakama provider"
+            aria-label="Use Nakama keys"
             checked={passthrough}
-            className="mt-1"
+            className={cn(
+              "relative border-foreground/20 after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2 [&>span]:bg-white",
+              passthrough ? "bg-primary" : "bg-foreground/25"
+            )}
             disabled={saving || !settings}
             onCheckedChange={toggle}
           />
@@ -190,28 +187,25 @@ export function CodingAgentsSettingsCard() {
 
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
 
-      {loginCommands.length > 0 ? (
-        <section className="space-y-2">
-          <h3 className="px-0.5 font-medium text-2xs text-muted-foreground uppercase tracking-[0.12em]">
-            Login commands (when disabled)
-          </h3>
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-            {loginCommands.map((item) => (
-              <LoginCommandRow item={item} key={item.command} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <p className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-primary text-xs leading-relaxed [text-wrap:pretty]">
-        <SparklesIcon
-          aria-hidden
-          className="mt-0.5 size-3.5 shrink-0"
-          strokeWidth={1.75}
-        />
-        Cursor Agent uses your host session and never receives Nakama
-        credentials.
-      </p>
+      <section className="space-y-2">
+        <h3 className="px-0.5 font-medium text-2xs text-muted-foreground uppercase tracking-[0.12em]">
+          Vendor login
+        </h3>
+        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+          {loginCommands.map((item) => (
+            <LoginCommandRow item={item} key={item.command} />
+          ))}
+          <li className="flex items-center gap-3 px-3.5 py-2.5">
+            <CodingAgentLogo command="agent" name="Cursor Agent" />
+            <span className="min-w-0 truncate font-medium text-foreground text-sm sm:shrink-0">
+              Cursor Agent
+            </span>
+            <span className="min-w-0 flex-1 text-pretty text-right text-muted-foreground text-xs">
+              Uses host session
+            </span>
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }
