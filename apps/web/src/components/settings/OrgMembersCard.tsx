@@ -382,6 +382,47 @@ export function OrgMembersCard() {
         </CardContent>
       </Card>
 
+      <OrgMembersCardDialogs
+        addPending={addMutation.isPending}
+        dispatch={dispatch}
+        onAddSubmit={handleAddSubmit}
+        onCopyAddCredential={copyAddCredential}
+        onEditSubmit={handleEditSubmit}
+        onRemoveConfirm={handleRemoveConfirm}
+        orgName={activeOrg.name}
+        removePending={removeMutation.isPending}
+        state={state}
+        updatePending={updateMemberMutation.isPending}
+      />
+    </>
+  );
+}
+
+function OrgMembersCardDialogs({
+  state,
+  dispatch,
+  orgName,
+  addPending,
+  updatePending,
+  removePending,
+  onAddSubmit,
+  onEditSubmit,
+  onRemoveConfirm,
+  onCopyAddCredential,
+}: {
+  state: OrgMembersState;
+  dispatch: React.Dispatch<OrgMembersAction>;
+  orgName: string;
+  addPending: boolean;
+  updatePending: boolean;
+  removePending: boolean;
+  onAddSubmit: (event: React.FormEvent) => void;
+  onEditSubmit: (event: React.FormEvent) => void;
+  onRemoveConfirm: () => void;
+  onCopyAddCredential: (value: string) => Promise<void>;
+}) {
+  return (
+    <>
       <OrgMemberAddDialog
         addEmail={state.addEmail}
         addName={state.addName}
@@ -402,16 +443,16 @@ export function OrgMembersCard() {
         onAddRoleChange={(value) =>
           dispatch({ type: "patch", values: { addRole: value } })
         }
-        onCopyCredential={(value) => void copyAddCredential(value)}
+        onCopyCredential={(value) => void onCopyAddCredential(value)}
         onOpenChange={(open) => {
           dispatch({ type: "patch", values: { addOpen: open } });
           if (!open) {
             dispatch({ type: "reset-add" });
           }
         }}
-        onSubmit={handleAddSubmit}
+        onSubmit={onAddSubmit}
         open={state.addOpen}
-        pending={addMutation.isPending}
+        pending={addPending}
       />
 
       <OrgMemberEditDialog
@@ -435,15 +476,15 @@ export function OrgMembersCard() {
             dispatch({ type: "reset-edit" });
           }
         }}
-        onSubmit={handleEditSubmit}
+        onSubmit={onEditSubmit}
         open={state.editOpen}
-        pending={updateMemberMutation.isPending}
+        pending={updatePending}
       />
 
       <OrgMemberRemoveDialog
         formError={state.removingMember ? state.formError : null}
         member={state.removingMember}
-        onConfirm={handleRemoveConfirm}
+        onConfirm={onRemoveConfirm}
         onOpenChange={(open) => {
           if (!open) {
             dispatch({
@@ -452,8 +493,8 @@ export function OrgMembersCard() {
             });
           }
         }}
-        orgName={activeOrg.name}
-        pending={removeMutation.isPending}
+        orgName={orgName}
+        pending={removePending}
       />
     </>
   );

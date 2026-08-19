@@ -25,7 +25,10 @@ import {
   ArtifactSharePublishDialogFromState,
 } from "@/components/chat/artifact-share-controls";
 import { useArtifactPreviewContent } from "@/components/chat/use-artifact-preview-content";
-import { useArtifactShareControls } from "@/components/chat/use-artifact-share-controls";
+import {
+  type ArtifactShareControlsState,
+  useArtifactShareControls,
+} from "@/components/chat/use-artifact-share-controls";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
@@ -304,42 +307,36 @@ export function ArtifactAttachmentPreview({
       content: buildPanelBody(undefined, mode),
       fullscreen,
       headerActions: (
-        <>
-          <ArtifactAttachmentPanelActions
-            additionalMenuItems={
-              <>
-                {canEdit ? (
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    disabled={loading || content === null}
-                    onClick={() => {
-                      setSaveError(null);
-                      setDraft(content ?? "");
-                    }}
-                  >
-                    <PencilEdit01Icon aria-hidden />
-                    Edit artifact
-                  </DropdownMenuItem>
-                ) : null}
-                <ArtifactShareMenuItem share={share} />
-              </>
-            }
-            content={content}
-            copied={copied}
-            copyDisabled={isImage || isVideo}
-            downloadLabel={downloadLabel}
-            downloadUrl={downloadUrl}
-            filename={artifact.filename}
-            fullscreen={fullscreen}
-            loading={loading}
-            onCopy={() => void copyArtifact()}
-            onToggleFullscreen={() => setFullscreen((current) => !current)}
-          />
-          <ArtifactSharePublishDialogFromState
-            artifactPath={artifact.path}
-            share={share}
-          />
-        </>
+        <ArtifactAttachmentPreviewHeaderActions
+          artifactPath={artifact.path}
+          canEdit={canEdit}
+          content={content}
+          copied={copied}
+          copyDisabled={isImage || isVideo}
+          downloadLabel={downloadLabel}
+          downloadUrl={downloadUrl}
+          filename={artifact.filename}
+          fullscreen={fullscreen}
+          loading={loading}
+          onCopy={() =>
+            void copyArtifactContent({
+              artifactPath: artifact.path,
+              content,
+              isImage,
+              isVideo,
+              isWordDocument,
+              profileId,
+              setContent,
+              setCopied,
+            })
+          }
+          onEdit={() => {
+            setSaveError(null);
+            setDraft(content ?? "");
+          }}
+          onToggleFullscreen={() => setFullscreen((current) => !current)}
+          share={share}
+        />
       ),
       leading:
         showPreviewToggle && draft === null ? (
@@ -392,33 +389,6 @@ export function ArtifactAttachmentPreview({
     header.title,
     header.typeLabel,
   ]);
-
-  async function copyArtifact() {
-    if (isImage || isVideo) {
-      return;
-    }
-
-    try {
-      let text = content;
-      if (!text) {
-        const result = await client.readProfileArtifactContent(
-          profileId,
-          artifact.path,
-          {
-            inline: true,
-            render: isWordDocument ? "markdown" : undefined,
-          }
-        );
-        text = new TextDecoder().decode(result.data);
-        setContent(text);
-      }
-
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      // Clipboard may be unavailable outside secure contexts.
-    }
-  }
 
   function openPanel() {
     setFullscreen(false);
@@ -569,5 +539,122 @@ function ArtifactAttachmentPreviewTrigger({
         </p>
       </div>
     </button>
+  );
+}
+
+async function copyArtifactContent({
+  isImage,
+  isVideo,
+  isWordDocument,
+  content,
+  profileId,
+  artifactPath,
+  setContent,
+  setCopied,
+}: {
+  isImage: boolean;
+  isVideo: boolean;
+  isWordDocument: boolean;
+  content: string | null;
+  profileId: string;
+  artifactPath: string;
+  setContent: (value: string) => void;
+  setCopied: (value: boolean) => void;
+}) {
+  if (isImage || isVideo) {
+    return;
+  }
+
+  try {
+    let text = content;
+    if (!text) {
+      const result = await client.readProfileArtifactContent(
+        profileId,
+        artifactPath,
+        {
+          inline: true,
+          render: isWordDocument ? "markdown" : undefined,
+        }
+      );
+      text = new TextDecoder().decode(result.data);
+      setContent(text);
+    }
+
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+  } catch {
+    // Clipboard may be unavailable outside secure contexts.
+  }
+}
+
+function ArtifactAttachmentPreviewHeaderActions({
+  additionalEditDisabled,
+  artifactPath,
+  canEdit,
+  content,
+  copied,
+  copyDisabled,
+  downloadLabel,
+  downloadUrl,
+  filename,
+  fullscreen,
+  loading,
+  onCopy,
+  onEdit,
+  onToggleFullscreen,
+  share,
+}: {
+  additionalEditDisabled?: boolean;
+  artifactPath: string;
+  canEdit: boolean;
+  content: string | null;
+  copied: boolean;
+  copyDisabled: boolean;
+  downloadLabel: string;
+  downloadUrl: string;
+  filename: string;
+  fullscreen: boolean;
+  loading: boolean;
+  onCopy: () => void;
+  onEdit: () => void;
+  onToggleFullscreen: () => void;
+  share: ArtifactShareControlsState;
+}) {
+  return (
+    <>
+      <ArtifactAttachmentPanelActions
+        additionalMenuItems={
+          <>
+            {canEdit ? (
+              <DropdownMenuItem
+                className="cursor-pointer"
+                disabled={
+                  additionalEditDisabled ?? (loading || content === null)
+                }
+                onClick={onEdit}
+              >
+                <PencilEdit01Icon aria-hidden />
+                Edit artifact
+              </DropdownMenuItem>
+            ) : null}
+            <ArtifactShareMenuItem share={share} />
+          </>
+        }
+        content={content}
+        copied={copied}
+        copyDisabled={copyDisabled}
+        downloadLabel={downloadLabel}
+        downloadUrl={downloadUrl}
+        filename={filename}
+        fullscreen={fullscreen}
+        loading={loading}
+        onCopy={onCopy}
+        onToggleFullscreen={onToggleFullscreen}
+      />
+      <ArtifactSharePublishDialogFromState
+        artifactPath={artifactPath}
+        share={share}
+      />
+    </>
   );
 }
