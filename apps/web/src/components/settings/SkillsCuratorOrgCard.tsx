@@ -50,12 +50,13 @@ export function SkillsCuratorOrgCard() {
     return null;
   }
 
+  const currentOrgId = activeOrg.id;
   const enabled = activeOrg.skillsCuratorEnabled === true;
 
   async function handleToggle(checked: boolean) {
     setBusy(true);
     try {
-      await updateOrg(activeOrg.id, { skillsCuratorEnabled: checked });
+      await updateOrg(currentOrgId, { skillsCuratorEnabled: checked });
     } catch (error) {
       toast(formatError(error));
     } finally {
@@ -66,7 +67,7 @@ export function SkillsCuratorOrgCard() {
   async function handleRun(dryRun: boolean) {
     setRunning(true);
     try {
-      const { result } = await client.runOrgSkillCurator(activeOrg.id, {
+      const { result } = await client.runOrgSkillCurator(currentOrgId, {
         dryRun,
       });
       setLatest(result);
