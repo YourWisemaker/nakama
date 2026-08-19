@@ -8,10 +8,20 @@ import {
   inferCodingAgentHarnessKind,
   isCodingAgentCommand,
   listCodingAgentHarnessStatuses,
+  listCodingHarnessLoginCommands,
   refreshCodingAgentHarnessProbe,
 } from "./coding-agent-harness-service";
 
 describe("coding-agent harness resolution", () => {
+  test("login commands follow default harnesses that support vendor login", () => {
+    expect(listCodingHarnessLoginCommands()).toEqual([
+      { command: "codex login", name: "Codex" },
+      { command: "claude auth login", name: "Claude Code" },
+      { command: "opencode auth login", name: "OpenCode" },
+      { command: "pi login", name: "pi.dev" },
+    ]);
+  });
+
   test("detects harness-shaped bash commands", () => {
     const harnesses = [
       { command: "claude", enabled: true },
@@ -89,6 +99,38 @@ describe("coding-agent harness resolution", () => {
     expect(cursor?.installed).toBe(true);
     expect(cursor?.ready).toBe(true);
     expect(cursor?.statusMessage).toMatch(/host Cursor auth/i);
+  });
+
+  test("marks a harness ready without Nakama provider when passthrough is off", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    await db.upsertWorkspaceSettings({
+      codingAgentHarnesses: [
+        {
+          args: [],
+          command: "echo",
+          enabled: true,
+          id: "coding-harness-codex",
+          kind: "codex",
+          name: "Codex",
+        },
+      ],
+      codingAgentProviderPassthrough: false,
+      id: "workspace-settings",
+      imageModel: null,
+      selectedCodingAgentHarness: null,
+      transcriptionModel: null,
+      updatedAt: new Date().toISOString(),
+      visionModel: null,
+    });
+
+    const statuses = await listCodingAgentHarnessStatuses(db);
+    const codex = statuses.find(
+      (harness) => harness.id === "coding-harness-codex"
+    );
+    expect(codex?.installed).toBe(true);
+    expect(codex?.ready).toBe(true);
+    expect(codex?.statusMessage).toMatch(/codex login/i);
+    expect(codex?.statusMessage).not.toMatch(/Settings → Provider/);
   });
 
   test("refreshCodingAgentHarnessProbe persists cached readiness", async () => {
