@@ -383,6 +383,8 @@ export interface StoredOrganizationRecord {
   createdAt: string;
   id: string;
   name: string;
+  skillsCuratorEnabled?: boolean;
+  skillsCuratorLastRunAt?: string | null;
   skillsPostTurnReview?: boolean;
   skillsWriteApproval?: boolean;
   slug: string;

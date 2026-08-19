@@ -511,6 +511,38 @@ export class SkillsService {
     await deleteSkillDirectory(record.sourcePath);
   }
 
+  async unassignArchivedProfileSkill(
+    orgId: string,
+    profileId: string,
+    skillId: string,
+    archivedDirectory: string
+  ): Promise<void> {
+    const record = await this.requireSkill(skillId);
+
+    if (isGlobalSkillSourcePath(record.sourcePath)) {
+      throw new Error("Global skills cannot be archived by the curator.");
+    }
+
+    if (!isPathWithinProfileSkillsDir(orgId, profileId, archivedDirectory)) {
+      throw new Error(
+        "Archived skill path is outside the profile skills directory."
+      );
+    }
+
+    await this.db.upsertSkill({
+      ...record,
+      sourcePath: archivedDirectory,
+      updatedAt: new Date().toISOString(),
+    });
+
+    try {
+      await this.db.unassignSkillFromProfile(profileId, skillId);
+    } catch (error) {
+      await this.db.upsertSkill(record);
+      throw error;
+    }
+  }
+
   async deleteSkill(skillId: string): Promise<void> {
     const record = await this.requireSkill(skillId);
 

@@ -4,6 +4,7 @@ import type {
   SkillUsageSummary,
 } from "@nakama/core/contract";
 import { BUNDLED_SKILL_NAMES } from "@nakama/core/skills/bundled-names";
+import { SKILL_STALE_AFTER_MS } from "@nakama/core/skills/freshness";
 import { BASH_TOOL_ID } from "@nakama/core/tools/protected";
 import { Delete02Icon } from "hugeicons-react";
 import { useMemo } from "react";
@@ -12,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { formatSessionRelativeTime } from "@/lib/chat-history";
 import type { RemoveAssignmentTarget } from "@/pages/profiles/profiles-page.shared";
 
-const UNUSED_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
 const bundledSkillNames = new Set<string>(BUNDLED_SKILL_NAMES);
 
 const EMPTY_SKILL_USAGE: SkillUsageSummary = {
@@ -61,7 +61,9 @@ function isSkillUnused(skill: SkillSummary): boolean {
     return usage.useCount === 0;
   }
 
-  return Date.now() - new Date(usage.lastUsedAt).getTime() >= UNUSED_AFTER_MS;
+  return (
+    Date.now() - new Date(usage.lastUsedAt).getTime() >= SKILL_STALE_AFTER_MS
+  );
 }
 
 function compareAssignedSkills(a: SkillSummary, b: SkillSummary): number {

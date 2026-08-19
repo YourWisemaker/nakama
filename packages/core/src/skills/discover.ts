@@ -5,6 +5,7 @@ import { pickPreferredSkillSourcePath } from "./dedupe";
 import { parseSkillMarkdown } from "./parse";
 import {
   resolveSkillDiscoveryDirs,
+  SKILL_ARCHIVE_DIR_NAME,
   SKILL_FILE_NAME,
   SKILL_TOOL_FILES,
 } from "./paths";
@@ -29,7 +30,7 @@ export async function discoverSkills(
     const entries = await readdir(rootDir, { withFileTypes: true });
 
     for (const entry of entries) {
-      if (!entry.isDirectory()) {
+      if (!entry.isDirectory() || entry.name === SKILL_ARCHIVE_DIR_NAME) {
         continue;
       }
 

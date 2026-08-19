@@ -1,3 +1,4 @@
+export * from "./archive";
 export {
   readBundledSkillBody,
   readBundledSkillMarkdown,
@@ -5,8 +6,10 @@ export {
 export * from "./bundled/install";
 export * from "./bundled-names";
 export * from "./compose";
+export * from "./curator-schedule";
 export * from "./dedupe";
 export * from "./discover";
+export * from "./freshness";
 export * from "./github-skill-fetch";
 export * from "./github-skill-url";
 export * from "./load-tool";

@@ -5,6 +5,7 @@ import {
   type AutomationSchedulerStatus,
 } from "@nakama/core/automation-scheduler";
 import type { AutomationSchedule } from "@nakama/core/contract";
+import { tickSkillCurator } from "./curator-tick";
 
 export interface AutomationWorkerSchedulerDelegate
   extends AutomationSchedulerDelegate {}
@@ -28,6 +29,7 @@ export class AutomationWorkerScheduler {
 
   async start(): Promise<void> {
     await this.scheduler.start();
+    await this.tickCurator();
     this.notifyStatus();
   }
 
@@ -43,6 +45,7 @@ export class AutomationWorkerScheduler {
     this.pollTimer = setInterval(async () => {
       try {
         await this.scheduler.reload();
+        await this.tickCurator();
         this.notifyStatus();
       } catch (error) {
         console.error("Failed to reload automation schedules:", error);
@@ -54,6 +57,14 @@ export class AutomationWorkerScheduler {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
+    }
+  }
+
+  private async tickCurator(): Promise<void> {
+    try {
+      await tickSkillCurator(this.client);
+    } catch (error) {
+      console.error("Failed to tick skill curator:", error);
     }
   }
 

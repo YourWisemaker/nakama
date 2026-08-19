@@ -44,6 +44,7 @@ import {
 import { McpService } from "./services/mcp-service";
 import { OrgMemoryService } from "./services/org-memory-service";
 import { OrgService } from "./services/org-service";
+import { SkillCuratorService } from "./services/skill-curator-service";
 import { SkillProposalService } from "./services/skill-proposal-service";
 import { SkillSuggestionService } from "./services/skill-suggestion-service";
 import { SkillsService } from "./services/skills-service";
@@ -117,6 +118,10 @@ const mcpClientManager = new McpClientManager();
 const mcpService = new McpService(database.adapter, mcpClientManager);
 const composioService = new ComposioService(database.adapter, authService);
 const skillsService = new SkillsService(database.adapter);
+const skillCuratorService = new SkillCuratorService(
+  database.adapter,
+  skillsService
+);
 
 agent.setMcpClientManager(mcpClientManager);
 agent.setMcpService(mcpService);
@@ -215,6 +220,7 @@ const app = createHonoApp({
   },
   orgMemoryService,
   orgService,
+  skillCuratorService,
   skillProposalService,
   skillSuggestionService,
   systemStatus,

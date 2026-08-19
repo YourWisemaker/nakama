@@ -14,10 +14,12 @@ import {
 } from "./routes/composio";
 import { registerDataPortabilityRoutes } from "./routes/data-portability";
 import { registerInternalAutomationRoutes } from "./routes/internal-automations";
+import { registerInternalCuratorRoutes } from "./routes/internal-curator";
 import { registerMcpRoutes } from "./routes/mcp";
 import { registerModelRoutes } from "./routes/models";
 import { registerNotificationDestinationRoutes } from "./routes/notification-destinations";
 import { registerNotificationWebhookRoutes } from "./routes/notification-webhooks";
+import { registerOrgCuratorRoutes } from "./routes/org-curator";
 import { registerOrgMemberRoutes } from "./routes/org-members";
 import { registerOrgMemoryRoutes } from "./routes/org-memory";
 import { registerPlatformOrgRoutes } from "./routes/platform-orgs";
@@ -99,6 +101,7 @@ export function createHonoApp(options: ServerOptions) {
 
   app.use("*", createAuthMiddleware(options));
   registerInternalAutomationRoutes(app, options);
+  registerInternalCuratorRoutes(app, options);
   registerNotificationWebhookRoutes(app, options);
   registerComposioOAuthRoutes(app, options);
   app.use("*", createOrgContextMiddleware(options));
@@ -123,6 +126,7 @@ export function createHonoApp(options: ServerOptions) {
   registerDataPortabilityRoutes(app, options);
   registerOrgMemberRoutes(app, options);
   registerOrgMemoryRoutes(app, options);
+  registerOrgCuratorRoutes(app, options);
   registerSkillProposalRoutes(app, options);
   registerSkillSuggestionRoutes(app, options);
 

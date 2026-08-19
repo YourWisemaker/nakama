@@ -5,6 +5,7 @@ import { registerAuthRoutes } from "./routes/auth";
 import { registerAutomationRoutes } from "./routes/automations";
 import { registerMcpRoutes } from "./routes/mcp";
 import { registerModelRoutes } from "./routes/models";
+import { registerOrgCuratorRoutes } from "./routes/org-curator";
 import { registerProfileRoutes } from "./routes/profiles";
 import { registerSessionRoutes } from "./routes/sessions";
 import { registerSkillRoutes } from "./routes/skills";
@@ -30,6 +31,7 @@ function buildNativeOpenApiApp(): HonoApp {
   registerToolRoutes(app, options);
   registerAutomationRoutes(app, options);
   registerTaskRoutes(app, options);
+  registerOrgCuratorRoutes(app, options);
   return app;
 }
 

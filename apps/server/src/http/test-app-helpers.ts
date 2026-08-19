@@ -4,6 +4,8 @@ import {
 } from "@nakama/db";
 import { AuthService } from "../services/auth-service";
 import { OrgService } from "../services/org-service";
+import { SkillCuratorService } from "../services/skill-curator-service";
+import { SkillsService } from "../services/skills-service";
 import { createHonoApp } from "./app";
 import type { ServerOptions } from "./context";
 
@@ -25,6 +27,7 @@ export type CreateMinimalHonoAppOverrides = {
   onDataRestored?: ServerOptions["onDataRestored"];
   orgMemoryService?: ServerOptions["orgMemoryService"];
   orgService?: ServerOptions["orgService"];
+  skillCuratorService?: ServerOptions["skillCuratorService"];
   skillProposalService?: ServerOptions["skillProposalService"];
   skillSuggestionService?: ServerOptions["skillSuggestionService"];
   systemStatus?: ServerOptions["systemStatus"] | object;
@@ -41,6 +44,12 @@ export function createMinimalHonoApp(
   const authService = overrides.authService ?? new AuthService();
   const orgService =
     overrides.orgService ?? new OrgService(databaseAdapter, authService);
+  const skillCuratorService =
+    overrides.skillCuratorService ??
+    new SkillCuratorService(
+      databaseAdapter,
+      new SkillsService(databaseAdapter)
+    );
 
   const app = createHonoApp({
     agent: (overrides.agent ?? defaultAgent) as ServerOptions["agent"],
@@ -53,6 +62,7 @@ export function createMinimalHonoApp(
     onDataRestored: overrides.onDataRestored,
     orgMemoryService: overrides.orgMemoryService,
     orgService,
+    skillCuratorService,
     skillProposalService: overrides.skillProposalService,
     skillSuggestionService: overrides.skillSuggestionService,
     systemStatus: (overrides.systemStatus ??

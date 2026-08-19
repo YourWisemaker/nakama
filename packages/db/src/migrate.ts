@@ -21,6 +21,7 @@ export function migrateDatabase(db: Database): void {
   migrateSkillSuggestionsTable(db);
   migrateSkillsWriteApprovalColumns(db);
   migrateSkillsPostTurnReviewColumns(db);
+  migrateSkillsCuratorColumns(db);
   migrateSkillUsageTables(db);
   migrateTenantOrgScope(db);
   migrateSkillOrgIds(db);
@@ -535,6 +536,25 @@ function migrateSkillsPostTurnReviewColumns(db: Database): void {
     )
   ) {
     db.exec("ALTER TABLE profiles ADD COLUMN skills_post_turn_review INTEGER;");
+  }
+}
+
+function migrateSkillsCuratorColumns(db: Database): void {
+  const orgColumns = db
+    .prepare("PRAGMA table_info(organizations)")
+    .all() as Array<{ name: string }>;
+  const names = new Set(orgColumns.map((column) => column.name));
+
+  if (!names.has("skills_curator_enabled")) {
+    db.exec(
+      "ALTER TABLE organizations ADD COLUMN skills_curator_enabled INTEGER NOT NULL DEFAULT 0;"
+    );
+  }
+
+  if (!names.has("skills_curator_last_run_at")) {
+    db.exec(
+      "ALTER TABLE organizations ADD COLUMN skills_curator_last_run_at TEXT;"
+    );
   }
 }
 
