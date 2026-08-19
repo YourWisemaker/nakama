@@ -1,4 +1,7 @@
-import type { NotificationDestinationWithSecret } from "@nakama/core/contract";
+import type {
+  NotificationDestinationSummary,
+  NotificationDestinationWithSecret,
+} from "@nakama/core/contract";
 import {
   CheckmarkCircle01Icon,
   Copy01Icon,
@@ -360,115 +363,156 @@ export function NotificationDestinationsCard() {
           </div>
         ) : (
           destinations.map((destination) => (
-            <div
-              className="space-y-3 rounded-3xl border border-border p-4"
+            <NotificationDestinationItem
+              deletePending={deleteMutation.isPending}
+              destination={destination}
+              editingError={editingError}
+              editingId={editingId}
+              editingTopicId={editingTopicId}
               key={destination.id}
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0 space-y-1">
-                  <p className="font-medium text-foreground text-sm">
-                    {destination.name}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatTelegramDestinationLabel(destination.telegram)}
-                  </p>
-                  <code className="block break-all text-muted-foreground text-xs">
-                    {destination.webhookPath}
-                  </code>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                  <Button
-                    className="min-h-10"
-                    disabled={updateMutation.isPending}
-                    onClick={() =>
-                      editingId === destination.id
-                        ? stopEditing()
-                        : startEditing(destination)
-                    }
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {editingId === destination.id ? "Cancel" : "Edit topic"}
-                  </Button>
-                  <Button
-                    className="min-h-10"
-                    disabled={rotateMutation.isPending}
-                    onClick={() => handleRotate(destination.id)}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    <RefreshIcon aria-hidden className="size-3.5" />
-                    Rotate key
-                  </Button>
-                  <Button
-                    className="min-h-10"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => handleDelete(destination.id)}
-                    size="sm"
-                    type="button"
-                    variant="destructive"
-                  >
-                    <Delete02Icon aria-hidden className="size-3.5" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-
-              {editingId === destination.id ? (
-                <div className="rounded-lg border border-border bg-muted/20 p-3">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                    <label className="flex flex-1 flex-col gap-1.5">
-                      <span className="text-muted-foreground text-xs">
-                        Telegram topic ID
-                      </span>
-                      <Input
-                        onChange={(event) =>
-                          setEditingTopicId(event.target.value)
-                        }
-                        placeholder="Leave blank to remove topic"
-                        value={editingTopicId}
-                      />
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        disabled={updateMutation.isPending}
-                        onClick={() => handleUpdateTopic(destination)}
-                        size="sm"
-                        type="button"
-                      >
-                        {updateMutation.isPending ? (
-                          <Spinner className="size-3.5" />
-                        ) : null}
-                        Save
-                      </Button>
-                      <Button
-                        disabled={updateMutation.isPending}
-                        onClick={stopEditing}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                  {editingError ? (
-                    <p className="mt-2 text-destructive text-sm">
-                      {editingError}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {latestSecret?.destination.id === destination.id ? (
-                <LatestSecret latestSecret={latestSecret} />
-              ) : null}
-            </div>
+              latestSecret={latestSecret}
+              onDelete={() => handleDelete(destination.id)}
+              onEditingTopicIdChange={setEditingTopicId}
+              onRotate={() => handleRotate(destination.id)}
+              onSaveTopic={() => handleUpdateTopic(destination)}
+              onStartEditing={() => startEditing(destination)}
+              onStopEditing={stopEditing}
+              rotatePending={rotateMutation.isPending}
+              updatePending={updateMutation.isPending}
+            />
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function NotificationDestinationItem({
+  destination,
+  editingId,
+  editingTopicId,
+  editingError,
+  latestSecret,
+  updatePending,
+  rotatePending,
+  deletePending,
+  onStartEditing,
+  onStopEditing,
+  onEditingTopicIdChange,
+  onSaveTopic,
+  onRotate,
+  onDelete,
+}: {
+  destination: NotificationDestinationSummary;
+  editingId: string | null;
+  editingTopicId: string;
+  editingError: string | null;
+  latestSecret: NotificationDestinationWithSecret | null;
+  updatePending: boolean;
+  rotatePending: boolean;
+  deletePending: boolean;
+  onStartEditing: () => void;
+  onStopEditing: () => void;
+  onEditingTopicIdChange: (value: string) => void;
+  onSaveTopic: () => void;
+  onRotate: () => void;
+  onDelete: () => void;
+}) {
+  const isEditing = editingId === destination.id;
+
+  return (
+    <div className="space-y-3 rounded-3xl border border-border p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium text-foreground text-sm">
+            {destination.name}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            {formatTelegramDestinationLabel(destination.telegram)}
+          </p>
+          <code className="block break-all text-muted-foreground text-xs">
+            {destination.webhookPath}
+          </code>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+          <Button
+            className="min-h-10"
+            disabled={updatePending}
+            onClick={() => (isEditing ? onStopEditing() : onStartEditing())}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {isEditing ? "Cancel" : "Edit topic"}
+          </Button>
+          <Button
+            className="min-h-10"
+            disabled={rotatePending}
+            onClick={onRotate}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <RefreshIcon aria-hidden className="size-3.5" />
+            Rotate key
+          </Button>
+          <Button
+            className="min-h-10"
+            disabled={deletePending}
+            onClick={onDelete}
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
+            <Delete02Icon aria-hidden className="size-3.5" />
+            Delete
+          </Button>
+        </div>
+      </div>
+
+      {isEditing ? (
+        <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-muted-foreground text-xs">
+                Telegram topic ID
+              </span>
+              <Input
+                onChange={(event) => onEditingTopicIdChange(event.target.value)}
+                placeholder="Leave blank to remove topic"
+                value={editingTopicId}
+              />
+            </label>
+            <div className="flex items-center gap-2">
+              <Button
+                disabled={updatePending}
+                onClick={onSaveTopic}
+                size="sm"
+                type="button"
+              >
+                {updatePending ? <Spinner className="size-3.5" /> : null}
+                Save
+              </Button>
+              <Button
+                disabled={updatePending}
+                onClick={onStopEditing}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+          {editingError ? (
+            <p className="mt-2 text-destructive text-sm">{editingError}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {latestSecret?.destination.id === destination.id ? (
+        <LatestSecret latestSecret={latestSecret} />
+      ) : null}
     </div>
   );
 }
