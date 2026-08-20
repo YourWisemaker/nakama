@@ -4,9 +4,12 @@ import type {
   ComposioUserConnectionStatus,
   ComposioUserConnectionSummary,
   ListComposioToolkitsResponse,
+  ProfileSummary,
 } from "@nakama/core/contract";
+import { useQueries } from "@tanstack/react-query";
 import { MoreHorizontalIcon, Search01Icon } from "hugeicons-react";
 import { useDeferredValue, useMemo, useState } from "react";
+import { ComposioProfileAssignPicker } from "@/components/ComposioProfileAssignPicker";
 import { ComposioToolkitLogo } from "@/components/ComposioToolkitLogo";
 import { IntegrationCardShell } from "@/components/integration-settings.shared";
 import { Button } from "@/components/ui/button";
@@ -18,18 +21,57 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/use-auth";
+import { useProfilesQuery } from "@/hooks/use-app-queries";
 import {
+  profileComposioToolkitsQueryOptions,
   useComposioSettings,
   useComposioToolkits,
+  useConnectComposioToolkit,
   useDisableComposioToolkit,
   useDisconnectComposioToolkit,
   useEnableComposioToolkit,
   useSyncComposioToolkit,
+  useUpdateProfileComposioToolkitsMutation,
 } from "@/hooks/use-composio";
 import { formatError } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
 const CATALOG_PAGE_SIZE = 15;
+
+/**
+ * The catalog is 200 apps, which buries the ones a team actually asks for. The
+ * list opens on these plus whatever the org already enabled; everything else is
+ * one click away behind "all apps", and search always covers the full catalog.
+ */
+const FEATURED_TOOLKIT_SLUGS = new Set([
+  "airtable",
+  "asana",
+  "clickup",
+  "discord",
+  "dropbox",
+  "facebook",
+  "github",
+  "gmail",
+  "googlecalendar",
+  "googledocs",
+  "googledrive",
+  "googlemeet",
+  "googlesheets",
+  "googletasks",
+  "jira",
+  "linear",
+  "linkedin",
+  "notion",
+  "one_drive",
+  "outlook",
+  "reddit",
+  "slack",
+  "trello",
+  "twitter",
+  "whatsapp",
+  "youtube",
+  "zoom",
+]);
 
 function compareToolkitRows(a: ToolkitRowModel, b: ToolkitRowModel): number {
   const aActive = isActiveToolkit(a) ? 0 : 1;
@@ -121,12 +163,20 @@ function StatusPill({
 }
 
 interface ComposioToolkitRowProps {
+  assignedProfileIds: string[];
   busy: boolean;
   isOrgAdmin: boolean;
+  onConnect: (slug: string) => void;
   onDisable: (slug: string) => void;
   onDisconnect: (slug: string) => void;
   onEnable: (slug: string) => void;
   onSync: (slug: string) => void;
+  onToggleProfile: (
+    profileId: string,
+    toolkitId: string,
+    assigned: boolean
+  ) => void;
+  profiles: ProfileSummary[];
   row: ToolkitRowModel;
 }
 
@@ -134,6 +184,10 @@ function ComposioToolkitRow({
   row,
   isOrgAdmin,
   busy,
+  assignedProfileIds,
+  profiles,
+  onToggleProfile,
+  onConnect,
   onEnable,
   onDisable,
   onSync,
@@ -171,6 +225,11 @@ function ComposioToolkitRow({
             />
           ) : null}
         </div>
+        {orgEnabled && userStatus === "connected" ? (
+          <p className="mt-1 text-muted-foreground text-xs">
+            Assigned to the default profile when it was enabled.
+          </p>
+        ) : null}
         {lastError ? (
           <p className="mt-1 truncate text-destructive text-xs">{lastError}</p>
         ) : null}
@@ -219,6 +278,31 @@ function ComposioToolkitRow({
           </DropdownMenu>
         ) : null}
 
+        {isOrgAdmin && orgEnabled && orgToolkit ? (
+          <ComposioProfileAssignPicker
+            assignedProfileIds={assignedProfileIds}
+            busy={busy}
+            onToggle={(profileId, assigned) =>
+              onToggleProfile(profileId, orgToolkit.id, assigned)
+            }
+            profiles={profiles}
+            toolkitName={catalog.name}
+          />
+        ) : null}
+
+        {orgEnabled && userStatus !== "connected" ? (
+          <Button
+            disabled={busy}
+            onClick={() => onConnect(catalog.slug)}
+            size="sm"
+            type="button"
+          >
+            {userStatus === "oauth_in_progress"
+              ? "Finish connecting"
+              : "Connect"}
+          </Button>
+        ) : null}
+
         {isOrgAdmin && orgEnabled && userStatus !== "connected" ? (
           <Button
             disabled={busy}
@@ -236,19 +320,31 @@ function ComposioToolkitRow({
 }
 
 interface ComposioToolkitListProps {
+  assignedProfileIdsByToolkit: Map<string, string[]>;
   busy: boolean;
   data: ListComposioToolkitsResponse;
   isOrgAdmin: boolean;
+  onConnect: (slug: string) => void;
   onDisable: (slug: string) => void;
   onDisconnect: (slug: string) => void;
   onEnable: (slug: string) => void;
   onSync: (slug: string) => void;
+  onToggleProfile: (
+    profileId: string,
+    toolkitId: string,
+    assigned: boolean
+  ) => void;
+  profiles: ProfileSummary[];
 }
 
 function ComposioToolkitList({
   data,
   isOrgAdmin,
   busy,
+  assignedProfileIdsByToolkit,
+  profiles,
+  onToggleProfile,
+  onConnect,
   onEnable,
   onDisable,
   onSync,
@@ -256,6 +352,7 @@ function ComposioToolkitList({
 }: ComposioToolkitListProps) {
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
+  const [showAllApps, setShowAllApps] = useState(false);
   const deferredSearch = useDeferredValue(search);
 
   const query = deferredSearch.trim().toLowerCase();
@@ -307,8 +404,15 @@ function ComposioToolkitList({
       return activeRows.filter((row) => row.orgToolkit?.status === "enabled");
     }
 
-    return rows.toSorted(compareToolkitRows);
-  }, [activeRows, isOrgAdmin, isSearching, query, rows]);
+    const base = showAllApps
+      ? rows
+      : rows.filter(
+          (row) =>
+            FEATURED_TOOLKIT_SLUGS.has(row.catalog.slug) || isActiveToolkit(row)
+        );
+
+    return base.toSorted(compareToolkitRows);
+  }, [activeRows, isOrgAdmin, isSearching, query, rows, showAllApps]);
 
   const displayedRows = filteredRows.slice(0, visibleCount);
   const remainingCount = Math.max(
@@ -348,22 +452,41 @@ function ComposioToolkitList({
           />
         </div>
 
-        <p className="text-muted-foreground text-xs tabular-nums">
-          {isSearching ? (
-            <>
-              {filteredRows.length} match{filteredRows.length === 1 ? "" : "es"}
-            </>
-          ) : isOrgAdmin ? (
-            <>
-              {enabledCount} enabled · {connectedCount} connected by you ·{" "}
-              {data.catalog.length} available
-            </>
-          ) : (
-            <>
-              {enabledCount} enabled · {connectedCount} connected by you
-            </>
-          )}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-muted-foreground text-xs tabular-nums">
+            {isSearching ? (
+              <>
+                {filteredRows.length} match
+                {filteredRows.length === 1 ? "" : "es"}
+              </>
+            ) : isOrgAdmin ? (
+              <>
+                {enabledCount} enabled · {connectedCount} connected by you ·{" "}
+                {showAllApps ? data.catalog.length : filteredRows.length} shown
+              </>
+            ) : (
+              <>
+                {enabledCount} enabled · {connectedCount} connected by you
+              </>
+            )}
+          </p>
+
+          {isOrgAdmin && !isSearching ? (
+            <Button
+              className="h-auto p-0 text-xs"
+              onClick={() => {
+                setShowAllApps((current) => !current);
+                setVisibleCount(CATALOG_PAGE_SIZE);
+              }}
+              type="button"
+              variant="link"
+            >
+              {showAllApps
+                ? "Show popular apps"
+                : `Show all ${data.catalog.length} apps`}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {data.catalog.length === 0 ? (
@@ -392,13 +515,20 @@ function ComposioToolkitList({
             <div className="divide-y divide-border">
               {displayedRows.map((row) => (
                 <ComposioToolkitRow
+                  assignedProfileIds={
+                    assignedProfileIdsByToolkit.get(row.orgToolkit?.id ?? "") ??
+                    []
+                  }
                   busy={busy}
                   isOrgAdmin={isOrgAdmin}
                   key={row.catalog.slug}
+                  onConnect={onConnect}
                   onDisable={onDisable}
                   onDisconnect={onDisconnect}
                   onEnable={onEnable}
                   onSync={onSync}
+                  onToggleProfile={onToggleProfile}
+                  profiles={profiles}
                   row={row}
                 />
               ))}
@@ -478,12 +608,68 @@ export function ComposioConnectionsCard({
   const isOrgAdmin = activeOrg?.role === "admin";
   const { data: settings } = useComposioSettings();
   const toolkitsQuery = useComposioToolkits();
+  const connectMutation = useConnectComposioToolkit();
   const enableMutation = useEnableComposioToolkit();
+  const assignMutation = useUpdateProfileComposioToolkitsMutation();
+  const profilesQuery = useProfilesQuery();
+  const profiles = isOrgAdmin ? (profilesQuery.data ?? []) : [];
+
+  // Assignments live per profile, so the reverse map is built here rather than
+  // asking the toolkits endpoint for it. Only org admins may read them, and the
+  // profile count is small, so one query per profile is cheap enough.
+  const assignmentQueries = useQueries({
+    queries: profiles.map((profile) =>
+      profileComposioToolkitsQueryOptions(profile.id)
+    ),
+  });
+
+  const assignedProfileIdsByToolkit = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    profiles.forEach((profile, index) => {
+      for (const assignment of assignmentQueries[index]?.data?.assignments ??
+        []) {
+        map.set(assignment.toolkitId, [
+          ...(map.get(assignment.toolkitId) ?? []),
+          profile.id,
+        ]);
+      }
+    });
+
+    return map;
+  }, [profiles, assignmentQueries]);
+
+  const toggleProfileAssignment = (
+    profileId: string,
+    toolkitId: string,
+    assigned: boolean
+  ) => {
+    const index = profiles.findIndex((profile) => profile.id === profileId);
+    const current = assignmentQueries[index]?.data?.assignments ?? [];
+    const next = assigned
+      ? [
+          ...current.map((entry) => ({
+            allowedActions: entry.allowedActions,
+            toolkitId: entry.toolkitId,
+          })),
+          { allowedActions: null, toolkitId },
+        ]
+      : current
+          .filter((entry) => entry.toolkitId !== toolkitId)
+          .map((entry) => ({
+            allowedActions: entry.allowedActions,
+            toolkitId: entry.toolkitId,
+          }));
+
+    assignMutation.mutate({ assignments: next, profileId });
+  };
   const disableMutation = useDisableComposioToolkit();
   const disconnectMutation = useDisconnectComposioToolkit();
   const syncMutation = useSyncComposioToolkit();
 
   const busy =
+    assignMutation.isPending ||
+    connectMutation.isPending ||
     enableMutation.isPending ||
     disableMutation.isPending ||
     disconnectMutation.isPending ||
@@ -553,13 +739,17 @@ export function ComposioConnectionsCard({
   return (
     <IntegrationCardShell {...shellProps}>
       <ComposioToolkitList
+        assignedProfileIdsByToolkit={assignedProfileIdsByToolkit}
         busy={busy}
         data={data}
         isOrgAdmin={isOrgAdmin}
+        onConnect={(slug) => connectMutation.mutate(slug)}
         onDisable={(slug) => disableMutation.mutate(slug)}
         onDisconnect={(slug) => disconnectMutation.mutate(slug)}
         onEnable={(slug) => enableMutation.mutate(slug)}
         onSync={(slug) => syncMutation.mutate(slug)}
+        onToggleProfile={toggleProfileAssignment}
+        profiles={profiles}
       />
     </IntegrationCardShell>
   );
