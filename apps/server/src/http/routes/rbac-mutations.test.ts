@@ -21,33 +21,15 @@ function createApp() {
 
   const result = createMinimalHonoApp({
     agent: {
-      branchSession: async () => {
-        calls.push("agent.branchSession");
-        return { sessionId: "branched" };
-      },
-      clearSession: async () => {
-        calls.push("agent.clearSession");
-        return true;
-      },
-      compactSession: async () => {
-        calls.push("agent.compactSession");
-        return { compacted: true };
-      },
-      createSession: async () => {
-        calls.push("agent.createSession");
-        return "session_x";
-      },
+      branchSession: record("agent.branchSession"),
+      clearSession: record("agent.clearSession"),
+      compactSession: record("agent.compactSession"),
+      createSession: record("agent.createSession"),
       draftAutomation: record("agent.draftAutomation"),
       draftTaskPrompt: record("agent.draftTaskPrompt"),
-      generateImage: async () => {
-        calls.push("agent.generateImage");
-        return { imageUrl: "x" };
-      },
+      generateImage: record("agent.generateImage"),
       listProfiles: async () => ({ profiles: [{ id: "default" }] }),
-      purgeSession: async () => {
-        calls.push("agent.purgeSession");
-        return true;
-      },
+      purgeSession: record("agent.purgeSession"),
       runAutomation: async () => {
         calls.push("agent.runAutomation");
         return { skipped: false };
@@ -56,10 +38,7 @@ function createApp() {
         calls.push("agent.runTask");
         return { skipped: false };
       },
-      transcribeAudio: async () => {
-        calls.push("agent.transcribeAudio");
-        return { text: "x" };
-      },
+      transcribeAudio: record("agent.transcribeAudio"),
     },
     automationService: {
       create: record("automationService.create"),

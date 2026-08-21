@@ -1,17 +1,16 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import {
-  type BranchSessionRequest,
-  type BranchSessionResponse,
-  type CompactionResponse,
-  type CompactSessionRequest,
-  type CreateSessionRequest,
-  type CreateSessionResponse,
-  type ListSessionsResponse,
-  NakamaApiError,
-  type SendMessageRequest,
-  type SendMessageResponse,
-  type SessionMessagesResponse,
-  type SessionStatusResponse,
+import type {
+  BranchSessionRequest,
+  BranchSessionResponse,
+  CompactionResponse,
+  CompactSessionRequest,
+  CreateSessionRequest,
+  CreateSessionResponse,
+  ListSessionsResponse,
+  SendMessageRequest,
+  SendMessageResponse,
+  SessionMessagesResponse,
+  SessionStatusResponse,
 } from "@nakama/core";
 import { resolveRequestClientOrigin } from "../../services/composio-callback-url";
 import { sessionTurnRegistry } from "../../services/session-turn-registry";
@@ -485,10 +484,6 @@ export function registerSessionRoutes(
 
       return json<BranchSessionResponse>(result, 201);
     } catch (error) {
-      if (error instanceof NakamaApiError) {
-        return errorResponse(error.message, error.status);
-      }
-
       const message = error instanceof Error ? error.message : String(error);
       return errorResponse(message, 400);
     }
