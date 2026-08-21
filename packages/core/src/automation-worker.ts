@@ -1,10 +1,5 @@
 import { join } from "node:path";
-import {
-  pathExists,
-  readTextOrNull,
-  removeFile,
-  writePrivateTextFile,
-} from "./fs";
+import { pathExists, readTextOrNull, removeFile, writeTextFile } from "./fs";
 import { getUserConfigDir } from "./user-config";
 
 export interface AutomationWorkerHeartbeat {
@@ -102,7 +97,7 @@ export async function writeAutomationWorkerHeartbeat(
     updatedAt,
   };
 
-  await writePrivateTextFile(
+  await writeTextFile(
     getAutomationWorkerHeartbeatPath(),
     `${JSON.stringify(payload)}\n`,
     { ensureDir: getAutomationConfigDir() }

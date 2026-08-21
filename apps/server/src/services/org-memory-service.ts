@@ -24,7 +24,7 @@ import {
   readDirectoryEntries,
   readText,
   readTextIfExists,
-  writePrivateTextFile,
+  writeTextFile,
 } from "@nakama/core/fs";
 import type { DatabaseAdapter, StoredOrgMemoryProposal } from "@nakama/db";
 
@@ -384,7 +384,7 @@ export class OrgMemoryService {
       preamble: parsed.preamble,
       sections: parsed.sections,
     });
-    await writePrivateTextFile(archivePath, archiveContent, {
+    await writeTextFile(archivePath, archiveContent, {
       ensureDir: archiveDir,
     });
     await this.commitMemory(
@@ -708,7 +708,7 @@ export class OrgMemoryService {
       return;
     }
 
-    await writePrivateTextFile(
+    await writeTextFile(
       getOrgMemoryFilePath(orgId, this.options.configDir),
       content,
       {

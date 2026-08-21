@@ -1,11 +1,6 @@
 import { join } from "node:path";
 import type { TelegramWorkerStatus } from "./contract";
-import {
-  pathExists,
-  readTextOrNull,
-  removeFile,
-  writePrivateTextFile,
-} from "./fs";
+import { pathExists, readTextOrNull, removeFile, writeTextFile } from "./fs";
 import {
   getTelegramConfigDir,
   loadTelegramSettingsPublic,
@@ -96,7 +91,7 @@ export async function writeTelegramWorkerHeartbeat(
 ): Promise<void> {
   const payload: TelegramWorkerHeartbeat = { pid, updatedAt };
 
-  await writePrivateTextFile(
+  await writeTextFile(
     getTelegramWorkerHeartbeatPath(),
     `${JSON.stringify(payload)}\n`,
     { ensureDir: getTelegramConfigDir() }

@@ -6,7 +6,7 @@ import {
   pathExists,
   readTextOrNull,
   removeFile,
-  writePrivateTextFile,
+  writeTextFile,
 } from "./fs";
 import { getUserConfigDir } from "./user-config";
 
@@ -206,7 +206,7 @@ async function writeWhatsAppConfigFile(
     "",
   ];
 
-  await writePrivateTextFile(getWhatsAppConfigPath(), lines.join("\n"), {
+  await writeTextFile(getWhatsAppConfigPath(), lines.join("\n"), {
     ensureDir: getWhatsAppConfigDir(),
   });
 }
