@@ -1,4 +1,5 @@
 import type { AgentChannel, ToolContext, ToolDefinition } from "@nakama/core";
+import type { AgentService } from "../services/agent-service";
 
 const AGENT_CHANNELS: AgentChannel[] = [
   "web",
@@ -11,49 +12,10 @@ const AGENT_CHANNELS: AgentChannel[] = [
   "subagent",
 ];
 
-/**
- * Matches `GET /v1/sessions`, which reads `channel` from the query string and
- * falls back to "web" rather than merging channels.
- */
+/** Matches `GET /v1/sessions` — optional channel, default web. */
 const DEFAULT_CHANNEL: AgentChannel = "web";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
-
-interface SessionSummaryForTool {
-  channel: AgentChannel;
-  createdAt?: string;
-  id: string;
-  messageCount?: number;
-  preview?: string | null;
-  profileId: string;
-  title?: string | null;
-  updatedAt?: string;
-}
-
-interface SessionTranscript {
-  channel: AgentChannel;
-  messages: unknown[];
-  profileId: string;
-  returnedMessages: number;
-  totalMessages: number;
-}
-
-/**
- * The slice of AgentService these tools need. Both methods already reject
- * anything outside the caller's org, so the tools add no boundary of their own.
- */
-export interface SessionReader {
-  listSessions(
-    orgId: string,
-    profileId: string,
-    channel: AgentChannel
-  ): Promise<{ sessions: SessionSummaryForTool[] }>;
-  readSessionTranscript(
-    sessionId: string,
-    orgId: string,
-    options: { limit: number; offset: number }
-  ): Promise<SessionTranscript | null>;
-}
 
 function requireOrgId(context: ToolContext): string {
   const orgId = context.orgId?.trim();
@@ -81,13 +43,11 @@ function readChannel(input: unknown): AgentChannel {
     return DEFAULT_CHANNEL;
   }
 
-  const channel = AGENT_CHANNELS.find((candidate) => candidate === value);
-
-  if (!channel) {
+  if (!AGENT_CHANNELS.includes(value as AgentChannel)) {
     throw new Error(`Unknown channel: ${value}.`);
   }
 
-  return channel;
+  return value as AgentChannel;
 }
 
 function readBoundedInteger(
@@ -109,7 +69,7 @@ function readBoundedInteger(
   return Math.min(Math.max(Math.trunc(value), 0), max);
 }
 
-export function createSessionTools(reader: SessionReader): ToolDefinition[] {
+export function createSessionTools(agent: AgentService): ToolDefinition[] {
   return [
     {
       description:
@@ -141,7 +101,7 @@ export function createSessionTools(reader: SessionReader): ToolDefinition[] {
           throw new Error("profileId is required.");
         }
 
-        return await reader.listSessions(orgId, profileId, readChannel(input));
+        return await agent.listSessions(orgId, profileId, readChannel(input));
       },
     },
     {
@@ -177,25 +137,35 @@ export function createSessionTools(reader: SessionReader): ToolDefinition[] {
           throw new Error("sessionId is required.");
         }
 
-        const transcript = await reader.readSessionTranscript(
-          sessionId,
-          orgId,
-          {
-            limit: readBoundedInteger(input, "limit", DEFAULT_LIMIT, MAX_LIMIT),
-            offset: readBoundedInteger(
-              input,
-              "offset",
-              0,
-              Number.MAX_SAFE_INTEGER
-            ),
-          }
-        );
+        const result = await agent.getSessionMessages(sessionId, orgId, {
+          persistedOnly: true,
+        });
 
-        if (!transcript) {
+        if (!result) {
           throw new Error("Session not found.");
         }
 
-        return transcript;
+        const limit = readBoundedInteger(
+          input,
+          "limit",
+          DEFAULT_LIMIT,
+          MAX_LIMIT
+        );
+        const offset = readBoundedInteger(
+          input,
+          "offset",
+          0,
+          Number.MAX_SAFE_INTEGER
+        );
+        const messages = result.messages.slice(offset, offset + limit);
+
+        return {
+          channel: result.channel,
+          messages,
+          profileId: result.profileId,
+          returnedMessages: messages.length,
+          totalMessages: result.messages.length,
+        };
       },
     },
   ];

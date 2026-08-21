@@ -5,12 +5,14 @@ import {
 } from "@nakama/core/tools/protected";
 import { createInMemoryDatabaseAdapter } from "@nakama/db";
 import { createSessionTools } from "../tools/session-tools";
+import { AgentService } from "./agent-service";
 import { registerSessionTools, resolveToolsFromStorage } from "./tool-resolver";
 
-const READER = {
-  listSessions: async () => ({ sessions: [] }),
-  readSessionTranscript: async () => null,
-};
+function sessionTools() {
+  return createSessionTools(
+    new AgentService(null, null, createInMemoryDatabaseAdapter())
+  );
+}
 
 async function seedSessionToolRows(
   db: ReturnType<typeof createInMemoryDatabaseAdapter>
@@ -37,7 +39,7 @@ async function seedSessionToolRows(
 describe("resolveToolsFromStorage session", () => {
   test("resolves both registered session tools from storage", async () => {
     const db = createInMemoryDatabaseAdapter();
-    registerSessionTools(createSessionTools(READER));
+    registerSessionTools(sessionTools());
     await seedSessionToolRows(db);
 
     const names = (await resolveToolsFromStorage(await db.listTools(), db)).map(
@@ -61,6 +63,6 @@ describe("resolveToolsFromStorage session", () => {
     expect(names).not.toContain("read_profile_session");
 
     // Leave the registry as the rest of the suite expects to find it.
-    registerSessionTools(createSessionTools(READER));
+    registerSessionTools(sessionTools());
   });
 });

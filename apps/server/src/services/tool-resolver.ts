@@ -91,19 +91,12 @@ async function resolveStoredTool(
     return builtinMap.get(record.name) ?? null;
   }
 
-  if (record.handlerType === "bash") {
-    return serverTools.get(record.name) ?? null;
-  }
-
-  if (record.handlerType === "sub_agent") {
-    return serverTools.get(record.name) ?? null;
-  }
-
-  if (record.handlerType === "generate_image") {
-    return serverTools.get(record.name) ?? null;
-  }
-
-  if (record.handlerType === "session") {
+  if (
+    record.handlerType === "bash" ||
+    record.handlerType === "sub_agent" ||
+    record.handlerType === "generate_image" ||
+    record.handlerType === "session"
+  ) {
     return serverTools.get(record.name) ?? null;
   }
 
