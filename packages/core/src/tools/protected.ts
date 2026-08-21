@@ -15,12 +15,16 @@ export const BUILTIN_TOOL_IDS = {
 export const BASH_TOOL_ID = "tool_bash";
 export const SUB_AGENT_TOOL_ID = "tool_sub_agent";
 export const GENERATE_IMAGE_TOOL_ID = "tool_generate_image";
+export const LIST_PROFILE_SESSIONS_TOOL_ID = "tool_list_profile_sessions";
+export const READ_PROFILE_SESSION_TOOL_ID = "tool_read_profile_session";
 
 export const PROTECTED_TOOL_IDS = new Set<string>([
   ...Object.values(BUILTIN_TOOL_IDS),
   BASH_TOOL_ID,
   SUB_AGENT_TOOL_ID,
   GENERATE_IMAGE_TOOL_ID,
+  LIST_PROFILE_SESSIONS_TOOL_ID,
+  READ_PROFILE_SESSION_TOOL_ID,
 ]);
 
 export function isProtectedToolId(toolId: string): boolean {

@@ -1604,12 +1604,14 @@ export class AgentService {
 
   async getSessionMessages(
     sessionId: string,
-    orgId: string
+    orgId: string,
+    options?: { persistedOnly?: boolean }
   ): Promise<{
     channel: AgentChannel;
     messages: ChatMessage[];
     messageMeta: Array<{ id: string; seq: number; createdAt: string }>;
     contextUsage: ChatContextUsage | null;
+    profileId: string;
   } | null> {
     const record = await this.getSessionRecordForOrg(sessionId, orgId);
 
@@ -1623,7 +1625,7 @@ export class AgentService {
       return null;
     }
 
-    if (sessionTurnRegistry.isActive(sessionId)) {
+    if (!options?.persistedOnly && sessionTurnRegistry.isActive(sessionId)) {
       const liveSession = await this.resolveSession(sessionId, orgId);
 
       if (liveSession) {
@@ -1641,16 +1643,19 @@ export class AgentService {
             seq: index,
           })),
           messages: [...history],
+          profileId: record.profileId,
         };
       }
     }
 
     const storedMessages = await this.db.listMessagesForSession(sessionId);
     const cached = this.sessions.get(sessionId)?.session;
-    const contextUsage = cached
-      ? cached.getContextUsage()
-      : ((await this.resolveSession(sessionId, orgId))?.getContextUsage() ??
-        null);
+    const contextUsage = options?.persistedOnly
+      ? null
+      : cached
+        ? cached.getContextUsage()
+        : ((await this.resolveSession(sessionId, orgId))?.getContextUsage() ??
+          null);
 
     return {
       channel,
@@ -1661,6 +1666,7 @@ export class AgentService {
         seq: message.seq,
       })),
       messages: storedMessages.map((message) => message.payload as ChatMessage),
+      profileId: record.profileId,
     };
   }
 

@@ -16,6 +16,7 @@ import { getCustomToolHandler } from "./custom-tool-handlers";
 
 let registeredSubAgentTool: ToolDefinition | null = null;
 let registeredGenerateImageTool: ToolDefinition | null = null;
+let registeredSessionTools: ToolDefinition[] = [];
 
 export function registerSubAgentTool(tool: ToolDefinition): void {
   registeredSubAgentTool = tool;
@@ -23,6 +24,10 @@ export function registerSubAgentTool(tool: ToolDefinition): void {
 
 export function registerGenerateImageTool(tool: ToolDefinition | null): void {
   registeredGenerateImageTool = tool;
+}
+
+export function registerSessionTools(tools: ToolDefinition[]): void {
+  registeredSessionTools = tools;
 }
 
 export function omitUnavailableBuiltinTools(
@@ -86,15 +91,12 @@ async function resolveStoredTool(
     return builtinMap.get(record.name) ?? null;
   }
 
-  if (record.handlerType === "bash") {
-    return serverTools.get(record.name) ?? null;
-  }
-
-  if (record.handlerType === "sub_agent") {
-    return serverTools.get(record.name) ?? null;
-  }
-
-  if (record.handlerType === "generate_image") {
+  if (
+    record.handlerType === "bash" ||
+    record.handlerType === "sub_agent" ||
+    record.handlerType === "generate_image" ||
+    record.handlerType === "session"
+  ) {
     return serverTools.get(record.name) ?? null;
   }
 
@@ -120,6 +122,10 @@ function buildServerTools(
 
   if (registeredGenerateImageTool) {
     map.set(registeredGenerateImageTool.name, registeredGenerateImageTool);
+  }
+
+  for (const tool of registeredSessionTools) {
+    map.set(tool.name, tool);
   }
 
   return map;
