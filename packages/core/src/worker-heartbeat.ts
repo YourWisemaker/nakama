@@ -3,7 +3,7 @@ import {
   pathExists,
   readTextOrNull,
   removeFile,
-  writePrivateTextFile,
+  writeTextFile,
 } from "./fs";
 
 const DEFAULT_WORKER_HEARTBEAT_MAX_AGE_MS = 45_000;
@@ -91,7 +91,7 @@ export function createWorkerHeartbeatStore<
   };
 
   const write = async (payload: T): Promise<void> => {
-    await writePrivateTextFile(getPath(), `${JSON.stringify(payload)}\n`, {
+    await writeTextFile(getPath(), `${JSON.stringify(payload)}\n`, {
       ensureDir: options.getDir(),
     });
   };

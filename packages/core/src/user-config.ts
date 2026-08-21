@@ -16,7 +16,7 @@ import type {
   TranscriptionSettings,
   VisionSettings,
 } from "./contract";
-import { ensureDir, readTextOrNull, writePrivateTextFile } from "./fs";
+import { ensureDir, readTextOrNull, writeTextFile } from "./fs";
 import {
   defaultOllamaBaseUrl,
   defaultOllamaLabel,
@@ -322,7 +322,7 @@ export async function saveUserVisionSettings(
     vision_model: model ?? "",
   });
 
-  await writePrivateTextFile(getUserConfigPath(), lines.join("\n"), {
+  await writeTextFile(getUserConfigPath(), lines.join("\n"), {
     ensureDir: getUserConfigDir(),
   });
 }
@@ -374,7 +374,7 @@ export async function saveUserThinkingSettings(
     thinking_effort: effort,
   });
 
-  await writePrivateTextFile(getUserConfigPath(), lines.join("\n"), {
+  await writeTextFile(getUserConfigPath(), lines.join("\n"), {
     ensureDir: getUserConfigDir(),
   });
 }
@@ -415,7 +415,7 @@ export async function saveUserTimezone(timezone: string): Promise<void> {
     timezone: trimmed,
   });
 
-  await writePrivateTextFile(getUserConfigPath(), lines.join("\n"), {
+  await writeTextFile(getUserConfigPath(), lines.join("\n"), {
     ensureDir: getUserConfigDir(),
   });
 }
@@ -475,7 +475,7 @@ export async function saveUserWebPublicUrl(
     web_public_url: normalized,
   });
 
-  await writePrivateTextFile(getUserConfigPath(), lines.join("\n"), {
+  await writeTextFile(getUserConfigPath(), lines.join("\n"), {
     ensureDir: getUserConfigDir(),
   });
 
@@ -534,7 +534,7 @@ export async function writeParsedConfigIni(
   patch: Record<string, string | undefined> = {}
 ): Promise<void> {
   const lines = buildConfigIniLines(global, sections, patch);
-  await writePrivateTextFile(getUserConfigPath(), lines.join("\n"), {
+  await writeTextFile(getUserConfigPath(), lines.join("\n"), {
     ensureDir: getUserConfigDir(),
   });
 }

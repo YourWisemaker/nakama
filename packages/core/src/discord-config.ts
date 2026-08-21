@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
-import { parseIni, readTextOrNull, writePrivateTextFile } from "./fs";
+import { parseIni, readTextOrNull, writeTextFile } from "./fs";
+import { maskTrailingSecret } from "./secret-mask";
 import { getUserConfigDir } from "./user-config";
 
 export const DEFAULT_DISCORD_PROFILE_ID = "default";
@@ -122,17 +123,7 @@ async function withDiscordInviteUrl(
 }
 
 export function maskBotToken(token: string): string | null {
-  const trimmed = token.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  if (trimmed.length <= 8) {
-    return "••••••••";
-  }
-
-  return `${"•".repeat(Math.min(trimmed.length - 4, 12))}${trimmed.slice(-4)}`;
+  return maskTrailingSecret(token);
 }
 
 export function generateHandshakeCode(): string {
@@ -251,7 +242,7 @@ async function writeDiscordConfigFile(
     "",
   ];
 
-  await writePrivateTextFile(getDiscordConfigPath(), lines.join("\n"), {
+  await writeTextFile(getDiscordConfigPath(), lines.join("\n"), {
     ensureDir: getDiscordConfigDir(),
   });
 }
