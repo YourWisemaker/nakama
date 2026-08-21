@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInMemoryDatabaseAdapter } from "@nakama/db";
@@ -58,20 +58,9 @@ describe("agent-browser service", () => {
     expect(status.nextStep).toBeNull();
   });
 
-  test("a CLI that hangs on --version resolves as not installed", async () => {
-    await installFakeBinary(tempBinDir, "agent-browser", "hangs");
-
-    const started = Date.now();
-    const status = await getAgentBrowserStatus();
-
-    expect(status.installed).toBe(false);
-    expect(status.ready).toBe(false);
-    expect(status.nextStep).toBe("install");
-    expect(Date.now() - started).toBeLessThan(15_000);
-  }, 20_000);
-
-  test("a CLI that ignores SIGTERM still resolves the readiness probe", async () => {
+  test("a CLI that traps SIGTERM is killed once the version probe times out", async () => {
     await installFakeBinary(tempBinDir, "agent-browser", "stubborn");
+    const pidFile = join(tempBinDir, "pid");
 
     const started = Date.now();
     const status = await getAgentBrowserStatus();
@@ -79,7 +68,11 @@ describe("agent-browser service", () => {
     expect(status.installed).toBe(false);
     expect(status.ready).toBe(false);
     expect(Date.now() - started).toBeLessThan(15_000);
-  }, 20_000);
+
+    const pid = Number.parseInt(await readFile(pidFile, "utf8"), 10);
+    expect(Number.isInteger(pid)).toBe(true);
+    expect(await waitForExit(pid, 15_000)).toBe(true);
+  }, 45_000);
 });
 
 describe("agent-browser settings routes", () => {
@@ -286,7 +279,11 @@ exit 0
 setInterval(() => {}, 1000);
 `;
   } else if (mode === "stubborn") {
+    // Hangs on --version and swallows SIGTERM, so only the SIGKILL escalation
+    // ends it. It records its own pid because the probe never exposes the child.
+    const pidFile = join(binDir, "pid");
     script = `#!${process.execPath}
+require("node:fs").writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));
 process.on("SIGTERM", () => {});
 setInterval(() => {}, 1000);
 `;
@@ -294,4 +291,20 @@ setInterval(() => {}, 1000);
 
   await writeFile(scriptPath, script, "utf8");
   await chmod(scriptPath, 0o755);
+}
+
+async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return true;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  return false;
 }
