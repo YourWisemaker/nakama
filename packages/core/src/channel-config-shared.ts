@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { parseIni, readTextOrNull, writePrivateTextFile } from "./fs";
 
 /** Mask a secret, keeping a short trailing hint. Same shape as email `maskSecret`. */
-export function maskTrailingSecret(secret: string): string | null {
+export function maskBotToken(secret: string): string | null {
   const trimmed = secret.trim();
 
   if (!trimmed) {
@@ -16,9 +16,6 @@ export function maskTrailingSecret(secret: string): string | null {
   return `${"•".repeat(Math.min(trimmed.length - 4, 12))}${trimmed.slice(-4)}`;
 }
 
-/** Telegram/Discord public name for {@link maskTrailingSecret}. */
-export const maskBotToken = maskTrailingSecret;
-
 export function generateHandshakeCode(): string {
   return randomBytes(4).toString("hex").toUpperCase();
 }
@@ -26,12 +23,6 @@ export function generateHandshakeCode(): string {
 export function normalizeHandshakeInput(input: string): string {
   return input.trim().replace(/\s+/g, "").toUpperCase();
 }
-
-/** WhatsApp public name for {@link generateHandshakeCode}. */
-export const generatePairingCode = generateHandshakeCode;
-
-/** WhatsApp public name for {@link normalizeHandshakeInput}. */
-export const normalizePairingCode = normalizeHandshakeInput;
 
 export type BotChannelConfigFile<TId extends string | number> = {
   allowedUserIds: TId[];

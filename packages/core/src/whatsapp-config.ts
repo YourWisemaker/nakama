@@ -1,8 +1,8 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  generatePairingCode,
-  normalizePairingCode,
+  generateHandshakeCode,
+  normalizeHandshakeInput,
 } from "./channel-config-shared";
 import {
   parseIni,
@@ -13,10 +13,9 @@ import {
 } from "./fs";
 import { getUserConfigDir } from "./user-config";
 
-export {
-  generatePairingCode,
-  normalizePairingCode,
-} from "./channel-config-shared";
+/** WhatsApp name for shared handshake helpers. */
+export const generatePairingCode = generateHandshakeCode;
+export const normalizePairingCode = normalizeHandshakeInput;
 
 export const DEFAULT_WHATSAPP_PROFILE_ID = "default";
 export interface WhatsAppConfigFile {
