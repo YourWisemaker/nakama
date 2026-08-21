@@ -30,8 +30,9 @@ export {
 } from "./discord-attachment";
 // Explicit Discord exports — omit helpers that collide with telegram-* names
 // (maskBotToken, generateHandshakeCode, normalizeHandshakeInput, parseAllowedUserIds,
-// isHeartbeatAlive, isProcessAlive). Import those from @nakama/core/discord-config
-// or @nakama/core/discord-worker when the Discord-specific variant is required.
+// isHeartbeatAlive, isProcessAlive). Shared implementations live in
+// channel-config-shared.ts; import Discord variants from @nakama/core/discord-config
+// or @nakama/core/discord-worker when required.
 export {
   buildDiscordInviteUrl,
   DEFAULT_DISCORD_PROFILE_ID,
