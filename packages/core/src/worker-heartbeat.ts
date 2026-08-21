@@ -6,7 +6,7 @@ import {
   writePrivateTextFile,
 } from "./fs";
 
-export const DEFAULT_WORKER_HEARTBEAT_MAX_AGE_MS = 45_000;
+const DEFAULT_WORKER_HEARTBEAT_MAX_AGE_MS = 45_000;
 const HEARTBEAT_FILENAME = "worker-heartbeat.json";
 
 export type WorkerHeartbeatBase = {
