@@ -21,9 +21,33 @@ function createApp() {
 
   const result = createMinimalHonoApp({
     agent: {
+      branchSession: async () => {
+        calls.push("agent.branchSession");
+        return { sessionId: "branched" };
+      },
+      clearSession: async () => {
+        calls.push("agent.clearSession");
+        return true;
+      },
+      compactSession: async () => {
+        calls.push("agent.compactSession");
+        return { compacted: true };
+      },
+      createSession: async () => {
+        calls.push("agent.createSession");
+        return "session_x";
+      },
       draftAutomation: record("agent.draftAutomation"),
       draftTaskPrompt: record("agent.draftTaskPrompt"),
+      generateImage: async () => {
+        calls.push("agent.generateImage");
+        return { imageUrl: "x" };
+      },
       listProfiles: async () => ({ profiles: [{ id: "default" }] }),
+      purgeSession: async () => {
+        calls.push("agent.purgeSession");
+        return true;
+      },
       runAutomation: async () => {
         calls.push("agent.runAutomation");
         return { skipped: false };
@@ -31,6 +55,10 @@ function createApp() {
       runTask: async () => {
         calls.push("agent.runTask");
         return { skipped: false };
+      },
+      transcribeAudio: async () => {
+        calls.push("agent.transcribeAudio");
+        return { text: "x" };
       },
     },
     automationService: {
@@ -109,9 +137,32 @@ const MUTATING_ROUTES: Array<{ method: string; path: string; body?: unknown }> =
     { body: { title: "x" }, method: "PUT", path: "/v1/tasks/t1" },
     { method: "DELETE", path: "/v1/tasks/t1" },
     { method: "POST", path: "/v1/tasks/t1/run" },
+    {
+      body: { channel: "web", profileId: "default" },
+      method: "POST",
+      path: "/v1/sessions",
+    },
+    { method: "DELETE", path: "/v1/sessions/s1" },
+    { method: "DELETE", path: "/v1/sessions/s1?purge=true" },
+    { body: { force: true }, method: "POST", path: "/v1/sessions/s1/compact" },
+    {
+      body: { messageIndex: 0 },
+      method: "POST",
+      path: "/v1/sessions/s1/branch",
+    },
+    {
+      body: { audioBase64: "YQ==", mimeType: "audio/wav" },
+      method: "POST",
+      path: "/v1/audio/transcribe",
+    },
+    {
+      body: { prompt: "a cat" },
+      method: "POST",
+      path: "/v1/images/generate",
+    },
   ];
 
-describe("RBAC: viewer cannot reach state-changing automation/task routes", () => {
+describe("RBAC: viewer cannot reach state-changing automation/task/session routes", () => {
   for (const route of MUTATING_ROUTES) {
     test(`${route.method} ${route.path} -> 403 for viewer`, async () => {
       const { app, databaseAdapter, authService, calls } = createApp();
