@@ -100,15 +100,6 @@ export function resolveBotInfo(
   return storedBotInfo;
 }
 
-export function shouldHandleGuildMessage(
-  message: Message,
-  storedBotInfo?: DiscordBotInfo,
-  options?: GuildMessageHandlingOptions
-): boolean {
-  return explainGuildMessageHandling(message, storedBotInfo, options)
-    .shouldHandle;
-}
-
 export function explainGuildMessageHandling(
   message: Message,
   storedBotInfo?: DiscordBotInfo,

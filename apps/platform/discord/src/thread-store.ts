@@ -27,29 +27,26 @@ export class ThreadStore {
       return;
     }
 
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
-      this.owned = new Set();
-      return;
-    }
-
     const next = new Set<string>();
 
-    // Legacy shape: { "g:channel:u:user": "threadId" } — keep values as owned ids.
-    // Ownership shape: { "threadId": "threadId" } (or any object whose values are thread ids).
-    for (const value of Object.values(parsed as Record<string, unknown>)) {
-      if (typeof value === "string" && value.trim()) {
-        next.add(value.trim());
+    if (Array.isArray(parsed)) {
+      for (const value of parsed) {
+        if (typeof value === "string" && value.trim()) {
+          next.add(value.trim());
+        }
+      }
+    } else if (typeof parsed === "object" && parsed !== null) {
+      // Legacy shape: { "threadId": "threadId" } or old key→threadId maps.
+      for (const value of Object.values(parsed as Record<string, unknown>)) {
+        if (typeof value === "string" && value.trim()) {
+          next.add(value.trim());
+        }
       }
     }
 
     this.owned = next;
   }
 
-  /** Record a Discord thread id created/tracked by this bot. */
   add(threadId: string): void {
     const id = threadId.trim();
     if (!id) {
@@ -58,24 +55,20 @@ export class ThreadStore {
     this.owned.add(id);
   }
 
-  /** True when this thread id was created/tracked by the Discord agent. */
   hasThreadId(threadId: string): boolean {
     return this.owned.has(threadId);
   }
 
-  /** Drop ownership for this Discord thread id. */
   deleteByThreadId(threadId: string): boolean {
     return this.owned.delete(threadId);
   }
 
   async save(): Promise<void> {
-    const map: Record<string, string> = {};
-    for (const id of this.owned) {
-      map[id] = id;
-    }
-    await writeTextFile(this.path, `${JSON.stringify(map, null, 2)}\n`, {
-      ensureDir: dirname(this.path),
-    });
+    await writeTextFile(
+      this.path,
+      `${JSON.stringify([...this.owned], null, 2)}\n`,
+      { ensureDir: dirname(this.path) }
+    );
   }
 }
 

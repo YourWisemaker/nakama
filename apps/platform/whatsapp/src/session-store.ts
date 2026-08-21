@@ -1,64 +1,14 @@
-import { dirname, join } from "node:path";
-import { readTextOrNull, writeTextFile } from "@nakama/core/fs";
+import { join } from "node:path";
+import {
+  ChannelSessionStore,
+  type ChatSessionRecord,
+} from "@nakama/core/channel-session-store";
 import { getWhatsAppConfigDir } from "@nakama/core/whatsapp-config";
 
-export interface ChatSessionRecord {
-  profileId: string;
-  sessionId: string;
-  updatedAt: string;
-}
+export type { ChatSessionRecord };
 
-type ChatSessionMap = Record<string, ChatSessionRecord>;
-
-export class SessionStore {
-  private readonly path: string;
-  private map: ChatSessionMap = {};
-
-  constructor(path = getChatSessionsPath()) {
-    this.path = path;
+export class SessionStore extends ChannelSessionStore {
+  constructor(path = join(getWhatsAppConfigDir(), "chat-sessions.json")) {
+    super(path);
   }
-
-  async load(): Promise<void> {
-    const raw = await readTextOrNull(this.path);
-
-    if (raw === null) {
-      this.map = {};
-      return;
-    }
-
-    const parsed = JSON.parse(raw) as unknown;
-
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
-      this.map = {};
-      return;
-    }
-
-    this.map = parsed as ChatSessionMap;
-  }
-
-  get(jid: string): ChatSessionRecord | undefined {
-    return this.map[jid];
-  }
-
-  set(jid: string, record: ChatSessionRecord): void {
-    this.map[jid] = record;
-  }
-
-  delete(jid: string): void {
-    delete this.map[jid];
-  }
-
-  async save(): Promise<void> {
-    await writeTextFile(this.path, `${JSON.stringify(this.map, null, 2)}\n`, {
-      ensureDir: dirname(this.path),
-    });
-  }
-}
-
-function getChatSessionsPath(): string {
-  return join(getWhatsAppConfigDir(), "chat-sessions.json");
 }

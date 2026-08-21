@@ -1,16 +1,15 @@
 import type { AgentTodo } from "@nakama/core/contract";
-import { renderDiscordTodoStatus } from "./format";
+import { DiscordEditableMessage } from "./editable-message";
+import { type DiscordTodoRunState, renderDiscordTodoStatus } from "./format";
 import type { DiscordMessenger } from "./messenger";
 
-type DiscordTodoRunState = "working" | "completed" | "stopped" | "failed";
-
 export class DiscordTodoStatusMessage {
-  private messageId: string | null = null;
-  private lastRendered = "";
+  private readonly editable: DiscordEditableMessage;
   private lastTodos: AgentTodo[] = [];
-  private pending = Promise.resolve();
 
-  constructor(private readonly messenger: DiscordMessenger) {}
+  constructor(messenger: DiscordMessenger) {
+    this.editable = new DiscordEditableMessage(messenger);
+  }
 
   async update(todos: AgentTodo[]): Promise<void> {
     if (todos.length === 0) {
@@ -18,60 +17,28 @@ export class DiscordTodoStatusMessage {
     }
 
     this.lastTodos = todos.map((todo) => ({ ...todo }));
-    await this.enqueueRender("working", this.lastTodos);
+    await this.editable.render(
+      renderDiscordTodoStatus(this.lastTodos, "working")
+    );
   }
 
   async complete(): Promise<void> {
-    await this.enqueueTerminalState("completed");
+    await this.renderTerminal("completed");
   }
 
   async stop(): Promise<void> {
-    await this.enqueueTerminalState("stopped");
+    await this.renderTerminal("stopped");
   }
 
   async fail(): Promise<void> {
-    await this.enqueueTerminalState("failed");
+    await this.renderTerminal("failed");
   }
 
-  private async enqueueTerminalState(
-    state: DiscordTodoRunState
-  ): Promise<void> {
+  private async renderTerminal(state: DiscordTodoRunState): Promise<void> {
     if (this.lastTodos.length === 0) {
       return;
     }
 
-    await this.enqueueRender(state, this.lastTodos);
-  }
-
-  private async enqueueRender(
-    state: DiscordTodoRunState,
-    todos: AgentTodo[]
-  ): Promise<void> {
-    this.pending = this.pending.then(() => this.render(state, todos));
-    await this.pending;
-  }
-
-  private async render(
-    state: DiscordTodoRunState,
-    todos: AgentTodo[]
-  ): Promise<void> {
-    const next = renderDiscordTodoStatus(todos, state);
-
-    if (next === this.lastRendered) {
-      return;
-    }
-
-    try {
-      if (this.messageId === null) {
-        const message = await this.messenger.send(next);
-        this.messageId = message?.id ?? null;
-      } else {
-        await this.messenger.edit(this.messageId, next);
-      }
-
-      this.lastRendered = next;
-    } catch {
-      // Status updates are best-effort only.
-    }
+    await this.editable.render(renderDiscordTodoStatus(this.lastTodos, state));
   }
 }

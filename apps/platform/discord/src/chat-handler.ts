@@ -8,10 +8,7 @@ import {
   formatOrgSwitchConfirmation,
   prepareChannelOrgContext,
 } from "@nakama/core/channel-org";
-import type {
-  AgentQuestionnaire,
-  SendMessageInput,
-} from "@nakama/core/contract";
+import type { SendMessageInput } from "@nakama/core/contract";
 import { addDiscordAllowedUserId } from "@nakama/core/discord-config";
 import {
   filterProfilesForChatAccess,
@@ -63,7 +60,6 @@ import {
   createInteractionMessenger,
   type DiscordMessenger,
   getMessageChannel,
-  replyAsChat,
 } from "./messenger";
 import { DiscordQuestionnaireMessage } from "./questionnaire-message";
 import type { SessionStore } from "./session-store";
@@ -72,7 +68,6 @@ import { DiscordTodoStatusMessage } from "./todo-status-message";
 import { createTypingLoop } from "./typing-indicator";
 
 const chatLocks = new Map<string, Promise<void>>();
-const pendingQuestionnaires = new Map<string, AgentQuestionnaire>();
 const THREAD_OWNERSHIP_LOCK_KEY = "__discord_thread_ownership__";
 
 /**
@@ -384,7 +379,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
 
     stopActiveStream(conversationKey);
-    pendingQuestionnaires.delete(conversationKey);
 
     await withChatLock(THREAD_OWNERSHIP_LOCK_KEY, async () => {
       if (threadStore.deleteByThreadId(channel.id)) {
@@ -471,10 +465,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       : channelId;
 
     const messenger = createInteractionMessenger(
-      (content) => interaction.reply({ content: content.slice(0, 2000) }),
       (content) => interaction.followUp({ content: content.slice(0, 2000) }),
-      (content) => interaction.editReply({ content: content.slice(0, 2000) }),
-      true
+      (content) => interaction.editReply({ content: content.slice(0, 2000) })
     );
 
     try {
@@ -536,7 +528,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       switch (interaction.commandName) {
         case "clear": {
           stopActiveStream(conversationKey);
-          pendingQuestionnaires.delete(conversationKey);
           const session = await resolveSession(conversationKey);
           await session.clear();
           await clearSessionArtifactState(conversationKey);
@@ -554,7 +545,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         }
         case "new": {
           stopActiveStream(conversationKey);
-          pendingQuestionnaires.delete(conversationKey);
           await createAndBindSession(conversationKey);
           await messenger.send("Started a new conversation.");
           return;
@@ -705,11 +695,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
             typingLoop.ping();
             if (hasActiveAgentQuestionnaire(questionnaire)) {
               postedQuestionnaire = true;
-              pendingQuestionnaires.set(conversationKey, questionnaire!);
               void questionnaireStatus.update(questionnaire);
-            } else {
-              pendingQuestionnaires.delete(conversationKey);
-              questionnaireStatus.clear();
             }
           },
           onThinking: () => {
@@ -743,7 +729,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
             const earlyText = reply.trim() || DISCORD_EARLY_ACK_FALLBACK;
             reply = "";
-            earlyAck = replyAsChat(messenger, earlyText);
+            earlyAck = messenger.send(earlyText);
           },
         },
         { signal }
@@ -755,7 +741,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
       if (signal.aborted) {
         if (reply.trim()) {
-          await replyAsChat(messenger, reply);
+          await messenger.send(reply);
         }
 
         await messenger.send("Stopped.");
@@ -766,7 +752,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       if (isAbortError(error)) {
         await todoStatus.stop();
         if (reply.trim()) {
-          await replyAsChat(messenger, reply);
+          await messenger.send(reply);
         }
 
         await messenger.send("Stopped.");
@@ -782,7 +768,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     }
 
     if (reply.trim()) {
-      await replyAsChat(messenger, reply);
+      await messenger.send(reply);
     } else if (!(postedQuestionnaire || earlyAck)) {
       await messenger.send("(empty reply)");
     }
@@ -806,7 +792,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     messageText: string | undefined
   ): Promise<boolean> {
     const orgContext = await prepareChannelOrgContext({
-      getSelectedOrgId: () => getOrgSelection(orgStore, channelOrgKey)?.orgId,
+      getSelectedOrgId: () => orgStore.get(channelOrgKey)?.orgId,
       listOrgs: () => client.listUserOrgs(),
       saveSelectedOrgId: async (orgId) => {
         orgStore.set(channelOrgKey, orgId);
@@ -853,10 +839,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     if (!arg) {
       await replyChunks(
         messenger,
-        formatOrgSelectionPrompt(
-          orgs,
-          getOrgSelection(orgStore, channelOrgKey)?.orgId
-        )
+        formatOrgSelectionPrompt(orgs, orgStore.get(channelOrgKey)?.orgId)
       );
       return;
     }
@@ -868,13 +851,12 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       return;
     }
 
-    const previousOrgId = getOrgSelection(orgStore, channelOrgKey)?.orgId;
+    const previousOrgId = orgStore.get(channelOrgKey)?.orgId;
     orgStore.set(channelOrgKey, picked.id);
     await orgStore.save();
     client.setOrgId(picked.id);
 
     if (previousOrgId && previousOrgId !== picked.id) {
-      pendingQuestionnaires.delete(conversationKey);
       sessionStore.delete(conversationKey);
       await sessionStore.save();
     }
@@ -890,7 +872,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     messenger: DiscordMessenger
   ): Promise<void> {
     const { orgs } = await client.listUserOrgs();
-    const currentOrgId = getOrgSelection(orgStore, channelOrgKey)?.orgId;
+    const currentOrgId = orgStore.get(channelOrgKey)?.orgId;
     const currentOrg = currentOrgId
       ? orgs.find((org) => org.id === currentOrgId)
       : undefined;
@@ -960,7 +942,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const { scope, profile: picked } = resolved;
 
     if (scope.orgId !== currentOrgId) {
-      pendingQuestionnaires.delete(conversationKey);
       orgStore.set(channelOrgKey, scope.orgId);
       await orgStore.save();
       client.setOrgId(scope.orgId);
@@ -1060,7 +1041,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     chatId: string,
     profileId?: string
   ): Promise<RemoteChatSession> {
-    pendingQuestionnaires.delete(chatId);
     const resolvedProfileId =
       profileId ?? (await resolveSessionProfileId(chatId));
     const session = await client.createSession("discord", {
@@ -1162,19 +1142,6 @@ function deriveThreadName(messageText: string): string {
   }
 
   return sliced;
-}
-
-function getOrgSelection(
-  orgStore: ChannelOrgStore,
-  channelOrgKey: string
-): { orgId: string } | undefined {
-  const record = orgStore.get(channelOrgKey);
-
-  if (!record) {
-    return;
-  }
-
-  return { orgId: record.orgId };
 }
 
 async function replyChunks(

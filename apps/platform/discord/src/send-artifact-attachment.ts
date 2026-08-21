@@ -6,11 +6,6 @@ import {
 } from "@nakama/core/discord-attachment";
 import { AttachmentBuilder, type TextBasedChannel } from "discord.js";
 
-export {
-  DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES,
-  isDiscordAttachableArtifact,
-} from "@nakama/core/discord-attachment";
-
 export interface SendArtifactAttachmentInput {
   bytes: Uint8Array;
   filename: string;
