@@ -58,6 +58,9 @@ function extractVersion(stdout: string, stderr: string): string | null {
   return output.split(/\r?\n/, 1)[0]?.trim() || null;
 }
 
+/** How long a timed-out child gets to honour SIGTERM before it is killed. */
+const SIGTERM_GRACE_MS = 2000;
+
 async function probeAgentBrowserVersion(): Promise<{
   installed: boolean;
   version: string | null;
@@ -85,6 +88,7 @@ async function probeAgentBrowserVersion(): Promise<{
 
     let stdout = "";
     let stderr = "";
+    let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     // Settings awaits this probe, so a CLI that never answers --version
     // would otherwise hold GET /v1/settings/agent-browser open forever.
@@ -94,6 +98,10 @@ async function probeAgentBrowserVersion(): Promise<{
     // on its PATH retry.
     const timeoutId = setTimeout(() => {
       child.kill("SIGTERM");
+      // A CLI that traps SIGTERM outlives the probe, and its open stdio
+      // pipes then keep this process alive too. Same escalation as
+      // probeHarnessVersion (#338).
+      killTimeoutId = setTimeout(() => child.kill("SIGKILL"), SIGTERM_GRACE_MS);
       resolve({ installed: false, missing: false, version: null });
     }, timeoutMs);
 
@@ -105,6 +113,7 @@ async function probeAgentBrowserVersion(): Promise<{
     });
     child.once("error", (error) => {
       clearTimeout(timeoutId);
+      clearTimeout(killTimeoutId);
       resolve({
         installed: false,
         missing: (error as NodeJS.ErrnoException).code === "ENOENT",
@@ -113,6 +122,7 @@ async function probeAgentBrowserVersion(): Promise<{
     });
     child.once("close", (code) => {
       clearTimeout(timeoutId);
+      clearTimeout(killTimeoutId);
       resolve({
         installed: code === 0,
         missing: false,
