@@ -24,13 +24,14 @@ export function OrgArchiveCard() {
     return null;
   }
 
-  const orgName = activeOrg.name;
+  const org = activeOrg;
+  const orgName = org.name;
 
   async function handleArchive() {
     setPending(true);
     setFormError(null);
     try {
-      await archiveOrg(activeOrg.id);
+      await archiveOrg(org.id);
       setConfirmOpen(false);
     } catch (error) {
       setFormError(formatError(error));
