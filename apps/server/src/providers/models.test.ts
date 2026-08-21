@@ -142,9 +142,69 @@ describe("resolveModel", () => {
       "accounts/fireworks/models/glm-5p2"
     );
   });
+
+  test("resolves MiniMax models from discovered custom models", () => {
+    const customModels = [
+      { default: true, id: "MiniMax-M3" },
+      { id: "MiniMax-M2.7" },
+      { id: "MiniMax-M2.5" },
+    ];
+
+    expect(resolveModel("minimax", "MiniMax-M2.7", customModels)).toBe(
+      "MiniMax-M2.7"
+    );
+    expect(getDefaultModel("minimax", customModels)).toBe("MiniMax-M3");
+    expect(getDefaultModel("minimax_cn", customModels)).toBe("MiniMax-M3");
+  });
+
+  test("falls back to instance default for unknown MiniMax ids", () => {
+    const customModels = [{ default: true, id: "MiniMax-M3" }];
+    expect(resolveModel("minimax_cn", "not-a-real-model", customModels)).toBe(
+      "MiniMax-M3"
+    );
+  });
+
+  test("resolves Zhipu GLM models from discovered custom models", () => {
+    const customModels = [
+      { default: true, id: "glm-5.2" },
+      { id: "glm-5.1" },
+      { id: "glm-4v" },
+    ];
+
+    expect(resolveModel("zhipu", "glm-5.1", customModels)).toBe("glm-5.1");
+    expect(getDefaultModel("zhipu", customModels)).toBe("glm-5.2");
+    expect(getDefaultModel("zhipu_cn", customModels)).toBe("glm-5.2");
+  });
+
+  test("falls back to instance default for unknown Zhipu ids", () => {
+    const customModels = [{ default: true, id: "glm-5.2" }];
+    expect(resolveModel("zhipu_cn", "not-a-real-model", customModels)).toBe(
+      "glm-5.2"
+    );
+  });
 });
 
 describe("modelSupportsVision", () => {
+  test("keeps MiniMax models opt-in only (discovered lists)", () => {
+    expect(modelSupportsVision("MiniMax-M3", "minimax")).toBe(false);
+
+    expect(
+      modelSupportsVision("MiniMax-VL", "minimax_cn", [
+        { id: "MiniMax-VL", supportsVision: true },
+      ])
+    ).toBe(true);
+  });
+
+  test("keeps Zhipu models opt-in only (GLM-4V flags via discovery)", () => {
+    expect(modelSupportsVision("glm-5.2", "zhipu")).toBe(false);
+
+    expect(
+      modelSupportsVision("glm-4v", "zhipu_cn", [
+        { id: "glm-4v", supportsVision: true },
+      ])
+    ).toBe(true);
+  });
+
   test("treats openai-compatible models as opt-in only", () => {
     expect(
       modelSupportsVision("qwen-vl", "openai_compatible", [{ id: "qwen-vl" }])

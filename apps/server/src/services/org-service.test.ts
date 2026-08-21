@@ -247,6 +247,58 @@ describe("OrgService", () => {
     });
   });
 
+  test("revokes all browser sessions when password changes", async () => {
+    const { orgService, databaseAdapter } = createOrgService();
+    const created = await orgService.createOrganization({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        phone: "+628123456789",
+      },
+      name: "Acme",
+      slug: "acme-revoke-sessions",
+    });
+
+    const userId = created.adminMember!.member.userId;
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+
+    await databaseAdapter.createBrowserSession({
+      createdAt: now,
+      csrfTokenHash: "csrf_a",
+      expiresAt,
+      id: "bs_a",
+      lastUsedAt: null,
+      revokedAt: null,
+      sessionTokenHash: "hash_a",
+      userId,
+    });
+    await databaseAdapter.createBrowserSession({
+      createdAt: now,
+      csrfTokenHash: "csrf_b",
+      expiresAt,
+      id: "bs_b",
+      lastUsedAt: null,
+      revokedAt: null,
+      sessionTokenHash: "hash_b",
+      userId,
+    });
+
+    await orgService.changePassword({
+      currentPassword: created.adminMember!.temporaryPassword!,
+      newPassword: "new-password-123",
+      userId,
+    });
+
+    const sessionA =
+      await databaseAdapter.getBrowserSessionBySessionTokenHash("hash_a");
+    const sessionB =
+      await databaseAdapter.getBrowserSessionBySessionTokenHash("hash_b");
+
+    expect(sessionA?.revokedAt).toBeTruthy();
+    expect(sessionB?.revokedAt).toBeTruthy();
+  });
+
   test("updates own profile email phone and name", async () => {
     const { orgService } = createOrgService();
     const created = await orgService.createOrganization({
@@ -442,5 +494,220 @@ describe("OrgService", () => {
       message: "Cannot change role of the last org admin.",
       status: 409,
     });
+  });
+
+  test("archives an org and hides it from membership lists", async () => {
+    const { orgService, authService, databaseAdapter } = createOrgService();
+    const bootstrapped = await orgService.bootstrapInitialSetup({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        passwordHash: await authService.hashPassword("password123"),
+        phone: "",
+      },
+      organization: { name: "Acme", slug: "acme-archive" },
+    });
+    const second = await orgService.createOrganization(
+      { name: "Beta", slug: "beta-archive" },
+      bootstrapped.user.id
+    );
+
+    const archived = await orgService.archiveOrganization(
+      bootstrapped.organization.id,
+      bootstrapped.user.id
+    );
+
+    expect(archived.archivedAt).toBeTruthy();
+    const listed = await orgService.listUserOrgs(bootstrapped.user.id);
+    expect(listed.orgs.map((org) => org.id)).toEqual([second.organization.id]);
+
+    const stored = await databaseAdapter.getOrganizationById(
+      bootstrapped.organization.id
+    );
+    expect(stored?.archivedAt).toBeTruthy();
+
+    await expect(
+      orgService.setActiveOrg({
+        orgId: bootstrapped.organization.id,
+        userId: bootstrapped.user.id,
+      })
+    ).rejects.toMatchObject({ status: 404 });
+
+    const resolved = await orgService.resolveActiveOrgId(
+      bootstrapped.user.id,
+      undefined,
+      bootstrapped.organization.id
+    );
+    expect(resolved).toBe(second.organization.id);
+  });
+
+  test("clears a stale session org when the user has no remaining memberships", async () => {
+    const { orgService, authService, databaseAdapter } = createOrgService();
+    const bootstrapped = await orgService.bootstrapInitialSetup({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        passwordHash: await authService.hashPassword("password123"),
+        phone: "",
+      },
+      organization: { name: "Acme", slug: "acme-session-clear" },
+    });
+    await databaseAdapter.createBrowserSession({
+      activeOrgId: bootstrapped.organization.id,
+      createdAt: new Date().toISOString(),
+      csrfTokenHash: "csrf",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      id: "session_stale",
+      lastUsedAt: null,
+      revokedAt: null,
+      sessionTokenHash: "token_stale",
+      userId: bootstrapped.user.id,
+    });
+    await databaseAdapter.upsertOrganization({
+      ...(await databaseAdapter.getOrganizationById(
+        bootstrapped.organization.id
+      ))!,
+      archivedAt: new Date().toISOString(),
+    });
+
+    const resolved = await orgService.resolveActiveOrgId(
+      bootstrapped.user.id,
+      "session_stale",
+      bootstrapped.organization.id
+    );
+    expect(resolved).toBeNull();
+
+    const session =
+      await databaseAdapter.getBrowserSessionBySessionTokenHash("token_stale");
+    expect(session?.activeOrgId).toBeNull();
+  });
+
+  test("refuses to archive the actor's last remaining membership", async () => {
+    const { orgService, authService } = createOrgService();
+    const bootstrapped = await orgService.bootstrapInitialSetup({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        passwordHash: await authService.hashPassword("password123"),
+        phone: "",
+      },
+      organization: { name: "Acme", slug: "acme-last-membership" },
+    });
+    await orgService.createOrganization({
+      name: "Other",
+      slug: "other-last-membership",
+    });
+
+    await expect(
+      orgService.archiveOrganization(
+        bootstrapped.organization.id,
+        bootstrapped.user.id
+      )
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  test("refuses updates on an archived org", async () => {
+    const { orgService, authService } = createOrgService();
+    const bootstrapped = await orgService.bootstrapInitialSetup({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        passwordHash: await authService.hashPassword("password123"),
+        phone: "",
+      },
+      organization: { name: "Acme", slug: "acme-update-archive" },
+    });
+    await orgService.createOrganization(
+      { name: "Beta", slug: "beta-update-archive" },
+      bootstrapped.user.id
+    );
+    await orgService.archiveOrganization(
+      bootstrapped.organization.id,
+      bootstrapped.user.id
+    );
+
+    await expect(
+      orgService.updateOrganization(bootstrapped.organization.id, {
+        name: "Renamed",
+      })
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  test("refuses to archive the last active org", async () => {
+    const { orgService } = createOrgService();
+    const created = await orgService.createOrganization({
+      name: "Only",
+      slug: "only-org",
+    });
+
+    await expect(
+      orgService.archiveOrganization(created.organization.id)
+    ).rejects.toMatchObject({ status: 409 });
+
+    const stillListed = await orgService.listOrganizations();
+    expect(stillListed).toHaveLength(1);
+    expect(stillListed[0]?.archivedAt).toBeNull();
+  });
+
+  test("refuses a second archive and unknown id", async () => {
+    const { orgService, authService } = createOrgService();
+    const bootstrapped = await orgService.bootstrapInitialSetup({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        passwordHash: await authService.hashPassword("password123"),
+        phone: "",
+      },
+      organization: { name: "Acme", slug: "acme-twice" },
+    });
+    await orgService.createOrganization(
+      { name: "Beta", slug: "beta-twice" },
+      bootstrapped.user.id
+    );
+    await orgService.archiveOrganization(
+      bootstrapped.organization.id,
+      bootstrapped.user.id
+    );
+
+    await expect(
+      orgService.archiveOrganization(
+        bootstrapped.organization.id,
+        bootstrapped.user.id
+      )
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      orgService.archiveOrganization("org_missing")
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  test("rejects invite accept for an archived org", async () => {
+    const { orgService, authService } = createOrgService();
+    const bootstrapped = await orgService.bootstrapInitialSetup({
+      admin: {
+        email: "admin@acme.com",
+        name: "Acme Admin",
+        passwordHash: await authService.hashPassword("password123"),
+        phone: "",
+      },
+      organization: { name: "Acme", slug: "acme-invite-archive" },
+    });
+    await orgService.createOrganization(
+      { name: "Beta", slug: "beta-invite-archive" },
+      bootstrapped.user.id
+    );
+    const invite = await orgService.createInvite({
+      email: "guest@acme.com",
+      invitedByUserId: bootstrapped.user.id,
+      orgId: bootstrapped.organization.id,
+      role: "member",
+    });
+    await orgService.archiveOrganization(
+      bootstrapped.organization.id,
+      bootstrapped.user.id
+    );
+
+    await expect(
+      orgService.acceptInvite({ password: "secret123", token: invite.token })
+    ).rejects.toMatchObject({ status: 404 });
   });
 });

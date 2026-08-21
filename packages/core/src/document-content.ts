@@ -73,6 +73,8 @@ const NATIVE_DOCUMENT_MEDIA_TYPES: Record<ProviderName, ReadonlySet<string>> = {
     "text/csv",
     DOCX_MEDIA_TYPE,
   ]),
+  minimax: new Set<string>(),
+  minimax_cn: new Set<string>(),
   ollama: new Set<string>(),
   openai: new Set([
     "application/pdf",
@@ -88,6 +90,9 @@ const NATIVE_DOCUMENT_MEDIA_TYPES: Record<ProviderName, ReadonlySet<string>> = {
     "text/csv",
     DOCX_MEDIA_TYPE,
   ]),
+  xai: new Set<string>(),
+  zhipu: new Set<string>(),
+  zhipu_cn: new Set<string>(),
 };
 
 export function registerDocumentTextParser(

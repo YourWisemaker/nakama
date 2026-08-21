@@ -21,7 +21,6 @@ import {
 } from "../org-guards";
 import {
   errorResponse,
-  getRequestAuth,
   json,
   parseChannel,
   readJson,
@@ -341,7 +340,7 @@ export function registerSessionRoutes(
   );
 
   app.post("/v1/sessions", async (c) => {
-    const auth = getRequestAuth(c);
+    const auth = requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const body = await readJson<CreateSessionRequest>(c.req.raw);
     const channel = parseChannel(body.channel);
@@ -374,6 +373,7 @@ export function registerSessionRoutes(
   });
 
   app.delete("/v1/sessions/:sessionId", async (c) => {
+    requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const sessionId = decodeURIComponent(c.req.param("sessionId"));
     const purge = c.req.query("purge") === "true";
@@ -389,6 +389,7 @@ export function registerSessionRoutes(
   });
 
   app.post("/v1/sessions/:sessionId/compact", async (c) => {
+    requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const sessionId = decodeURIComponent(c.req.param("sessionId"));
     const body = await readJson<CompactSessionRequest>(c.req.raw).catch(
@@ -466,6 +467,7 @@ export function registerSessionRoutes(
   });
 
   app.post("/v1/sessions/:sessionId/branch", async (c) => {
+    requireNotViewerFromContext(c);
     try {
       const orgId = requireActiveOrgIdFromContext(c);
       const sessionId = decodeURIComponent(c.req.param("sessionId"));

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { parseProviderName, resolveProvider } from "./provider-resolution";
+import {
+  apiKeyEnvVarForProvider,
+  defaultDiscoveryBaseUrl,
+  isDiscoveryModelProvider,
+  parseProviderName,
+  resolveProvider,
+} from "./provider-resolution";
 
 describe("parseProviderName", () => {
   test("accepts known providers", () => {
@@ -11,6 +17,11 @@ describe("parseProviderName", () => {
     expect(parseProviderName("deepseek")).toBe("deepseek");
     expect(parseProviderName("cerebras")).toBe("cerebras");
     expect(parseProviderName("fireworks")).toBe("fireworks");
+    expect(parseProviderName("minimax")).toBe("minimax");
+    expect(parseProviderName("minimax_cn")).toBe("minimax_cn");
+    expect(parseProviderName("zhipu")).toBe("zhipu");
+    expect(parseProviderName("zhipu_cn")).toBe("zhipu_cn");
+    expect(parseProviderName("xai")).toBe("xai");
   });
 
   test("rejects unknown values", () => {
@@ -100,5 +111,57 @@ describe("resolveProvider fireworks", () => {
     });
 
     expect(provider).toBe("fireworks");
+  });
+});
+
+describe("apiKeyEnvVarForProvider", () => {
+  test("maps providers to their env keys", () => {
+    expect(apiKeyEnvVarForProvider("minimax")).toBe("MINIMAX_API_KEY");
+    expect(apiKeyEnvVarForProvider("minimax_cn")).toBe("MINIMAX_CN_API_KEY");
+    expect(apiKeyEnvVarForProvider("xai")).toBe("XAI_API_KEY");
+  });
+
+  test("maps Zhipu regions to distinct env keys", () => {
+    expect(apiKeyEnvVarForProvider("zhipu")).toBe("ZHIPU_API_KEY");
+    expect(apiKeyEnvVarForProvider("zhipu_cn")).toBe("ZHIPU_CN_API_KEY");
+  });
+});
+
+describe("isDiscoveryModelProvider", () => {
+  test("includes providers whose models are discovered from /models", () => {
+    expect(isDiscoveryModelProvider("openai_compatible")).toBe(true);
+    expect(isDiscoveryModelProvider("minimax")).toBe(true);
+    expect(isDiscoveryModelProvider("minimax_cn")).toBe(true);
+    expect(isDiscoveryModelProvider("zhipu")).toBe(true);
+    expect(isDiscoveryModelProvider("zhipu_cn")).toBe(true);
+    expect(isDiscoveryModelProvider("xai")).toBe(true);
+  });
+
+  test("excludes catalog providers", () => {
+    expect(isDiscoveryModelProvider("deepseek")).toBe(false);
+    expect(isDiscoveryModelProvider("openai")).toBe(false);
+    expect(isDiscoveryModelProvider("opencode_go")).toBe(false);
+  });
+});
+
+describe("defaultDiscoveryBaseUrl", () => {
+  test("routes each region-split family to its platform URL", () => {
+    expect(defaultDiscoveryBaseUrl("minimax")).toBe(
+      "https://api.minimax.io/v1"
+    );
+    expect(defaultDiscoveryBaseUrl("minimax_cn")).toBe(
+      "https://api.minimaxi.com/v1"
+    );
+    expect(defaultDiscoveryBaseUrl("zhipu")).toBe(
+      "https://api.z.ai/api/paas/v4"
+    );
+    expect(defaultDiscoveryBaseUrl("zhipu_cn")).toBe(
+      "https://open.bigmodel.cn/api/paas/v4"
+    );
+  });
+
+  test("returns null when the family has no fixed default", () => {
+    expect(defaultDiscoveryBaseUrl("openai_compatible")).toBeNull();
+    expect(defaultDiscoveryBaseUrl("deepseek")).toBeNull();
   });
 });

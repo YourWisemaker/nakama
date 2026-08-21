@@ -34,6 +34,7 @@ const SUPPORTED_TOOL_HANDLER_TYPES = new Set([
   "builtin",
   "bash",
   "javascript",
+  "python",
   "sub_agent",
   "generate_image",
   "session",

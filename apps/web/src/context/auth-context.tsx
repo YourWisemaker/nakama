@@ -16,6 +16,10 @@ import {
   type AuthContextValue,
 } from "@/context/auth-context-shared";
 import { client } from "@/lib/client";
+import {
+  canArchiveOrganization,
+  nextOrgIdAfterArchive,
+} from "@/lib/org-archive";
 import { queryClient } from "@/lib/query-client";
 
 function refreshAuthenticatedQueries(): void {
@@ -96,7 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await client.logout();
+    try {
+      await client.logout();
+    } catch {
+      // Session may already be revoked (e.g. after password change clears
+      // cookies and revokes every browser session server-side).
+    }
     client.setOrgId(null);
     setUser(null);
     setOrgs([]);
@@ -107,6 +116,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(nextUser);
     refreshAuthenticatedQueries();
   }, []);
+
+  const archiveOrg = useCallback(
+    async (orgId: string) => {
+      if (!canArchiveOrganization(user?.isPlatformAdmin === true)) {
+        throw new Error("Only platform admins can delete organizations.");
+      }
+
+      await client.archivePlatformOrganization(orgId);
+      const { orgs: nextOrgs } = await client.listUserOrgs();
+      const nextOrgId = nextOrgIdAfterArchive(nextOrgs, orgId);
+      setOrgs(nextOrgs);
+      if (nextOrgId) {
+        setUser(await client.setActiveOrg(nextOrgId));
+      } else {
+        client.setOrgId(null);
+      }
+      refreshAuthenticatedQueries();
+    },
+    [user?.isPlatformAdmin]
+  );
 
   const createOrg = useCallback(
     async (input: { name: string; slug: string }) => {
@@ -153,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       activeOrg,
+      archiveOrg,
       createOrg,
       isAuthenticated: user !== null,
       isLoading,
@@ -174,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       switchOrg,
+      archiveOrg,
       createOrg,
       updateOrg,
       refreshSession,

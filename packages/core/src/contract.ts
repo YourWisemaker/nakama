@@ -396,6 +396,7 @@ export type OrgRole = "admin" | "member" | "viewer";
 export type ChannelType = "telegram" | "whatsapp" | "discord";
 
 export interface OrganizationSummary {
+  archivedAt?: string | null;
   createdAt: string;
   id: string;
   name: string;
@@ -1700,7 +1701,7 @@ export interface ToolResponse {
 
 export interface ToolSourceResponse {
   content: string;
-  language: "javascript" | "typescript";
+  language: "javascript" | "python" | "typescript";
   path: string;
 }
 
@@ -1938,7 +1939,12 @@ export type ProviderName =
   | "ollama"
   | "openai_compatible"
   | "opencode_go"
-  | "cloudflare";
+  | "cloudflare"
+  | "minimax"
+  | "minimax_cn"
+  | "zhipu"
+  | "zhipu_cn"
+  | "xai";
 
 export type OllamaHostMode = "local" | "cloud";
 

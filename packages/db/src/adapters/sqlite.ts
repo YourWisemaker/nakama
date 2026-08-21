@@ -308,6 +308,7 @@ interface BrowserSessionRow {
 }
 
 interface OrganizationRow {
+  archived_at: string | null;
   created_at: string;
   id: string;
   name: string;
@@ -1207,6 +1208,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SET revoked_at = ?
     WHERE session_token_hash = ? AND revoked_at IS NULL
   `);
+  const revokeBrowserSessionsForUserStmt = db.prepare(`
+    UPDATE browser_sessions
+    SET revoked_at = ?
+    WHERE user_id = ? AND revoked_at IS NULL
+  `);
   const updateBrowserSessionLastUsedAtStmt = db.prepare(`
     UPDATE browser_sessions
     SET last_used_at = ?
@@ -1217,9 +1223,16 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SET active_org_id = ?
     WHERE id = ?
   `);
+  const tryMarkOrganizationArchivedStmt = db.prepare(`
+    UPDATE organizations
+    SET archived_at = ?, updated_at = ?
+    WHERE id = ?
+      AND archived_at IS NULL
+      AND (SELECT COUNT(*) FROM organizations WHERE archived_at IS NULL) > 1
+  `);
   const upsertOrganizationStmt = db.prepare(`
-    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = excluded.slug,
@@ -1227,21 +1240,22 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       skills_post_turn_review = excluded.skills_post_turn_review,
       skills_curator_enabled = excluded.skills_curator_enabled,
       skills_curator_last_run_at = excluded.skills_curator_last_run_at,
+      archived_at = excluded.archived_at,
       updated_at = excluded.updated_at
   `);
   const listOrganizationsStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
     FROM organizations
     ORDER BY name ASC
   `);
   const getOrganizationBySlugStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
     FROM organizations
     WHERE slug = ?
     LIMIT 1
   `);
   const getOrganizationByIdStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
     FROM organizations
     WHERE id = ?
     LIMIT 1
@@ -1504,6 +1518,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       o.skills_post_turn_review,
       o.skills_curator_enabled,
       o.skills_curator_last_run_at,
+      o.archived_at,
       o.created_at,
       o.updated_at,
       om.role,
@@ -1511,6 +1526,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     FROM org_members om
     INNER JOIN organizations o ON o.id = om.org_id
     WHERE om.user_id = ?
+      AND o.archived_at IS NULL
     ORDER BY o.name ASC
   `);
   const deleteOrgMemberStmt = db.prepare(`
@@ -2510,33 +2526,14 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
 
     async listUserOrganizations(userId) {
       return listUserOrganizationsStmt.all(userId).map((row) => {
-        const record = row as {
-          id: string;
-          name: string;
-          slug: string;
-          skills_write_approval: number;
-          skills_post_turn_review: number;
-          skills_curator_enabled: number;
-          skills_curator_last_run_at: string | null;
-          created_at: string;
-          updated_at: string;
-          role: string;
+        const record = row as OrganizationRow & {
           joined_at: string;
+          role: string;
         };
 
         return {
           joinedAt: record.joined_at,
-          organization: {
-            createdAt: record.created_at,
-            id: record.id,
-            name: record.name,
-            skillsCuratorEnabled: record.skills_curator_enabled !== 0,
-            skillsCuratorLastRunAt: record.skills_curator_last_run_at,
-            skillsPostTurnReview: record.skills_post_turn_review !== 0,
-            skillsWriteApproval: record.skills_write_approval !== 0,
-            slug: record.slug,
-            updatedAt: record.updated_at,
-          },
+          organization: toOrganizationRecord(record),
           role: record.role as StoredUserOrganizationRecord["role"],
         };
       });
@@ -2592,8 +2589,22 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       return result.changes > 0;
     },
 
+    async revokeBrowserSessionsForUser(userId, revokedAt) {
+      const result = revokeBrowserSessionsForUserStmt.run(revokedAt, userId);
+      return result.changes;
+    },
+
     async setUserContext(orgId, userId, content, _updatedAt) {
       setUserContextStmt.run(content, orgId, userId);
+    },
+
+    async tryMarkOrganizationArchived(orgId, archivedAt) {
+      const result = tryMarkOrganizationArchivedStmt.run(
+        archivedAt,
+        archivedAt,
+        orgId
+      );
+      return result.changes > 0;
     },
 
     async unassignMcpServerFromProfile(profileId, serverId) {
@@ -2804,6 +2815,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.skillsPostTurnReview ? 1 : 0,
         record.skillsCuratorEnabled ? 1 : 0,
         record.skillsCuratorLastRunAt ?? null,
+        record.archivedAt ?? null,
         record.createdAt,
         record.updatedAt
       );
@@ -3487,6 +3499,7 @@ function toUserRecord(row: UserRow): StoredUserRecord {
 
 function toOrganizationRecord(row: OrganizationRow): StoredOrganizationRecord {
   return {
+    archivedAt: row.archived_at,
     createdAt: row.created_at,
     id: row.id,
     name: row.name,

@@ -15,6 +15,17 @@ const tinyPngBase64 =
 
 const ORG_ID = "org_test";
 
+const PYTHON_ECHO_TOOL = `import json
+import sys
+
+def run(input, context):
+    return {"echoed": input.get("message")}
+
+if __name__ == "__main__":
+    payload = json.loads(sys.stdin.read() or "{}")
+    sys.stdout.write(json.dumps(run(payload, {})))
+`;
+
 describe("profile service createTool", () => {
   let tempConfigDir = "";
 
@@ -58,7 +69,102 @@ describe("profile service createTool", () => {
     expect(tool.handlerType).toBe("javascript");
   });
 
-  test("rejects non-javascript handler types", async () => {
+  test("creates a python tool when handlerType is python", async () => {
+    tempConfigDir = await mkdtemp(
+      path.join(os.tmpdir(), "nakama-profile-tool-")
+    );
+    process.env.NAKAMA_CONFIG_DIR = tempConfigDir;
+    const toolsDir = path.join(tempConfigDir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+
+    await writeFile(path.join(toolsDir, "echo.py"), PYTHON_ECHO_TOOL);
+
+    const service = new ProfileService(createInMemoryDatabaseAdapter());
+    const tool = await service.createTool({
+      description: "Echo input",
+      handlerConfig: { modulePath: "echo.py" },
+      handlerType: "python",
+      name: "echo_py",
+    });
+
+    expect(tool.handlerType).toBe("python");
+  });
+
+  test("persists handlerConfig.parameters for python tools", async () => {
+    tempConfigDir = await mkdtemp(
+      path.join(os.tmpdir(), "nakama-profile-tool-")
+    );
+    process.env.NAKAMA_CONFIG_DIR = tempConfigDir;
+    const toolsDir = path.join(tempConfigDir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+
+    await writeFile(path.join(toolsDir, "echo.py"), PYTHON_ECHO_TOOL);
+
+    const parameters = {
+      properties: { message: { type: "string" } },
+      required: ["message"],
+      type: "object",
+    };
+    const service = new ProfileService(createInMemoryDatabaseAdapter());
+    const tool = await service.createTool({
+      description: "Echo input",
+      handlerConfig: { modulePath: "echo.py", parameters },
+      handlerType: "python",
+      name: "echo_py",
+    });
+
+    expect(tool.handlerConfig).toEqual({ modulePath: "echo.py", parameters });
+    expect(tool.parameters).toEqual(parameters);
+
+    const stored = await service.getTool(tool.id);
+    expect(stored.tool.handlerConfig).toEqual({
+      modulePath: "echo.py",
+      parameters,
+    });
+    expect(stored.tool.parameters).toEqual(parameters);
+  });
+
+  test("creates a python tool without parameters using a permissive schema", async () => {
+    tempConfigDir = await mkdtemp(
+      path.join(os.tmpdir(), "nakama-profile-tool-")
+    );
+    process.env.NAKAMA_CONFIG_DIR = tempConfigDir;
+    const toolsDir = path.join(tempConfigDir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+
+    await writeFile(path.join(toolsDir, "echo.py"), PYTHON_ECHO_TOOL);
+
+    const service = new ProfileService(createInMemoryDatabaseAdapter());
+    const tool = await service.createTool({
+      description: "Echo input",
+      handlerConfig: { modulePath: "echo.py" },
+      handlerType: "python",
+      name: "echo_py",
+    });
+
+    expect(tool.handlerConfig).toEqual({ modulePath: "echo.py" });
+    expect(tool.parameters).toEqual({
+      additionalProperties: true,
+      type: "object",
+    });
+  });
+
+  test("rejects non-object handlerConfig.parameters", async () => {
+    const service = new ProfileService(createInMemoryDatabaseAdapter());
+
+    for (const parameters of [["message"], "message", null]) {
+      await expect(
+        service.createTool({
+          description: "Bad params",
+          handlerConfig: { modulePath: "echo.py", parameters },
+          handlerType: "python",
+          name: "bad_params",
+        })
+      ).rejects.toThrow();
+    }
+  });
+
+  test("rejects unsupported handler types", async () => {
     const service = new ProfileService(createInMemoryDatabaseAdapter());
 
     await expect(
@@ -68,7 +174,7 @@ describe("profile service createTool", () => {
         handlerType: "custom",
         name: "bad-tool",
       })
-    ).rejects.toThrow(/only javascript tools can be created/i);
+    ).rejects.toThrow(/javascript or python tools can be created/i);
   });
 });
 

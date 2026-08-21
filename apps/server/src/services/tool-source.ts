@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import type { ToolSourceResponse } from "@nakama/core";
 import { NakamaApiError, pathExists } from "@nakama/core";
 import type { StoredToolRecord } from "@nakama/db";
-import { resolveJavascriptModulePath } from "./javascript-tool-loader";
+import { getCustomToolHandler } from "./custom-tool-handlers";
+import { readHandlerModulePath } from "./custom-tool-shared";
 
 const require = createRequire(import.meta.url);
 const corePackageRoot = path.dirname(
@@ -73,8 +74,8 @@ const SESSION_SOURCE = {
 export async function readToolSource(
   record: StoredToolRecord
 ): Promise<ToolSourceResponse> {
-  if (record.handlerType === "javascript") {
-    return readJavascriptToolSource(record);
+  if (getCustomToolHandler(record.handlerType)) {
+    return readCustomToolSource(record);
   }
 
   if (record.handlerType === "bash") {
@@ -112,10 +113,19 @@ export async function readToolSource(
   );
 }
 
-async function readJavascriptToolSource(
+async function readCustomToolSource(
   record: StoredToolRecord
 ): Promise<ToolSourceResponse> {
-  const modulePath = readJavascriptModulePath(record.handlerConfig);
+  const handler = getCustomToolHandler(record.handlerType);
+
+  if (!handler) {
+    throw new NakamaApiError(
+      `Unsupported tool handler type: ${record.handlerType}.`,
+      404
+    );
+  }
+
+  const modulePath = readHandlerModulePath(record.handlerConfig);
 
   if (!modulePath) {
     throw new NakamaApiError(
@@ -127,7 +137,7 @@ async function readJavascriptToolSource(
   let resolvedPath: string;
 
   try {
-    resolvedPath = resolveJavascriptModulePath(modulePath);
+    resolvedPath = handler.resolveModulePath(modulePath);
   } catch (error) {
     throw new NakamaApiError(
       error instanceof Error ? error.message : String(error),
@@ -143,7 +153,7 @@ async function readJavascriptToolSource(
 
   return {
     content,
-    language: "javascript",
+    language: handler.language,
     path: modulePath,
   };
 }
@@ -166,18 +176,4 @@ async function readFixedToolSource(
     language,
     path: source.displayPath,
   };
-}
-
-function readJavascriptModulePath(handlerConfig: unknown): string | null {
-  if (typeof handlerConfig !== "object" || handlerConfig === null) {
-    return null;
-  }
-
-  const modulePath = (handlerConfig as Record<string, unknown>).modulePath;
-
-  if (typeof modulePath !== "string" || !modulePath.trim()) {
-    return null;
-  }
-
-  return modulePath.trim();
 }

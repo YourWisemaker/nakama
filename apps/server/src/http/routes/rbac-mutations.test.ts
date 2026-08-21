@@ -21,9 +21,15 @@ function createApp() {
 
   const result = createMinimalHonoApp({
     agent: {
+      branchSession: record("agent.branchSession"),
+      clearSession: record("agent.clearSession"),
+      compactSession: record("agent.compactSession"),
+      createSession: record("agent.createSession"),
       draftAutomation: record("agent.draftAutomation"),
       draftTaskPrompt: record("agent.draftTaskPrompt"),
+      generateImage: record("agent.generateImage"),
       listProfiles: async () => ({ profiles: [{ id: "default" }] }),
+      purgeSession: record("agent.purgeSession"),
       runAutomation: async () => {
         calls.push("agent.runAutomation");
         return { skipped: false };
@@ -32,6 +38,7 @@ function createApp() {
         calls.push("agent.runTask");
         return { skipped: false };
       },
+      transcribeAudio: record("agent.transcribeAudio"),
     },
     automationService: {
       create: record("automationService.create"),
@@ -109,9 +116,32 @@ const MUTATING_ROUTES: Array<{ method: string; path: string; body?: unknown }> =
     { body: { title: "x" }, method: "PUT", path: "/v1/tasks/t1" },
     { method: "DELETE", path: "/v1/tasks/t1" },
     { method: "POST", path: "/v1/tasks/t1/run" },
+    {
+      body: { channel: "web", profileId: "default" },
+      method: "POST",
+      path: "/v1/sessions",
+    },
+    { method: "DELETE", path: "/v1/sessions/s1" },
+    { method: "DELETE", path: "/v1/sessions/s1?purge=true" },
+    { body: { force: true }, method: "POST", path: "/v1/sessions/s1/compact" },
+    {
+      body: { messageIndex: 0 },
+      method: "POST",
+      path: "/v1/sessions/s1/branch",
+    },
+    {
+      body: { audioBase64: "YQ==", mimeType: "audio/wav" },
+      method: "POST",
+      path: "/v1/audio/transcribe",
+    },
+    {
+      body: { prompt: "a cat" },
+      method: "POST",
+      path: "/v1/images/generate",
+    },
   ];
 
-describe("RBAC: viewer cannot reach state-changing automation/task routes", () => {
+describe("RBAC: viewer cannot reach state-changing automation/task/session routes", () => {
   for (const route of MUTATING_ROUTES) {
     test(`${route.method} ${route.path} -> 403 for viewer`, async () => {
       const { app, databaseAdapter, authService, calls } = createApp();

@@ -18,7 +18,10 @@ import {
   resolveRequestClientOrigin,
 } from "../../services/composio-callback-url";
 import type { ServerOptions } from "../context";
-import { requirePlatformAdminFromContext } from "../org-guards";
+import {
+  requirePlatformAdmin,
+  requirePlatformAdminFromContext,
+} from "../org-guards";
 import {
   assertBrowserCsrf,
   authenticateRequest,
@@ -558,7 +561,9 @@ export function registerAuthRoutes(app: HonoApp, options: ServerOptions): void {
       userId: auth.user.id,
     });
 
-    return json({ ok: true });
+    const response = c.json({ ok: true }, 200);
+    clearBrowserSessionCookies(response.headers);
+    return response;
   });
 
   app.openAPIRegistry.registerPath(acceptInviteRoute);
@@ -611,6 +616,7 @@ export function registerAuthRoutes(app: HonoApp, options: ServerOptions): void {
       );
     }
 
+    requirePlatformAdmin(auth);
     assertBrowserCsrf(c.req.raw, auth, authService);
 
     try {

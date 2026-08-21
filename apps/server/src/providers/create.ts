@@ -8,6 +8,7 @@ import {
   readEnvValue,
   type UserConfig,
 } from "@nakama/core";
+import { defaultDiscoveryBaseUrl } from "@nakama/core/discovery-providers";
 import { resolveDefaultModelForInstance } from "../services/provider-instance-helpers";
 import { createAnthropicProvider } from "./anthropic";
 import { createCerebrasProvider } from "./cerebras";
@@ -23,6 +24,7 @@ import { createOpenCodeGoProvider } from "./opencode-go";
 import { createOpenRouterProvider } from "./openrouter";
 
 const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+const DEFAULT_XAI_BASE_URL = "https://api.x.ai/v1";
 
 export interface CreateProviderOptions {
   apiKey: string;
@@ -39,6 +41,8 @@ function createProvider(options: CreateProviderOptions): ProviderClient {
   );
 
   const baseUrlOverride = options.instance?.baseUrl?.trim();
+  const discoveryBaseUrl =
+    defaultDiscoveryBaseUrl(options.provider) ?? undefined;
 
   switch (options.provider) {
     case "openai":
@@ -72,6 +76,23 @@ function createProvider(options: CreateProviderOptions): ProviderClient {
         baseUrl: baseUrlOverride ?? DEFAULT_DEEPSEEK_BASE_URL,
         model,
         providerName: "deepseek",
+      });
+    case "minimax":
+    case "minimax_cn":
+    case "zhipu":
+    case "zhipu_cn":
+      return createOpenAIProvider({
+        apiKey: options.apiKey,
+        baseUrl: baseUrlOverride ?? discoveryBaseUrl,
+        model,
+        providerName: options.provider,
+      });
+    case "xai":
+      return createOpenAIProvider({
+        apiKey: options.apiKey,
+        baseUrl: baseUrlOverride ?? DEFAULT_XAI_BASE_URL,
+        model,
+        providerName: "xai",
       });
     case "opencode_go":
       return createOpenCodeGoProvider({
