@@ -3,7 +3,7 @@ import {
   buildCodingAgentCommandTemplate,
   formatCodingAgentCommandContext,
 } from "./coding-agent-command";
-import { makeAnthropicProvider } from "./coding-agent-fixtures";
+import { makeAnthropicProvider } from "./coding-agent-test-fixtures";
 
 const anthropicUserConfig = {
   defaultProviderId: "prov_anthropic",

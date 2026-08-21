@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  activeAnthropicRouting,
-  inactiveRouting,
-} from "./coding-agent-fixtures";
-import {
   buildClaudeCodeSpawnEnv,
   buildCodexSpawnEnv,
   buildPiSpawnEnv,
@@ -12,6 +8,10 @@ import {
   normalizeCodingAgentModel,
   redactSpawnEnvForPrompt,
 } from "./coding-agent-spawn-env";
+import {
+  activeAnthropicRouting,
+  inactiveRouting,
+} from "./coding-agent-test-fixtures";
 
 describe("coding-agent spawn env", () => {
   test("normalizes profile model ids", () => {

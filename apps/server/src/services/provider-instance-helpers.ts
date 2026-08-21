@@ -6,12 +6,14 @@ import {
   findProviderInstance,
   isOllamaCloudInstance,
   isValidBaseUrl,
+  NakamaApiError,
   normalizeBaseUrl,
   normalizeProviderInstanceLabel,
   type OllamaHostMode,
   ollamaRequiresApiKey,
   type ProviderInstance,
   resolveOllamaHostMode,
+  type UserConfig,
   validateCustomModels,
   validateDisplayName,
   validateProviderInstanceLabel,
@@ -445,6 +447,36 @@ export function extractStoredModelId(
   }
 
   return decodeStoredModelSelection(trimmed)?.modelId ?? trimmed;
+}
+
+/** Decode `providerId::modelId` and resolve the provider, or null if unset. */
+export function resolveConfiguredModelInstance(
+  userConfig: UserConfig | null | undefined,
+  storedModel: string | null | undefined,
+  errors: { invalid: string; missingProvider: string }
+): { instance: ProviderInstance; modelId: string } | null {
+  const trimmed = storedModel?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const decoded = decodeStoredModelSelection(trimmed);
+
+  if (!decoded || decoded.providerId === "__unknown__") {
+    throw new NakamaApiError(errors.invalid, 400);
+  }
+
+  const instance = findProviderInstance(
+    { providers: userConfig?.providers ?? [] },
+    decoded.providerId
+  );
+
+  if (!instance) {
+    throw new NakamaApiError(errors.missingProvider, 400);
+  }
+
+  return { instance, modelId: decoded.modelId.trim() };
 }
 
 export function resolveProfileProviderSelection(options: {

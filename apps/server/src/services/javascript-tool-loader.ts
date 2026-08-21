@@ -1,17 +1,12 @@
-import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { JsonSchema, ToolContext, ToolDefinition } from "@nakama/core";
-import {
-  getCustomToolsDir,
-  pathExists,
-  permissiveObjectSchema,
-} from "@nakama/core";
+import { pathExists, permissiveObjectSchema } from "@nakama/core";
 import type { StoredToolRecord } from "@nakama/db";
 import {
   createErrorTool,
   isJsonSchema,
-  isPathInsideDirectory,
   readHandlerConfig,
+  resolveCustomToolModulePath,
 } from "./custom-tool-shared";
 
 const moduleCache = new Map<string, JavascriptToolModule>();
@@ -87,16 +82,7 @@ export async function validateJavascriptToolModule(
 }
 
 export function resolveJavascriptModulePath(modulePath: string): string {
-  const toolsDir = path.resolve(getCustomToolsDir());
-  const resolved = path.isAbsolute(modulePath)
-    ? path.resolve(modulePath)
-    : path.resolve(toolsDir, modulePath);
-
-  if (!isPathInsideDirectory(resolved, toolsDir)) {
-    throw new Error(`Tool module path must stay inside ${toolsDir}.`);
-  }
-
-  return resolved;
+  return resolveCustomToolModulePath(modulePath);
 }
 
 async function importJavascriptModule(

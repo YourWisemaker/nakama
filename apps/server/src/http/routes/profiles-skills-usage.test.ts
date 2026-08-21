@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createInMemoryDatabaseAdapter } from "@nakama/db";
 import { ProfileService } from "../../services/profile-service";
-import { SkillUsageService } from "../../services/skill-usage-service";
+import { SkillsService } from "../../services/skills-service";
 import { setupTestConfigDir } from "../../test-config-dir";
 import { createMinimalHonoApp } from "../test-app-helpers";
 import {
@@ -23,7 +23,7 @@ function createApp() {
       databaseAdapter,
     }),
     profileService,
-    skillUsageService: new SkillUsageService(databaseAdapter),
+    skillsService: new SkillsService(databaseAdapter),
   };
 }
 
@@ -31,7 +31,7 @@ const BASE = "http://localhost:4310";
 
 describe("profile skills usage API", () => {
   test("GET profile returns usage and createdBy on assigned skills", async () => {
-    const { app, databaseAdapter, skillUsageService } = createApp();
+    const { app, databaseAdapter, skillsService } = createApp();
     const session = await setupFreshInstallSession(
       app,
       databaseAdapter,
@@ -55,8 +55,8 @@ describe("profile skills usage API", () => {
       updatedAt: now,
     });
     await databaseAdapter.assignSkillToProfile(profileId, skillId);
-    await skillUsageService.recordMatches(orgId, profileId, [skillId]);
-    await skillUsageService.recordPatch(orgId, profileId, skillId);
+    await skillsService.recordMatches(orgId, profileId, [skillId]);
+    await skillsService.recordPatch(orgId, profileId, skillId);
 
     const resp = await app.fetch(
       new Request(`${BASE}/v1/profiles/${profileId}`, {

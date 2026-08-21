@@ -1,5 +1,4 @@
 import {
-  findProviderInstance,
   IMAGE_VISION_SYSTEM_PROMPT,
   type MessageContentPart,
   NakamaApiError,
@@ -9,44 +8,28 @@ import {
 import { createProviderForInstance } from "../providers/create";
 import { modelSupportsVision } from "../providers/models";
 import {
-  decodeStoredModelSelection,
   type ResolvedProfileProviderSelection,
+  resolveConfiguredModelInstance,
   resolveProfileProviderSelection,
 } from "./provider-instance-helpers";
 
 export function resolveVisionProviderSelection(
   userConfig: UserConfig | null | undefined
 ): ResolvedProfileProviderSelection | null {
-  const visionModel = userConfig?.visionModel?.trim();
-
-  if (!visionModel) {
+  if (
+    !resolveConfiguredModelInstance(userConfig, userConfig?.visionModel, {
+      invalid:
+        "Configured image parsing model is invalid. Update it in Settings.",
+      missingProvider:
+        "Configured image parsing provider is missing. Update it in Settings.",
+    })
+  ) {
     return null;
-  }
-
-  const decoded = decodeStoredModelSelection(visionModel);
-
-  if (!decoded || decoded.providerId === "__unknown__") {
-    throw new NakamaApiError(
-      "Configured image parsing model is invalid. Update it in Settings.",
-      400
-    );
-  }
-
-  const instance = findProviderInstance(
-    { providers: userConfig?.providers ?? [] },
-    decoded.providerId
-  );
-
-  if (!instance) {
-    throw new NakamaApiError(
-      "Configured image parsing provider is missing. Update it in Settings.",
-      400
-    );
   }
 
   const resolved = resolveProfileProviderSelection({
     defaultProviderId: userConfig?.defaultProviderId,
-    profileModel: visionModel,
+    profileModel: userConfig?.visionModel,
     providers: userConfig?.providers ?? [],
   });
 

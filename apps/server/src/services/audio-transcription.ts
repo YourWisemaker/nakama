@@ -1,13 +1,12 @@
 import {
-  findProviderInstance,
   NakamaApiError,
   normalizeBaseUrl,
   type UserConfig,
 } from "@nakama/core";
 import { modelSupportsTranscription } from "../providers/models";
 import {
-  decodeStoredModelSelection,
   type ResolvedProfileProviderSelection,
+  resolveConfiguredModelInstance,
 } from "./provider-instance-helpers";
 
 export const TRANSCRIPTION_MODEL_REQUIRED_MESSAGE =
@@ -16,52 +15,40 @@ export const TRANSCRIPTION_MODEL_REQUIRED_MESSAGE =
 export function resolveTranscriptionProviderSelection(
   userConfig: UserConfig | null | undefined
 ): ResolvedProfileProviderSelection | null {
-  const transcriptionModel = userConfig?.transcriptionModel?.trim();
+  const configured = resolveConfiguredModelInstance(
+    userConfig,
+    userConfig?.transcriptionModel,
+    {
+      invalid:
+        "Configured audio transcription model is invalid. Update it in Settings.",
+      missingProvider:
+        "Configured audio transcription provider is missing. Update it in Settings.",
+    }
+  );
 
-  if (!transcriptionModel) {
+  if (!configured) {
     return null;
   }
 
-  const decoded = decodeStoredModelSelection(transcriptionModel);
-
-  if (!decoded || decoded.providerId === "__unknown__") {
-    throw new NakamaApiError(
-      "Configured audio transcription model is invalid. Update it in Settings.",
-      400
-    );
-  }
-
-  const instance = findProviderInstance(
-    { providers: userConfig?.providers ?? [] },
-    decoded.providerId
-  );
-
-  if (!instance) {
-    throw new NakamaApiError(
-      "Configured audio transcription provider is missing. Update it in Settings.",
-      400
-    );
-  }
-
-  if (instance.type !== "openai") {
+  if (configured.instance.type !== "openai") {
     throw new NakamaApiError(
       "Audio transcription requires an OpenAI provider. Update it in Settings.",
       400
     );
   }
 
-  const modelId = decoded.modelId.trim();
-
-  if (!modelSupportsTranscription(modelId, instance.type)) {
+  if (
+    !modelSupportsTranscription(configured.modelId, configured.instance.type)
+  ) {
     throw new NakamaApiError(
-      `Configured audio transcription model "${modelId}" is not supported.`,
+      `Configured audio transcription model "${configured.modelId}" is not supported.`,
       400
     );
   }
 
   return {
-    instance,
-    model: modelId,
+    instance: configured.instance,
+    model: configured.modelId,
   };
 }
 
