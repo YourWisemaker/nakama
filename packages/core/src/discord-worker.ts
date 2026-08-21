@@ -5,12 +5,7 @@ import {
   getDiscordConfigDir,
   loadDiscordSettingsPublic,
 } from "./discord-config";
-import {
-  pathExists,
-  readTextOrNull,
-  removeFile,
-  writePrivateTextFile,
-} from "./fs";
+import { pathExists, readTextOrNull, removeFile, writeTextFile } from "./fs";
 
 export interface DiscordWorkerHeartbeat {
   connected?: boolean;
@@ -109,7 +104,7 @@ export async function writeDiscordWorkerHeartbeat(
     ...(connected === undefined ? {} : { connected }),
   };
 
-  await writePrivateTextFile(
+  await writeTextFile(
     getDiscordWorkerHeartbeatPath(),
     `${JSON.stringify(payload)}\n`,
     { ensureDir: getDiscordConfigDir() }

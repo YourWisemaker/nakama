@@ -1,19 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { parseIni, readTextOrNull, writePrivateTextFile } from "./fs";
+import { parseIni, readTextOrNull, writeTextFile } from "./fs";
+import { maskTrailingSecret } from "./secret-mask";
 
-/** Mask a secret, keeping a short trailing hint. Same shape as email `maskSecret`. */
 export function maskBotToken(secret: string): string | null {
-  const trimmed = secret.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  if (trimmed.length <= 8) {
-    return "••••••••";
-  }
-
-  return `${"•".repeat(Math.min(trimmed.length - 4, 12))}${trimmed.slice(-4)}`;
+  return maskTrailingSecret(secret);
 }
 
 export function generateHandshakeCode(): string {
@@ -119,7 +109,7 @@ export async function writeBotChannelIniConfig<
     "",
   ];
 
-  await writePrivateTextFile(options.configPath, lines.join("\n"), {
+  await writeTextFile(options.configPath, lines.join("\n"), {
     ensureDir: options.configDir,
   });
 }
