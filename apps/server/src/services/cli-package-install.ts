@@ -39,10 +39,7 @@ export function buildGlobalPackageInstallPlan(
   };
 }
 
-export function extractCliVersion(
-  stdout: string,
-  stderr: string
-): string | null {
+function extractCliVersion(stdout: string, stderr: string): string | null {
   const output = `${stdout}\n${stderr}`.trim();
   if (!output) {
     return null;

@@ -20,7 +20,7 @@ export function createErrorTool(
   };
 }
 
-export function isPathInsideDirectory(
+function isPathInsideDirectory(
   targetPath: string,
   directoryPath: string
 ): boolean {
