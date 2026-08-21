@@ -1,16 +1,17 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import type {
-  BranchSessionRequest,
-  BranchSessionResponse,
-  CompactionResponse,
-  CompactSessionRequest,
-  CreateSessionRequest,
-  CreateSessionResponse,
-  ListSessionsResponse,
-  SendMessageRequest,
-  SendMessageResponse,
-  SessionMessagesResponse,
-  SessionStatusResponse,
+import {
+  type BranchSessionRequest,
+  type BranchSessionResponse,
+  type CompactionResponse,
+  type CompactSessionRequest,
+  type CreateSessionRequest,
+  type CreateSessionResponse,
+  type ListSessionsResponse,
+  NakamaApiError,
+  type SendMessageRequest,
+  type SendMessageResponse,
+  type SessionMessagesResponse,
+  type SessionStatusResponse,
 } from "@nakama/core";
 import { resolveRequestClientOrigin } from "../../services/composio-callback-url";
 import { sessionTurnRegistry } from "../../services/session-turn-registry";
@@ -21,7 +22,6 @@ import {
 } from "../org-guards";
 import {
   errorResponse,
-  getRequestAuth,
   json,
   parseChannel,
   readJson,
@@ -341,7 +341,7 @@ export function registerSessionRoutes(
   );
 
   app.post("/v1/sessions", async (c) => {
-    const auth = getRequestAuth(c);
+    const auth = requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const body = await readJson<CreateSessionRequest>(c.req.raw);
     const channel = parseChannel(body.channel);
@@ -374,6 +374,7 @@ export function registerSessionRoutes(
   });
 
   app.delete("/v1/sessions/:sessionId", async (c) => {
+    requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const sessionId = decodeURIComponent(c.req.param("sessionId"));
     const purge = c.req.query("purge") === "true";
@@ -389,6 +390,7 @@ export function registerSessionRoutes(
   });
 
   app.post("/v1/sessions/:sessionId/compact", async (c) => {
+    requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const sessionId = decodeURIComponent(c.req.param("sessionId"));
     const body = await readJson<CompactSessionRequest>(c.req.raw).catch(
@@ -466,6 +468,7 @@ export function registerSessionRoutes(
   });
 
   app.post("/v1/sessions/:sessionId/branch", async (c) => {
+    requireNotViewerFromContext(c);
     try {
       const orgId = requireActiveOrgIdFromContext(c);
       const sessionId = decodeURIComponent(c.req.param("sessionId"));
@@ -482,6 +485,10 @@ export function registerSessionRoutes(
 
       return json<BranchSessionResponse>(result, 201);
     } catch (error) {
+      if (error instanceof NakamaApiError) {
+        return errorResponse(error.message, error.status);
+      }
+
       const message = error instanceof Error ? error.message : String(error);
       return errorResponse(message, 400);
     }

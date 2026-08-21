@@ -50,6 +50,7 @@ import { getTimezoneCatalog } from "../../services/timezone-catalog-service";
 import { streamAgentBrowserInstall } from "../coding-harness-install-stream";
 import type { ServerOptions } from "../context";
 import {
+  requireNotViewerFromContext,
   requireOrgAdminFromContext,
   requireOrgAdminOrPlatformAdminFromContext,
 } from "../org-guards";
@@ -1249,7 +1250,7 @@ export function registerModelRoutes(
   });
 
   app.post("/v1/audio/transcribe", async (c) => {
-    getRequestAuth(c);
+    requireNotViewerFromContext(c);
     const body = await readJson<TranscribeAudioRequest>(c.req.raw);
 
     try {
@@ -1290,7 +1291,7 @@ export function registerModelRoutes(
   });
 
   app.post("/v1/images/generate", async (c) => {
-    getRequestAuth(c);
+    requireNotViewerFromContext(c);
     const body = await readJson<GenerateImageRequest>(c.req.raw);
 
     try {
