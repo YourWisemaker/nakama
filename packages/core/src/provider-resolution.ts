@@ -16,7 +16,20 @@ export const USER_PROVIDER_NAMES: readonly UserProviderName[] = [
   "openai_compatible",
   "opencode_go",
   "cloudflare",
+  "minimax",
+  "minimax_cn",
 ] as const;
+
+// Providers whose model lists are discovered live from the platform's
+// /models endpoint and stored as instance custom models, instead of a
+// hardcoded catalog. Adding a discovery-based provider is one entry here
+// plus its type/env-key/label/base-URL wiring — no resolution edits.
+export const DISCOVERY_MODEL_PROVIDERS: ReadonlySet<UserProviderName> =
+  new Set<UserProviderName>(["openai_compatible", "minimax", "minimax_cn"]);
+
+export function isDiscoveryModelProvider(provider: UserProviderName): boolean {
+  return DISCOVERY_MODEL_PROVIDERS.has(provider);
+}
 
 export function parseProviderName(
   value: string | undefined
@@ -34,7 +47,9 @@ export function parseProviderName(
     normalized === "ollama" ||
     normalized === "openai_compatible" ||
     normalized === "opencode_go" ||
-    normalized === "cloudflare"
+    normalized === "cloudflare" ||
+    normalized === "minimax" ||
+    normalized === "minimax_cn"
   ) {
     return normalized;
   }
@@ -68,6 +83,10 @@ export function apiKeyEnvVarForProvider(
       return "OPENCODE_GO_API_KEY";
     case "cloudflare":
       return "CLOUDFLARE_API_KEY";
+    case "minimax":
+      return "MINIMAX_API_KEY";
+    case "minimax_cn":
+      return "MINIMAX_CN_API_KEY";
   }
 }
 
