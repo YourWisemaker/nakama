@@ -1,17 +1,12 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { ToolContext, ToolDefinition } from "@nakama/core";
-import {
-  getCustomToolsDir,
-  pathExists,
-  permissiveObjectSchema,
-} from "@nakama/core";
+import { pathExists, permissiveObjectSchema } from "@nakama/core";
 import type { StoredToolRecord } from "@nakama/db";
 import {
   createErrorTool,
-  isPathInsideDirectory,
   readHandlerConfig,
+  resolveCustomToolModulePath,
 } from "./custom-tool-shared";
 
 const PYTHON_BIN = process.env.NAKAMA_PYTHON_BIN ?? "python3";
@@ -109,16 +104,7 @@ export async function validatePythonToolModule(
 }
 
 export function resolvePythonModulePath(modulePath: string): string {
-  const toolsDir = path.resolve(getCustomToolsDir());
-  const resolved = path.isAbsolute(modulePath)
-    ? path.resolve(modulePath)
-    : path.resolve(toolsDir, modulePath);
-
-  if (!isPathInsideDirectory(resolved, toolsDir)) {
-    throw new Error(`Tool module path must stay inside ${toolsDir}.`);
-  }
-
-  return resolved;
+  return resolveCustomToolModulePath(modulePath);
 }
 
 async function runPythonTool(

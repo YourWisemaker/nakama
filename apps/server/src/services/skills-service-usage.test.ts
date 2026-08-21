@@ -4,19 +4,19 @@ import {
   type DatabaseAdapter,
   seedOrgDefaultProfile,
 } from "@nakama/db";
-import { SkillUsageService } from "./skill-usage-service";
+import { SkillsService } from "./skills-service";
 
 const ORG_ID = "org_test";
 
-describe("SkillUsageService", () => {
+describe("SkillsService skill usage", () => {
   let db: DatabaseAdapter;
-  let service: SkillUsageService;
+  let service: SkillsService;
   let profileId: string;
   let skillId: string;
 
   beforeEach(async () => {
     db = createInMemoryDatabaseAdapter();
-    service = new SkillUsageService(db);
+    service = new SkillsService(db);
     const seeded = await seedOrgDefaultProfile(db, ORG_ID);
     profileId = seeded.id;
     const now = new Date().toISOString();

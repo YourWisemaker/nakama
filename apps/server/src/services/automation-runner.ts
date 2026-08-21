@@ -1,8 +1,4 @@
-import {
-  formatAutomationRunError,
-  isWorkerSchedulable,
-  type StoredAutomation,
-} from "@nakama/core";
+import { formatAutomationRunError, type StoredAutomation } from "@nakama/core";
 import type { AgentService } from "./agent-service";
 import type { AutomationDeliveryService } from "./automation-delivery-service";
 import type { AutomationService } from "./automation-service";
@@ -101,8 +97,4 @@ export class AutomationRunner {
   getActiveRunCount(): number {
     return this.running.size;
   }
-}
-
-export function shouldSchedule(automation: StoredAutomation): boolean {
-  return isWorkerSchedulable(automation);
 }

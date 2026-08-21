@@ -1,6 +1,4 @@
-import { constants } from "node:fs";
 import {
-  access,
   cp,
   lstat,
   mkdir,
@@ -27,6 +25,7 @@ import {
   type DataImportPreviewResponse,
   getUserConfigDir,
   NAKAMA_API_VERSION,
+  pathExists,
   type RestoreDataImportResponse,
 } from "@nakama/core";
 import { unzipSync, zipSync } from "fflate";
@@ -450,15 +449,6 @@ function toBuffer(value: Buffer | Uint8Array | ArrayBuffer): Buffer {
   }
 
   return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
-}
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function listMovableTopLevelEntries(rootDir: string): Promise<string[]> {

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { ProviderInstance } from "@nakama/core";
-import { makeAnthropicProvider } from "./coding-agent-fixtures";
 import {
   getProviderApiBaseUrl,
   isProviderCompatibleWithHarness,
   resolveCodingAgentProviderRouting,
 } from "./coding-agent-provider-routing";
+import { makeAnthropicProvider } from "./coding-agent-test-fixtures";
 
 const anthropicProvider = makeAnthropicProvider();
 

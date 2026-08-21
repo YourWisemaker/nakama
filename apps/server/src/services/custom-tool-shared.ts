@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { JsonSchema, ToolDefinition } from "@nakama/core";
-import { permissiveObjectSchema } from "@nakama/core";
+import { getCustomToolsDir, permissiveObjectSchema } from "@nakama/core";
 import type { StoredToolRecord } from "@nakama/db";
 
 // Helpers shared by the custom tool loaders (javascript, python, and any
@@ -20,7 +20,7 @@ export function createErrorTool(
   };
 }
 
-export function isPathInsideDirectory(
+function isPathInsideDirectory(
   targetPath: string,
   directoryPath: string
 ): boolean {
@@ -76,4 +76,17 @@ export function readHandlerModulePath(handlerConfig: unknown): string | null {
 
 export function isJsonSchema(value: unknown): value is JsonSchema {
   return typeof value === "object" && value !== null;
+}
+
+export function resolveCustomToolModulePath(modulePath: string): string {
+  const toolsDir = path.resolve(getCustomToolsDir());
+  const resolved = path.isAbsolute(modulePath)
+    ? path.resolve(modulePath)
+    : path.resolve(toolsDir, modulePath);
+
+  if (!isPathInsideDirectory(resolved, toolsDir)) {
+    throw new Error(`Tool module path must stay inside ${toolsDir}.`);
+  }
+
+  return resolved;
 }

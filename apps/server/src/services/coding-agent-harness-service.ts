@@ -17,6 +17,14 @@ import {
   ensureProcessPath,
   getToolExecutionEnv,
 } from "../lib/ensure-process-path";
+import {
+  buildGlobalPackageInstallPlan,
+  CLI_SIGTERM_GRACE_MS,
+  detectNpmOrBun,
+  probeCliVersion,
+  runTimedInstallCommand,
+  summarizeInstallOutput,
+} from "./cli-package-install";
 import { buildHarnessNonInteractiveArgs } from "./coding-agent-command";
 import {
   formatModelForHarness,
@@ -26,7 +34,7 @@ import {
 } from "./coding-agent-spawn-env";
 
 /** How long a timed-out child gets to honour SIGTERM before it is killed. */
-const SIGTERM_GRACE_MS = 2000;
+const SIGTERM_GRACE_MS = CLI_SIGTERM_GRACE_MS;
 
 export interface CodingAgentHarnessStatus
   extends StoredCodingAgentHarnessRecord {
@@ -38,12 +46,6 @@ export interface CodingAgentHarnessStatus
   version: string | null;
 }
 
-interface CodingAgentInstallPlan {
-  args: string[];
-  command: string;
-  displayCommand: string;
-}
-
 const HARNESS_PACKAGES: Partial<Record<StoredCodingAgentHarnessKind, string>> =
   {
     claude_code: "@anthropic-ai/claude-code",
@@ -52,22 +54,10 @@ const HARNESS_PACKAGES: Partial<Record<StoredCodingAgentHarnessKind, string>> =
     pi: "@earendil-works/pi-coding-agent",
   };
 
-function detectCodingHarnessPackageManager(): "npm" | "bun" {
-  if (Bun.which("npm")) {
-    return "npm";
-  }
-
-  if (Bun.which("bun")) {
-    return "bun";
-  }
-
-  return "npm";
-}
-
 export function buildCodingHarnessInstallPlan(
   kind: StoredCodingAgentHarnessKind,
-  packageManager: "npm" | "bun" = detectCodingHarnessPackageManager()
-): CodingAgentInstallPlan {
+  packageManager: "npm" | "bun" = detectNpmOrBun()
+) {
   const pkg = HARNESS_PACKAGES[kind];
 
   if (!pkg) {
@@ -78,19 +68,7 @@ export function buildCodingHarnessInstallPlan(
     );
   }
 
-  if (packageManager === "bun") {
-    return {
-      args: ["install", "-g", "--trust", pkg],
-      command: "bun",
-      displayCommand: `bun install -g --trust ${pkg}`,
-    };
-  }
-
-  return {
-    args: ["install", "-g", pkg],
-    command: "npm",
-    displayCommand: `npm install -g ${pkg}`,
-  };
+  return buildGlobalPackageInstallPlan(pkg, packageManager);
 }
 
 export interface CodingAgentWorkspaceSettings {
@@ -687,7 +665,7 @@ async function clearHarnessProbeCache(
 async function getHarnessRuntimeStatus(
   command: string
 ): Promise<Pick<CodingAgentHarnessStatus, "installed" | "version">> {
-  const initial = await probeHarnessVersion(command);
+  const initial = await probeCliVersion(command);
 
   if (initial.installed || !initial.missing) {
     return {
@@ -697,91 +675,12 @@ async function getHarnessRuntimeStatus(
   }
 
   ensureProcessPath();
-  const retried = await probeHarnessVersion(command);
+  const retried = await probeCliVersion(command);
 
   return {
     installed: retried.installed,
     version: retried.version,
   };
-}
-
-async function probeHarnessVersion(command: string): Promise<{
-  installed: boolean;
-  version: string | null;
-  missing: boolean;
-}> {
-  const { spawn } = await import("node:child_process");
-  const timeoutMs = 5000;
-
-  return new Promise((resolve) => {
-    let child: ReturnType<typeof spawn>;
-
-    try {
-      child = spawn(command, ["--version"], {
-        env: getToolExecutionEnv(),
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch {
-      resolve({
-        installed: false,
-        missing: true,
-        version: null,
-      });
-      return;
-    }
-
-    let stdout = "";
-    let stderr = "";
-    let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    // The bash tool awaits this probe, so a CLI that never answers --version
-    // would otherwise hold the turn open forever. Resolve on the timer instead
-    // of waiting for close, because a child that ignores SIGTERM never emits
-    // one. `missing: false` keeps getHarnessRuntimeStatus from paying the
-    // timeout a second time on its PATH retry.
-    const timeoutId = setTimeout(() => {
-      child.kill("SIGTERM");
-      // A harness that traps SIGTERM outlives the probe, and its open stdio
-      // pipes then keep this process alive too. Same escalation as the probe
-      // run and the install (#275); this site was missed.
-      killTimeoutId = setTimeout(() => child.kill("SIGKILL"), SIGTERM_GRACE_MS);
-      resolve({ installed: false, missing: false, version: null });
-    }, timeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.once("error", (error) => {
-      clearTimeout(timeoutId);
-      clearTimeout(killTimeoutId);
-      resolve({
-        installed: false,
-        missing: (error as NodeJS.ErrnoException).code === "ENOENT",
-        version: null,
-      });
-    });
-    child.once("close", (code) => {
-      clearTimeout(timeoutId);
-      clearTimeout(killTimeoutId);
-      resolve({
-        installed: code === 0,
-        missing: false,
-        version: code === 0 ? extractVersion(stdout, stderr) : null,
-      });
-    });
-  });
-}
-
-function extractVersion(stdout: string, stderr: string): string | null {
-  const output = `${stdout}\n${stderr}`.trim();
-  if (!output) {
-    return null;
-  }
-
-  return output.split(/\r?\n/, 1)[0]?.trim() || null;
 }
 
 export function getCodingHarnessLoginCommand(
@@ -894,7 +793,7 @@ export async function installCodingAgentHarness(
   emitProgress(`Starting ${harness.name} install.`);
   emitProgress(installPlan.displayCommand);
 
-  const result = await runInstallCommand(installPlan, emitProgress);
+  const result = await runTimedInstallCommand(installPlan, emitProgress);
   const combinedOutput = [result.stdout, result.stderr]
     .filter(Boolean)
     .join("\n")
@@ -1171,142 +1070,6 @@ function looksLikeAuthenticationFailure(output: string): boolean {
   return /log\s?in|login|sign\s?in|authenticate|authentication|not authenticated|api key|token|credential/i.test(
     output
   );
-}
-
-async function runInstallCommand(
-  plan: CodingAgentInstallPlan,
-  onProgress?: (message: string) => void
-): Promise<{
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-  timedOut: boolean;
-}> {
-  const { spawn } = await import("node:child_process");
-  const timeoutMs = 120_000;
-
-  return new Promise((resolve) => {
-    const child = spawn(plan.command, plan.args, {
-      env: getToolExecutionEnv(),
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-    let stdoutBuffer = "";
-    let stderrBuffer = "";
-    let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-      killTimeoutId = setTimeout(() => child.kill("SIGKILL"), SIGTERM_GRACE_MS);
-      // Same reason as runProbeCommand: `close` never arrives from a child that
-      // ignores SIGTERM, and an install left running keeps writing to the global
-      // package dir.
-      resolve({
-        exitCode: null,
-        stderr: stderr.trim(),
-        stdout: stdout.trim(),
-        timedOut,
-      });
-    }, timeoutMs);
-
-    const emitLine = (prefix: "stdout" | "stderr", line: string) => {
-      onProgress?.(`${prefix}: ${line}`);
-    };
-
-    const flushBuffer = (buffer: string, prefix: "stdout" | "stderr") => {
-      let nextBuffer = buffer;
-
-      while (true) {
-        const newlineIndex = nextBuffer.search(/\r?\n/);
-
-        if (newlineIndex < 0) {
-          break;
-        }
-
-        const newlineLength = nextBuffer[newlineIndex] === "\r" ? 2 : 1;
-        const line = nextBuffer.slice(0, newlineIndex).trim();
-        nextBuffer = nextBuffer.slice(newlineIndex + newlineLength);
-
-        if (line) {
-          emitLine(prefix, line);
-        }
-      }
-
-      return nextBuffer;
-    };
-
-    child.stdout?.on("data", (chunk) => {
-      const text = chunk.toString();
-      stdout += text;
-      stdoutBuffer += text;
-      stdoutBuffer = flushBuffer(stdoutBuffer, "stdout");
-    });
-    child.stderr?.on("data", (chunk) => {
-      const text = chunk.toString();
-      stderr += text;
-      stderrBuffer += text;
-      stderrBuffer = flushBuffer(stderrBuffer, "stderr");
-    });
-
-    child.once("error", (error) => {
-      clearTimeout(timeoutId);
-      clearTimeout(killTimeoutId);
-
-      if (stdoutBuffer.trim()) {
-        emitLine("stdout", stdoutBuffer.trim());
-      }
-      if (stderrBuffer.trim()) {
-        emitLine("stderr", stderrBuffer.trim());
-      }
-
-      resolve({
-        exitCode: null,
-        stderr: `${stderr}\n${String(error)}`.trim(),
-        stdout,
-        timedOut,
-      });
-    });
-
-    child.once("close", (exitCode) => {
-      clearTimeout(timeoutId);
-      clearTimeout(killTimeoutId);
-
-      if (stdoutBuffer.trim()) {
-        emitLine("stdout", stdoutBuffer.trim());
-      }
-      if (stderrBuffer.trim()) {
-        emitLine("stderr", stderrBuffer.trim());
-      }
-
-      resolve({
-        exitCode,
-        stderr: stderr.trim(),
-        stdout: stdout.trim(),
-        timedOut,
-      });
-    });
-  });
-}
-
-function summarizeInstallOutput(output: string): string {
-  const lines = output
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const meaningful =
-    lines.find((line) => /^error:/i.test(line)) ??
-    lines.find((line) =>
-      /(?:EACCES|ENOENT|EPERM|failed|permission denied)/i.test(line)
-    ) ??
-    lines.find((line) => !/^bun (?:add|install) v/i.test(line)) ??
-    lines[0] ??
-    output.trim();
-  return meaningful.length > 180
-    ? `${meaningful.slice(0, 177)}...`
-    : meaningful;
 }
 
 function summarizeProbeOutput(output: string): string {

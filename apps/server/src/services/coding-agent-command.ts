@@ -275,23 +275,14 @@ function getBackendSkillName(
   | "coding-backend-opencode"
   | "coding-backend-pi"
   | "coding-backend-cursor" {
-  if (backend === "codex") {
-    return "coding-backend-codex";
-  }
-
-  if (backend === "claude_code") {
-    return "coding-backend-claude-code";
-  }
-
-  if (backend === "pi") {
-    return "coding-backend-pi";
-  }
-
-  if (backend === "cursor_agent") {
-    return "coding-backend-cursor";
-  }
-
-  return "coding-backend-opencode";
+  const names = {
+    claude_code: "coding-backend-claude-code",
+    codex: "coding-backend-codex",
+    cursor_agent: "coding-backend-cursor",
+    opencode: "coding-backend-opencode",
+    pi: "coding-backend-pi",
+  } as const;
+  return names[backend];
 }
 
 export { getBackendSkillName };
