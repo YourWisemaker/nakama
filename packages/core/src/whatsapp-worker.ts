@@ -1,11 +1,6 @@
 import { join } from "node:path";
 import type { WhatsAppWorkerStatus } from "./contract";
-import {
-  pathExists,
-  readTextOrNull,
-  removeFile,
-  writePrivateTextFile,
-} from "./fs";
+import { pathExists, readTextOrNull, removeFile, writeTextFile } from "./fs";
 import {
   getWhatsAppConfigDir,
   loadWhatsAppSettingsPublic,
@@ -105,7 +100,7 @@ export async function writeWhatsAppWorkerHeartbeat(
 ): Promise<void> {
   const payload: WhatsAppWorkerHeartbeat = { connected, pid, updatedAt };
 
-  await writePrivateTextFile(
+  await writeTextFile(
     getWhatsAppWorkerHeartbeatPath(),
     `${JSON.stringify(payload)}\n`,
     { ensureDir: getWhatsAppConfigDir() }
@@ -121,7 +116,7 @@ export async function clearWhatsAppWorkerHeartbeat(): Promise<void> {
 }
 
 export async function writeWhatsAppQrCode(qr: string): Promise<void> {
-  await writePrivateTextFile(getWhatsAppQrCodePath(), qr, {
+  await writeTextFile(getWhatsAppQrCodePath(), qr, {
     ensureDir: getWhatsAppConfigDir(),
   });
 }
