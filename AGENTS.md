@@ -20,7 +20,9 @@ LLM_VCR_MODE=record bun test path/to/foo.llm.test.ts  # re-record (needs provide
 
 ## GitHub
 
-Use `gh` for issues, PRs, checks, reviews, releases, and any GitHub URL. Run the gh cli command outside the sandbox so that the auth can works.
+Use `gh` for issues, PRs, checks, reviews, releases, and any GitHub URL. Always run outside the sandbox (`required_permissions: ["all"]`) — sandbox returns `Forbidden`.
+
+`gh issue` / `gh pr` / `--json` go through GraphQL and often time out here. Prefer REST: `gh api repos/{owner}/{repo}/issues` or `/pulls`, body in a JSON file, `POST --input`. On GraphQL timeout, retry REST once.
 
 ## Browser automation
 
