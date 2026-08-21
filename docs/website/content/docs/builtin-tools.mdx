@@ -345,13 +345,13 @@ List the chat sessions of **another agent profile in the same organization**, ne
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
 | `profileId` | string | Yes | Profile whose sessions to list |
-| `channel` | string | No | One of `web`, `cli`, `telegram`, `whatsapp`, `discord`, `automation`, `task`, `subagent`. Defaults to `web`, the same default `GET /v1/sessions` uses |
+| `channel` | string | No | One of `web`, `cli`, `telegram`, `whatsapp`, `discord`, `automation`, `task`, `subagent`. Defaults to `web` |
 
 **Returns:** `{ sessions }`, the same summary shape the sessions API returns.
 
 **Limits:**
 
-- Same organization only — a profile in another organization returns the same "Profile not found." error as an id that does not exist, so the tool never confirms an id exists elsewhere
+- Same organization only — a profile in another organization fails exactly the way an id that does not exist fails, so the tool never confirms that a profile exists somewhere else
 - Sessions with no messages are not listed
 - One channel per call; there is no merged view
 
@@ -371,7 +371,7 @@ Read the stored transcript of a session belonging to **another agent profile in 
 
 **Limits:**
 
-- Same organization only — a session outside it returns "Session not found."
+- Same organization only — a session outside it fails exactly the way an unknown session id fails
 - Read-only. It cannot compact, branch, or delete another profile's session
 - Persisted messages only. A session with a turn still running is returned as of its last completed turn
 

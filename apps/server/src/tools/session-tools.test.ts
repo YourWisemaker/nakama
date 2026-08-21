@@ -30,6 +30,15 @@ function context(orgId?: string): ToolContext {
   return { orgId };
 }
 
+async function captureError(promise: Promise<unknown>): Promise<Error | null> {
+  try {
+    await promise;
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+}
+
 async function seedSession(
   db: DatabaseAdapter,
   service: AgentService,
@@ -125,14 +134,27 @@ describe("session reader tools", () => {
   });
 
   test("rejects an unknown channel rather than silently listing web", async () => {
-    const { listTool } = await setUp(createInMemoryDatabaseAdapter());
+    const { listTool, webSessionId } = await setUp(
+      createInMemoryDatabaseAdapter()
+    );
 
     await expect(
       listTool.run(
         { channel: "carrier-pigeon", profileId: "profile_target" },
         context(ORG_A)
       )
-    ).rejects.toThrow("Unknown channel: carrier-pigeon.");
+    ).rejects.toThrow();
+
+    // Positive control: a known channel still lists, so the refusal above is
+    // the channel check and not a tool that fails on everything.
+    const allowed = (await listTool.run(
+      { channel: "web", profileId: "profile_target" },
+      context(ORG_A)
+    )) as { sessions: Array<{ id: string }> };
+
+    expect(allowed.sessions.map((session) => session.id)).toEqual([
+      webSessionId,
+    ]);
   });
 
   test("reads the persisted transcript of another profile's session", async () => {
@@ -184,38 +206,50 @@ describe("session reader tools", () => {
   });
 
   test("refuses a profile in another org with the same error as an unknown one", async () => {
-    const { listTool } = await setUp(createInMemoryDatabaseAdapter());
-
-    await expect(
-      listTool.run({ profileId: "profile_other_org" }, context(ORG_A))
-    ).rejects.toThrow("Profile not found.");
-    await expect(
-      listTool.run({ profileId: "profile_does_not_exist" }, context(ORG_A))
-    ).rejects.toThrow("Profile not found.");
-  });
-
-  test("refuses a session in another org", async () => {
-    const { foreignSessionId, readTool } = await setUp(
+    const { listTool, webSessionId } = await setUp(
       createInMemoryDatabaseAdapter()
     );
 
-    await expect(
-      readTool.run({ sessionId: foreignSessionId }, context(ORG_A))
-    ).rejects.toThrow("Session not found.");
-  });
-
-  test("refuses a session in another org on real SQLite too", async () => {
-    // sessions has no org_id column, so the in-memory adapter can keep an orgId
-    // the SQL adapter drops. This runs the same case against the real schema.
-    const database = await createSqliteDatabase(":memory:");
-    const { foreignSessionId, readTool, webSessionId } = await setUp(
-      database.adapter
+    const foreign = await captureError(
+      listTool.run({ profileId: "profile_other_org" }, context(ORG_A))
+    );
+    const unknown = await captureError(
+      listTool.run({ profileId: "profile_does_not_exist" }, context(ORG_A))
     );
 
-    await expect(
-      readTool.run({ sessionId: foreignSessionId }, context(ORG_A))
-    ).rejects.toThrow("Session not found.");
+    expect(foreign).not.toBeNull();
+    expect(unknown).not.toBeNull();
+    expect(foreign?.message).toBe(unknown?.message);
 
+    // Positive control: the same call still works inside the org, so the two
+    // refusals above are the org boundary and not a broken tool.
+    const allowed = (await listTool.run(
+      { profileId: "profile_target" },
+      context(ORG_A)
+    )) as { sessions: Array<{ id: string }> };
+
+    expect(allowed.sessions.map((session) => session.id)).toEqual([
+      webSessionId,
+    ]);
+  });
+
+  test("refuses a session in another org with the same error as an unknown one", async () => {
+    const { foreignSessionId, readTool, webSessionId } = await setUp(
+      createInMemoryDatabaseAdapter()
+    );
+
+    const foreign = await captureError(
+      readTool.run({ sessionId: foreignSessionId }, context(ORG_A))
+    );
+    const unknown = await captureError(
+      readTool.run({ sessionId: "session_does_not_exist" }, context(ORG_A))
+    );
+
+    expect(foreign).not.toBeNull();
+    expect(unknown).not.toBeNull();
+    expect(foreign?.message).toBe(unknown?.message);
+
+    // Positive control, as above.
     const allowed = (await readTool.run(
       { sessionId: webSessionId },
       context(ORG_A)
@@ -224,14 +258,53 @@ describe("session reader tools", () => {
     expect(allowed.totalMessages).toBe(3);
   });
 
+  test("refuses a session in another org on real SQLite too", async () => {
+    // sessions has no org_id column, so the in-memory adapter can keep an orgId
+    // the SQL adapter drops. This runs the same case against the real schema.
+    const database = await createSqliteDatabase(":memory:");
+
+    try {
+      const { foreignSessionId, readTool, webSessionId } = await setUp(
+        database.adapter
+      );
+
+      const foreign = await captureError(
+        readTool.run({ sessionId: foreignSessionId }, context(ORG_A))
+      );
+      const unknown = await captureError(
+        readTool.run({ sessionId: "session_does_not_exist" }, context(ORG_A))
+      );
+
+      expect(foreign).not.toBeNull();
+      expect(unknown).not.toBeNull();
+      expect(foreign?.message).toBe(unknown?.message);
+
+      const allowed = (await readTool.run(
+        { sessionId: webSessionId },
+        context(ORG_A)
+      )) as { totalMessages: number };
+
+      expect(allowed.totalMessages).toBe(3);
+    } finally {
+      database.close();
+    }
+  });
+
   test("requires an organization context", async () => {
-    const { listTool, readTool } = await setUp(createInMemoryDatabaseAdapter());
+    const { listTool, readTool, webSessionId } = await setUp(
+      createInMemoryDatabaseAdapter()
+    );
 
     await expect(
       listTool.run({ profileId: "profile_target" }, context(undefined))
-    ).rejects.toThrow("Organization context is required.");
+    ).rejects.toThrow();
     await expect(
-      readTool.run({ sessionId: "session_x" }, context(undefined))
-    ).rejects.toThrow("Organization context is required.");
+      readTool.run({ sessionId: webSessionId }, context(undefined))
+    ).rejects.toThrow();
+
+    // Positive control: the same read succeeds once the org context is there.
+    await expect(
+      readTool.run({ sessionId: webSessionId }, context(ORG_A))
+    ).resolves.toMatchObject({ totalMessages: 3 });
   });
 });
