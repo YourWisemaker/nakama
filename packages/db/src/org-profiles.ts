@@ -7,6 +7,8 @@ import {
   BASH_TOOL_ID,
   BUILTIN_TOOL_IDS,
   GENERATE_IMAGE_TOOL_ID,
+  LIST_PROFILE_SESSIONS_TOOL_ID,
+  READ_PROFILE_SESSION_TOOL_ID,
 } from "@nakama/core/tools/protected";
 import { SUPER_BOT_SYSTEM_PROMPT } from "./constants";
 import type { DatabaseAdapter, StoredProfileRecord } from "./types";
@@ -107,6 +109,7 @@ export async function seedOrgSuperBotProfile(
     await ensureProfileDefaultBundledSkills(db, existing.id);
     await ensureProfileSuperBotBundledSkills(db, existing.id);
     await ensureSuperBotBashTool(db, existing.id);
+    await ensureSuperBotSessionTools(db, existing.id);
     return existing;
   }
 
@@ -130,6 +133,7 @@ export async function seedOrgSuperBotProfile(
   }
 
   await ensureSuperBotBashTool(db, profile.id);
+  await ensureSuperBotSessionTools(db, profile.id);
   await ensureProfileDefaultBundledSkills(db, profile.id);
   await ensureProfileSuperBotBundledSkills(db, profile.id);
 
@@ -180,6 +184,54 @@ export async function ensureGenerateImageToolDefinition(
     name: "generate_image",
     updatedAt: now,
   });
+}
+
+/**
+ * Session reader tools. Seeded so they exist and survive removeUnsupportedTools,
+ * but not assigned to any profile here: like sub_agent, they are opt-in per
+ * profile through the normal tool assignment path.
+ */
+export async function ensureSessionToolDefinitions(
+  db: DatabaseAdapter
+): Promise<void> {
+  const now = new Date().toISOString();
+  const definitions = [
+    {
+      description:
+        "List the chat sessions of another agent profile in this organization, newest activity first. Use it to find a session id before reading its transcript.",
+      id: LIST_PROFILE_SESSIONS_TOOL_ID,
+      name: "list_profile_sessions",
+    },
+    {
+      description:
+        "Read the stored transcript of a session belonging to another agent profile in this organization.",
+      id: READ_PROFILE_SESSION_TOOL_ID,
+      name: "read_profile_session",
+    },
+  ];
+
+  for (const definition of definitions) {
+    const existing = await db.getTool(definition.id);
+
+    await db.upsertTool({
+      createdAt: existing?.createdAt ?? now,
+      description: definition.description,
+      handlerConfig: {},
+      handlerType: "session",
+      id: definition.id,
+      name: definition.name,
+      updatedAt: now,
+    });
+  }
+}
+
+export async function ensureSuperBotSessionTools(
+  db: DatabaseAdapter,
+  profileId: string
+): Promise<void> {
+  await ensureSessionToolDefinitions(db);
+  await db.assignToolToProfile(profileId, LIST_PROFILE_SESSIONS_TOOL_ID);
+  await db.assignToolToProfile(profileId, READ_PROFILE_SESSION_TOOL_ID);
 }
 
 export async function ensureSuperBotBashTool(

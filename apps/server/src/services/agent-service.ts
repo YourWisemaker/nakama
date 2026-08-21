@@ -1661,6 +1661,49 @@ export class AgentService {
     };
   }
 
+  /**
+   * Persisted transcript of one session, for the session reader tools. Unlike
+   * getSessionMessages this never consults the live turn registry, so a session
+   * with a turn in flight is returned as of its last completed turn.
+   */
+  async readSessionTranscript(
+    sessionId: string,
+    orgId: string,
+    options: { limit: number; offset: number }
+  ): Promise<{
+    channel: AgentChannel;
+    messages: ChatMessage[];
+    profileId: string;
+    returnedMessages: number;
+    totalMessages: number;
+  } | null> {
+    const record = await this.getSessionRecordForOrg(sessionId, orgId);
+
+    if (!record) {
+      return null;
+    }
+
+    const channel = parseAgentChannel(record.channel);
+
+    if (!channel) {
+      return null;
+    }
+
+    const storedMessages = await this.db.listMessagesForSession(sessionId);
+    const page = storedMessages.slice(
+      options.offset,
+      options.offset + options.limit
+    );
+
+    return {
+      channel,
+      messages: page.map((message) => message.payload as ChatMessage),
+      profileId: record.profileId,
+      returnedMessages: page.length,
+      totalMessages: storedMessages.length,
+    };
+  }
+
   async branchSession(
     sessionId: string,
     messageIndex: number,

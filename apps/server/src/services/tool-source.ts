@@ -65,6 +65,11 @@ const GENERATE_IMAGE_SOURCE = {
   filePath: path.join(serverSrcDir, "tools/generate-image-tool.ts"),
 };
 
+const SESSION_SOURCE = {
+  displayPath: "apps/server/src/tools/session-tools.ts",
+  filePath: path.join(serverSrcDir, "tools/session-tools.ts"),
+};
+
 export async function readToolSource(
   record: StoredToolRecord
 ): Promise<ToolSourceResponse> {
@@ -82,6 +87,10 @@ export async function readToolSource(
 
   if (record.handlerType === "generate_image") {
     return readFixedToolSource(GENERATE_IMAGE_SOURCE, "typescript");
+  }
+
+  if (record.handlerType === "session") {
+    return readFixedToolSource(SESSION_SOURCE, "typescript");
   }
 
   if (record.handlerType === "builtin") {

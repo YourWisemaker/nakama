@@ -59,8 +59,10 @@ Nakama includes these builtins:
 | `extract_document_text` | Yes | No | Extracts text from PDF, Word, or Excel attachments returned by `email` |
 | `bash` | When assigned | No | Run shell commands in the profile workspace |
 | `sub_agent` | No | No | Opt-in: delegate to a same-profile sub-agent (see below) |
+| `list_profile_sessions` | Super Bot only | No | Opt-in: read another profile's session list (see below) |
+| `read_profile_session` | Super Bot only | No | Opt-in: read another profile's stored transcript (see below) |
 
-**New custom profiles** receive `read_file`, `write_file`, `edit_file`, `search_files`, `knowledge_base_search`, and `web_fetch` until a platform admin assigns additional tools. Memory writes, archives, and artifact saves use bundled skills with those file tools — see [Skills](/skills#bundled-system-skills). Word documents use `write_docx` (system profiles only by default). Coding-agent workflows use `bash` with the `coding-agent` skill — see [Coding agent](/coding-agent). Interactive browser automation (login walls, forms, clicks) uses `bash` with the opt-in `agent-browser` skill — see [Agent browser](/agent-browser). The `sub_agent` tool is seeded but **not** auto-assigned — platform admins opt in per profile. System profiles (`default`, `super_bot`) get the full seeded builtin set; Super Bot also receives `bash`.
+**New custom profiles** receive `read_file`, `write_file`, `edit_file`, `search_files`, `knowledge_base_search`, and `web_fetch` until a platform admin assigns additional tools. Memory writes, archives, and artifact saves use bundled skills with those file tools — see [Skills](/skills#bundled-system-skills). Word documents use `write_docx` (system profiles only by default). Coding-agent workflows use `bash` with the `coding-agent` skill — see [Coding agent](/coding-agent). Interactive browser automation (login walls, forms, clicks) uses `bash` with the opt-in `agent-browser` skill — see [Agent browser](/agent-browser). The `sub_agent` tool is seeded but **not** auto-assigned — platform admins opt in per profile. System profiles (`default`, `super_bot`) get the full seeded builtin set; Super Bot also receives `bash`, `list_profile_sessions`, and `read_profile_session`. The two session readers are seeded like `sub_agent` and assigned per profile; Super Bot receives them at seed time, and that assignment is re-applied on every boot.
 
 ## Choosing tools for a profile
 
@@ -335,6 +337,45 @@ Multiple `sub_agent` calls in one turn can run **in parallel** when the model ba
 - Default timeout counts toward the parent web stream budget (10 minute total turn limit)
 
 **Availability:** When assigned to the profile (opt-in; not part of default custom profile assignments).
+
+### `list_profile_sessions`
+
+List the chat sessions of **another agent profile in the same organization**, newest activity first. Use it to find a session id before reading a transcript.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `profileId` | string | Yes | Profile whose sessions to list |
+| `channel` | string | No | One of `web`, `cli`, `telegram`, `whatsapp`, `discord`, `automation`, `task`, `subagent`. Defaults to `web`, the same default `GET /v1/sessions` uses |
+
+**Returns:** `{ sessions }`, the same summary shape the sessions API returns.
+
+**Limits:**
+
+- Same organization only — a profile in another organization returns the same "Profile not found." error as an id that does not exist, so the tool never confirms an id exists elsewhere
+- Sessions with no messages are not listed
+- One channel per call; there is no merged view
+
+**Availability:** When assigned to the profile. Super Bot receives it at seed time.
+
+### `read_profile_session`
+
+Read the stored transcript of a session belonging to **another agent profile in the same organization**.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `sessionId` | string | Yes | Session to read |
+| `limit` | number | No | Messages to return, default 50, capped at 200 |
+| `offset` | number | No | Messages to skip from the start, for paging |
+
+**Returns:** `{ channel, profileId, messages, returnedMessages, totalMessages }`.
+
+**Limits:**
+
+- Same organization only — a session outside it returns "Session not found."
+- Read-only. It cannot compact, branch, or delete another profile's session
+- Persisted messages only. A session with a turn still running is returned as of its last completed turn
+
+**Availability:** When assigned to the profile. Super Bot receives it at seed time.
 
 ### `org_memory_search`
 

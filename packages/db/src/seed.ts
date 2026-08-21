@@ -13,6 +13,7 @@ import {
   ensureBashToolDefinition,
   ensureGenerateImageToolDefinition,
   ensureOrgSuperBotProfiles,
+  ensureSessionToolDefinitions,
 } from "./org-profiles";
 import type { DatabaseAdapter } from "./types";
 
@@ -35,6 +36,7 @@ const SUPPORTED_TOOL_HANDLER_TYPES = new Set([
   "javascript",
   "sub_agent",
   "generate_image",
+  "session",
 ]);
 
 export async function seedDatabase(db: DatabaseAdapter): Promise<void> {
@@ -44,6 +46,7 @@ export async function seedDatabase(db: DatabaseAdapter): Promise<void> {
   await removeUnsupportedTools(db);
   await ensureBuiltinToolDefinitions(db);
   await ensureSubAgentToolDefinition(db);
+  await ensureSessionToolDefinitions(db);
   await ensureBashToolDefinition(db);
   await ensureGenerateImageToolDefinition(db);
   await ensurePreinstalledMcpServers(db);

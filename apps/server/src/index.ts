@@ -53,6 +53,7 @@ import { TaskRunner } from "./services/task-runner";
 import { TaskService } from "./services/task-service";
 import {
   registerGenerateImageTool,
+  registerSessionTools,
   registerSubAgentTool,
 } from "./services/tool-resolver";
 import { WorkerManagerService } from "./services/worker-manager-service";
@@ -63,6 +64,7 @@ import {
   createAutomationTools,
 } from "./tools/automation-tools";
 import { createGenerateImageTool } from "./tools/generate-image-tool";
+import { createSessionTools } from "./tools/session-tools";
 import { createSubAgentTool } from "./tools/sub-agent-tool";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -101,6 +103,7 @@ const agent = new AgentService(
   llmUsageTracker
 );
 registerSubAgentTool(createSubAgentTool(agent));
+registerSessionTools(createSessionTools(agent));
 registerGenerateImageTool(
   createGenerateImageTool({
     db: database.adapter,
