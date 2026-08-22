@@ -1,4 +1,5 @@
 import {
+  archiveSkillDirectory,
   detectOrgMemoryInjectionWarnings,
   isGlobalSkillSourcePath,
   isPathWithinProfileSkillsDir,
@@ -33,6 +34,8 @@ export type StageSkillProposalOutcome = "created" | "already_pending";
 
 export interface StageSkillProposalInput {
   action: SkillProposalAction;
+  consolidateLoserSkillNames?: string[];
+  consolidateOrigin?: boolean;
   content?: string;
   newString?: string;
   oldString?: string;
@@ -178,6 +181,7 @@ export class SkillProposalService {
         proposal.skillName,
         content
       );
+      await this.archiveConsolidateLosers(orgId, proposal);
     } else if (proposal.action === "write_file") {
       const content = proposal.content;
       const relativePath = proposal.relativePath;
@@ -461,6 +465,8 @@ export class SkillProposalService {
     const proposal = await this.insertProposal({
       ...input,
       action: "edit",
+      consolidateLoserSkillNames: input.consolidateLoserSkillNames ?? null,
+      consolidateOrigin: input.consolidateOrigin ?? false,
       content,
       patchNewString: null,
       patchOldString: null,
@@ -596,6 +602,8 @@ export class SkillProposalService {
     input: Omit<StageSkillProposalInput, "relativePath" | "content"> & {
       skillName: string;
       content: string | null;
+      consolidateLoserSkillNames?: string[] | null;
+      consolidateOrigin?: boolean;
       patchOldString: string | null;
       patchNewString: string | null;
       relativePath: string | null;
@@ -605,6 +613,8 @@ export class SkillProposalService {
     const now = new Date().toISOString();
     const proposal: StoredSkillProposal = {
       action: input.action,
+      consolidateLoserSkillNames: input.consolidateLoserSkillNames ?? null,
+      consolidateOrigin: input.consolidateOrigin ?? false,
       content: input.content,
       createdAt: now,
       id: `skprop_${crypto.randomUUID().replace(/-/g, "")}`,
@@ -622,6 +632,42 @@ export class SkillProposalService {
     };
     await db.createSkillProposal(proposal);
     return proposal;
+  }
+
+  private async archiveConsolidateLosers(
+    orgId: string,
+    proposal: StoredSkillProposal
+  ): Promise<void> {
+    const loserNames = proposal.consolidateLoserSkillNames ?? [];
+    if (loserNames.length === 0) {
+      return;
+    }
+
+    const skills = this.requireSkillsService();
+    const db = this.requireDatabase();
+    const assigned = await db.listSkillsForProfile(proposal.profileId);
+    const byName = new Map(assigned.map((skill) => [skill.name, skill]));
+
+    for (const loserName of loserNames) {
+      const skill = byName.get(loserName);
+      if (!skill) {
+        throw new NakamaApiError(
+          `Consolidate loser skill "${loserName}" is not assigned to this profile.`,
+          400
+        );
+      }
+      const archived = await archiveSkillDirectory({
+        orgId,
+        profileId: proposal.profileId,
+        skillName: loserName,
+      });
+      await skills.unassignArchivedProfileSkill(
+        orgId,
+        proposal.profileId,
+        skill.id,
+        archived.archivedDirectory
+      );
+    }
   }
 
   private async getProposal(

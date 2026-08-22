@@ -458,8 +458,19 @@ function migrateSkillProposalsTable(db: Database): void {
   const columns = db
     .prepare("PRAGMA table_info(skill_proposals)")
     .all() as Array<{ name: string }>;
-  if (!new Set(columns.map((column) => column.name)).has("relative_path")) {
+  const names = new Set(columns.map((column) => column.name));
+  if (!names.has("relative_path")) {
     db.exec("ALTER TABLE skill_proposals ADD COLUMN relative_path TEXT;");
+  }
+  if (!names.has("consolidate_loser_skill_names")) {
+    db.exec(
+      "ALTER TABLE skill_proposals ADD COLUMN consolidate_loser_skill_names TEXT;"
+    );
+  }
+  if (!names.has("consolidate_origin")) {
+    db.exec(
+      "ALTER TABLE skill_proposals ADD COLUMN consolidate_origin INTEGER NOT NULL DEFAULT 0;"
+    );
   }
 }
 

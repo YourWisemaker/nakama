@@ -340,4 +340,91 @@ describe("SkillProposalService", () => {
     );
     expect(onDisk).toContain("- staging");
   });
+
+  test("approve edit with consolidate losers archives them without delete", async () => {
+    const { pathExists } = await import("@nakama/core");
+    const { getProfileSkillsArchiveDir, getProfileSkillsDir } = await import(
+      "@nakama/core"
+    );
+
+    const db = createInMemoryDatabaseAdapter();
+    const profile = await seedOrg(db);
+    const skills = new SkillsService(db);
+    const service = new SkillProposalService(db, skills);
+
+    const winnerMarkdown = `---
+name: deploy-helper
+description: Deploy checklist helper.
+---
+
+Winner body.
+`;
+    const loserMarkdown = `---
+name: deploy-assistant
+description: Deploy checklist assistant.
+---
+
+Loser body.
+`;
+    const mergedMarkdown = `---
+name: deploy-helper
+description: Deploy checklist helper.
+---
+
+Merged body.
+`;
+
+    await skills.createAndAssignRawSkillToProfile(
+      ORG_ID,
+      profile.id,
+      winnerMarkdown
+    );
+    await skills.createAndAssignRawSkillToProfile(
+      ORG_ID,
+      profile.id,
+      loserMarkdown
+    );
+
+    const staged = await service.stageProposal({
+      action: "edit",
+      consolidateLoserSkillNames: ["deploy-assistant"],
+      consolidateOrigin: true,
+      content: mergedMarkdown,
+      orgId: ORG_ID,
+      profileId: profile.id,
+      skillName: "deploy-helper",
+    });
+    expect(staged.outcome).toBe("created");
+
+    const listed = await service.listProposals(ORG_ID, {
+      profileId: profile.id,
+    });
+    expect(listed.proposals[0]?.consolidateLoserSkillNames).toEqual([
+      "deploy-assistant",
+    ]);
+    expect(listed.proposals[0]?.consolidateOrigin).toBe(true);
+
+    await service.approveProposal(ORG_ID, staged.proposalId!, "admin_user");
+
+    const assigned = await skills.listSkillsForProfile(profile.id);
+    expect(assigned.map((skill) => skill.name).sort()).toEqual([
+      "deploy-helper",
+    ]);
+
+    expect(
+      await pathExists(
+        join(getProfileSkillsDir(ORG_ID, profile.id), "deploy-helper")
+      )
+    ).toBe(true);
+    expect(
+      await pathExists(
+        join(getProfileSkillsDir(ORG_ID, profile.id), "deploy-assistant")
+      )
+    ).toBe(false);
+    expect(
+      await pathExists(
+        join(getProfileSkillsArchiveDir(ORG_ID, profile.id), "deploy-assistant")
+      )
+    ).toBe(true);
+  });
 });

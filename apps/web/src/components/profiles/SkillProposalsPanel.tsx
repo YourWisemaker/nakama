@@ -307,7 +307,11 @@ export function SkillProposalsPanel({
               : null
           }
           proposal={proposal}
-          proposer={resolveProposer(proposal.proposedByUserId, members)}
+          proposer={
+            proposal.consolidateOrigin
+              ? "Skill curator"
+              : resolveProposer(proposal.proposedByUserId, members)
+          }
         />
       ))}
     </div>
