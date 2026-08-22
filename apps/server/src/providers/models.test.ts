@@ -32,7 +32,9 @@ describe("resolveModel", () => {
 
   test("resolves catalog models for OpenAI", () => {
     expect(resolveModel("openai", "gpt-5.4")).toBe("gpt-5.4");
+    expect(resolveModel("openai", "gpt-5.6-luna")).toBe("gpt-5.6-luna");
     expect(resolveModel("openai", "gpt-4o-mini")).toBe("gpt-4o-mini");
+    expect(getModelById("gpt-5.6-luna")?.provider).toBe("openai");
   });
 
   test("resolves catalog models for Gemini", () => {

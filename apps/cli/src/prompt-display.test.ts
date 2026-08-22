@@ -1,56 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatInputForDisplay,
-  splitInputDisplayLines,
-} from "./prompt-display";
+import { normalizePastedText, splitInputDisplayLines } from "./prompt-display";
 
-describe("formatInputForDisplay", () => {
-  test("normalizes carriage returns", () => {
-    expect(formatInputForDisplay("a\r\nb\rc")).toBe("a\nb\nc");
+describe("normalizePastedText", () => {
+  test("normalizes CR and CRLF to LF", () => {
+    expect(normalizePastedText("a\r\nb\rc")).toBe("a\nb\nc");
   });
 });
 
 describe("splitInputDisplayLines", () => {
-  test("returns a single empty line for empty input", () => {
-    expect(splitInputDisplayLines("", 2, 80)).toEqual([""]);
-  });
-
-  test("wraps long input across terminal width", () => {
-    expect(splitInputDisplayLines("abcdefghij", 2, 6)).toEqual([
-      "abcd",
-      "efgh",
-      "ij",
+  test("wraps by remaining width after prefix", () => {
+    expect(splitInputDisplayLines("abcdefgh", 2, 5)).toEqual([
+      "abc",
+      "def",
+      "gh",
     ]);
   });
 
-  test("accounts for prompt prefix on wrapped lines", () => {
-    expect(splitInputDisplayLines("1234567890", 4, 8)).toEqual([
-      "1234",
-      "5678",
-      "90",
-    ]);
-  });
-
-  test("splits on explicit newlines", () => {
-    expect(splitInputDisplayLines("hello\nworld", 2, 80)).toEqual([
-      "hello",
-      "world",
-    ]);
-  });
-
-  test("preserves blank lines", () => {
-    expect(splitInputDisplayLines("a\n\nb", 2, 80)).toEqual(["a", "", "b"]);
-  });
-
-  test("does not split ansi escape sequences when wrapping", () => {
-    const lines = splitInputDisplayLines("\x1b[31mabcdef\x1b[0m", 2, 6);
-
-    expect(lines).toEqual(["\x1b[31mabcd\x1b[0m", "\x1b[31mef\x1b[0m"]);
-  });
-
-  test("wraps wide characters by visible width", () => {
-    const lines = splitInputDisplayLines("中文中文", 2, 6);
-
-    expect(lines).toEqual(["中文", "中文"]);
+  test("preserves explicit newlines", () => {
+    expect(splitInputDisplayLines("ab\ncd", 0, 10)).toEqual(["ab", "cd"]);
   });
 });

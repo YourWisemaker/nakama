@@ -43,9 +43,9 @@ export function createMultiTestOrgs(): UserOrgSummary[] {
     {
       createdAt: now,
       id: "org_b",
-      name: "Tinyclaw",
+      name: "Nakama",
       role: "member",
-      slug: "tinyclaw",
+      slug: "nakama",
       updatedAt: now,
     },
   ];

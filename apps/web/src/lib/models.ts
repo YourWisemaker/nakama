@@ -749,7 +749,7 @@ export function profileModelSelectionValue(
       (entry) => entry.providerId === decoded.providerId
     );
 
-    if (group?.models.some((model) => model.id === decoded.modelId)) {
+    if (group) {
       return modelId;
     }
   }

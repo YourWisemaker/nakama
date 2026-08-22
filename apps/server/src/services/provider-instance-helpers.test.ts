@@ -123,6 +123,87 @@ describe("resolveProfileProviderSelection", () => {
     expect(resolved?.instance.id).toBe("openai-1");
     expect(resolved?.model).toBe("gpt-5.4");
   });
+
+  test("keeps an explicit OpenAI selection when the model is missing from the static catalog", () => {
+    const resolved = resolveProfileProviderSelection({
+      defaultProviderId: "zen-1",
+      profileModel: "openai-1::gpt-5.9-not-in-catalog",
+      providers: [
+        createProviderInstance({
+          apiKey: "public",
+          baseUrl: "https://opencode.ai/zen/v1",
+          customModels: [
+            { default: true, id: "big-pickle", name: "Big Pickle" },
+          ],
+          id: "zen-1",
+          label: "OpenCode Zen",
+          type: "openai_compatible",
+        }),
+        createProviderInstance({
+          id: "openai-1",
+          label: "OpenAI",
+          type: "openai",
+        }),
+      ],
+    });
+
+    expect(resolved?.instance.id).toBe("openai-1");
+    expect(resolved?.instance.type).toBe("openai");
+    expect(resolved?.model).toBe("gpt-5.9-not-in-catalog");
+  });
+
+  test("does not route a first-party catalog id to default Zen just because Zen also lists it", () => {
+    const resolved = resolveProfileProviderSelection({
+      defaultProviderId: "zen-1",
+      profileModel: "gpt-5.4",
+      providers: [
+        createProviderInstance({
+          apiKey: "public",
+          baseUrl: "https://opencode.ai/zen/v1",
+          customModels: [
+            { default: true, id: "gpt-5.4", name: "GPT 5.4" },
+            { id: "gpt-5.6-luna", name: "gpt-5.6-luna" },
+          ],
+          id: "zen-1",
+          label: "OpenCode Zen",
+          type: "openai_compatible",
+        }),
+        createProviderInstance({
+          id: "openai-1",
+          label: "OpenAI",
+          type: "openai",
+        }),
+      ],
+    });
+
+    expect(resolved?.instance.id).toBe("openai-1");
+    expect(resolved?.model).toBe("gpt-5.4");
+  });
+
+  test("still honors an explicit Zen selection for a shared model id", () => {
+    const resolved = resolveProfileProviderSelection({
+      defaultProviderId: "zen-1",
+      profileModel: "zen-1::gpt-5.6-luna",
+      providers: [
+        createProviderInstance({
+          apiKey: "public",
+          baseUrl: "https://opencode.ai/zen/v1",
+          customModels: [{ id: "gpt-5.6-luna", name: "gpt-5.6-luna" }],
+          id: "zen-1",
+          label: "OpenCode Zen",
+          type: "openai_compatible",
+        }),
+        createProviderInstance({
+          id: "openai-1",
+          label: "OpenAI",
+          type: "openai",
+        }),
+      ],
+    });
+
+    expect(resolved?.instance.id).toBe("zen-1");
+    expect(resolved?.model).toBe("gpt-5.6-luna");
+  });
 });
 
 describe("applyProviderInstanceUpdate", () => {

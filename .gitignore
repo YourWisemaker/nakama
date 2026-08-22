@@ -18,6 +18,8 @@ data/logs/*
 .agents/skills/*
 !.agents/skills/adhd-pr-description/
 !.agents/skills/adhd-pr-description/**
+!.agents/skills/eli5/
+!.agents/skills/eli5/**
 apps/data/*
 .cursor/
 docs/plans/*

@@ -11,30 +11,6 @@ export interface PendingMessage {
 const PENDING_PREFIX = "⏳ pending: ";
 const MAX_PENDING_DISPLAY_LINES = 6;
 
-export class MessageQueue {
-  private queue: PendingMessage[] = [];
-
-  enqueue(message: PendingMessage): void {
-    this.queue.push(message);
-  }
-
-  dequeue(): PendingMessage | undefined {
-    return this.queue.shift();
-  }
-
-  peekAll(): PendingMessage[] {
-    return [...this.queue];
-  }
-
-  isEmpty(): boolean {
-    return this.queue.length === 0;
-  }
-
-  clear(): void {
-    this.queue = [];
-  }
-}
-
 export function formatPendingSummary(message: PendingMessage): string {
   const text = message.line.trim() || (message.images?.length ? "[image]" : "");
   return text.replace(/\s+/g, " ");

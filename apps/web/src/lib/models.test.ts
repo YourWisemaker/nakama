@@ -8,6 +8,7 @@ import {
   isOpenCodeZenBaseUrl,
   isProviderTypeAlreadyConfigured,
   PROVIDER_OPTIONS,
+  profileModelSelectionValue,
   resolveModelThinkingSupport,
   resolveModelVisionSupport,
 } from "./models";
@@ -315,6 +316,39 @@ describe("firstAvailableProviderOption", () => {
         "openai"
       )
     ).toBe("ollama");
+  });
+});
+
+describe("profileModelSelectionValue", () => {
+  test("does not remap an explicit OpenAI selection onto Zen for a shared model id", () => {
+    const groups = [
+      {
+        models: [
+          {
+            id: "gpt-5.6-luna",
+            name: "gpt-5.6-luna",
+            provider: "openai_compatible" as const,
+          },
+        ],
+        providerId: "zen-1",
+        providerLabel: "OpenCode Zen",
+      },
+      {
+        models: [
+          {
+            id: "gpt-5.6-luna",
+            name: "GPT-5.6 Luna",
+            provider: "openai" as const,
+          },
+        ],
+        providerId: "openai-1",
+        providerLabel: "OpenAI",
+      },
+    ];
+
+    expect(profileModelSelectionValue("openai-1::gpt-5.6-luna", groups)).toBe(
+      "openai-1::gpt-5.6-luna"
+    );
   });
 });
 
