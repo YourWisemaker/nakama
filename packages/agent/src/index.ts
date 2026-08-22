@@ -72,6 +72,15 @@ export {
   normalizeSessionTitle,
 } from "./session-title";
 export type {
+  SkillConsolidateBodyInput,
+  SkillConsolidateMode,
+} from "./skill-consolidate";
+export {
+  buildSkillConsolidatePrompt,
+  generateSkillConsolidateMarkdown,
+  parseSkillConsolidateResponse,
+} from "./skill-consolidate";
+export type {
   SkillCatalogEntry,
   SkillPostTurnReviewOutcome,
 } from "./skill-post-turn-review";

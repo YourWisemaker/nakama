@@ -436,6 +436,12 @@ export interface SkillCuratorRestoreMiss {
 
 export interface SkillCuratorRunResult {
   archived: number;
+  consolidateApplied?: number;
+  consolidateBudgetExhausted?: boolean;
+  consolidateDeslopified?: number;
+  consolidateMerged?: number;
+  consolidateSkipped?: number;
+  consolidateStaged?: number;
   dryRun: boolean;
   finishedAt: string;
   orgId: string;

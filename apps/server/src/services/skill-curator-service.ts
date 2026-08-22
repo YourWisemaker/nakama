@@ -1,12 +1,19 @@
 import { join } from "node:path";
+import type {
+  SkillConsolidateBodyInput,
+  SkillConsolidateMode,
+} from "@nakama/agent";
 import {
   archiveSkillDirectory,
   BUNDLED_SKILL_NAMES,
+  buildConsolidatePlan,
+  type ConsolidateCandidateSkill,
   classifySkillFreshness,
   getOrgCuratorLogDir,
   isGlobalSkillSourcePath,
   pathExists,
   readTextIfExists,
+  resolveSkillCuratorConsolidateEnabled,
   restoreArchivedSkillDirectory,
   writeTextFile,
 } from "@nakama/core";
@@ -16,6 +23,7 @@ import type {
   SkillCuratorTrigger,
 } from "@nakama/core/contract";
 import type { DatabaseAdapter, StoredSkillRecord } from "@nakama/db";
+import type { SkillProposalService } from "./skill-proposal-service";
 import type { SkillsService } from "./skills-service";
 
 const bundledSkillNames = new Set<string>(BUNDLED_SKILL_NAMES);
@@ -28,8 +36,26 @@ export interface SkillCuratorRunOptions {
   trigger: SkillCuratorTrigger;
 }
 
+export type SkillCuratorGenerateMarkdown = (input: {
+  losers?: SkillConsolidateBodyInput[];
+  mode: SkillConsolidateMode;
+  orgId: string;
+  profileId: string;
+  winner: SkillConsolidateBodyInput;
+}) => Promise<string | null>;
+
+export interface SkillCuratorServiceOptions {
+  generateMarkdown?: SkillCuratorGenerateMarkdown;
+}
+
 const emptyCounts = {
   archived: 0,
+  consolidateApplied: 0,
+  consolidateBudgetExhausted: false,
+  consolidateDeslopified: 0,
+  consolidateMerged: 0,
+  consolidateSkipped: 0,
+  consolidateStaged: 0,
   scanned: 0,
   skippedAutomation: 0,
   skippedBundled: 0,
@@ -38,13 +64,25 @@ const emptyCounts = {
   stale: 0,
 };
 
+type CuratorCounts = typeof emptyCounts & {
+  restoreMisses: SkillCuratorRestoreMiss[];
+};
+
 export class SkillCuratorService {
+  private readonly generateMarkdown: SkillCuratorGenerateMarkdown;
   private readonly inFlight = new Set<string>();
 
   constructor(
     private readonly db: DatabaseAdapter,
-    private readonly skillsService: SkillsService
-  ) {}
+    private readonly skillsService: SkillsService,
+    private readonly skillProposalService?: SkillProposalService,
+    options?: SkillCuratorServiceOptions
+  ) {
+    this.generateMarkdown =
+      options?.generateMarkdown ??
+      // Wired from index.ts with resolveProfileProviderSelection + createProviderForInstance.
+      (async () => null);
+  }
 
   async run(
     orgId: string,
@@ -105,9 +143,9 @@ export class SkillCuratorService {
     options: SkillCuratorRunOptions & { dryRun: boolean; startedAt: string }
   ): Promise<SkillCuratorRunResult> {
     const now = options.now ?? new Date();
-    const counts = {
+    const counts: CuratorCounts = {
       ...emptyCounts,
-      restoreMisses: [] as SkillCuratorRestoreMiss[],
+      restoreMisses: [],
     };
     const profiles = await this.db.listProfilesForOrg(orgId);
     const enabledAutomationProfileIds = new Set(
@@ -178,6 +216,15 @@ export class SkillCuratorService {
       }
     }
 
+    await this.runConsolidatePhase({
+      counts,
+      dryRun: options.dryRun,
+      enabledAutomationProfileIds,
+      now,
+      orgId,
+      profiles,
+    });
+
     return {
       ...counts,
       dryRun: options.dryRun,
@@ -187,6 +234,260 @@ export class SkillCuratorService {
       status: "completed",
       trigger: options.trigger,
     };
+  }
+
+  private async runConsolidatePhase(input: {
+    counts: CuratorCounts;
+    dryRun: boolean;
+    enabledAutomationProfileIds: Set<string>;
+    now: Date;
+    orgId: string;
+    profiles: Awaited<ReturnType<DatabaseAdapter["listProfilesForOrg"]>>;
+  }): Promise<void> {
+    const org = await this.db.getOrganizationById(input.orgId);
+
+    for (const profile of input.profiles) {
+      const consolidateEnabled = resolveSkillCuratorConsolidateEnabled({
+        orgSkillsCuratorConsolidateEnabled:
+          org?.skillsCuratorConsolidateEnabled ?? false,
+        profileSkillsCuratorConsolidateEnabled:
+          profile.skillsCuratorConsolidateEnabled ?? null,
+      });
+      if (!consolidateEnabled) {
+        continue;
+      }
+
+      const assigned = await this.db.listSkillsForProfile(profile.id);
+      const usageBySkillId = new Map(
+        (await this.db.listSkillUsageForProfile(profile.id)).map((row) => [
+          row.skillId,
+          row,
+        ])
+      );
+      const pending = await this.db.listSkillProposals(input.orgId, {
+        profileId: profile.id,
+        status: "pending",
+      });
+      const pendingSkillNames = new Set(
+        pending.map((proposal) => proposal.skillName)
+      );
+
+      const bodyBySkillId = new Map<string, string>();
+      const candidates: ConsolidateCandidateSkill[] = [];
+
+      for (const skill of assigned) {
+        let body = "";
+        try {
+          const detail = await this.skillsService.getSkill(skill.id);
+          body = detail.skill.body ?? "";
+        } catch {
+          body = "";
+        }
+        bodyBySkillId.set(skill.id, body);
+        const usage = usageBySkillId.get(skill.id);
+        candidates.push({
+          skill: {
+            bodyCharCount: body.length,
+            createdBy: skill.createdBy,
+            description: skill.description,
+            name: skill.name,
+            sourcePath: skill.sourcePath,
+          },
+          usage: usage
+            ? {
+                lastPatchedAt: usage.lastPatchedAt,
+                lastUsedAt: usage.lastUsedAt,
+                useCount: usage.useCount,
+              }
+            : null,
+        });
+      }
+
+      const plan = buildConsolidatePlan({
+        hasEnabledAutomation: input.enabledAutomationProfileIds.has(profile.id),
+        now: input.now,
+        pendingSkillNames,
+        skills: candidates,
+      });
+
+      input.counts.consolidateSkipped += plan.skipped.length;
+      if (plan.skipped.some((row) => row.reason === "budget_exhausted")) {
+        input.counts.consolidateBudgetExhausted = true;
+      }
+
+      if (input.dryRun) {
+        input.counts.consolidateMerged += plan.clusters.length;
+        input.counts.consolidateDeslopified += plan.solos.length;
+        continue;
+      }
+
+      const assignedByName = new Map(
+        assigned.map((skill) => [skill.name, skill] as const)
+      );
+
+      for (const cluster of plan.clusters) {
+        const outcome = await this.applyConsolidateUnit({
+          assignedByName,
+          bodyBySkillId,
+          losers: cluster.losers,
+          mode: "merge",
+          now: input.now,
+          orgId: input.orgId,
+          profileId: profile.id,
+          winner: cluster.winner,
+        });
+        this.recordConsolidateOutcome(input.counts, "merge", outcome);
+      }
+
+      for (const solo of plan.solos) {
+        const outcome = await this.applyConsolidateUnit({
+          assignedByName,
+          bodyBySkillId,
+          losers: [],
+          mode: "deslopify",
+          now: input.now,
+          orgId: input.orgId,
+          profileId: profile.id,
+          winner: solo,
+        });
+        this.recordConsolidateOutcome(input.counts, "deslopify", outcome);
+      }
+    }
+  }
+
+  private recordConsolidateOutcome(
+    counts: CuratorCounts,
+    mode: SkillConsolidateMode,
+    outcome: "staged" | "applied" | "skipped"
+  ): void {
+    if (outcome === "skipped") {
+      counts.consolidateSkipped += 1;
+      return;
+    }
+    if (mode === "merge") {
+      counts.consolidateMerged += 1;
+    } else {
+      counts.consolidateDeslopified += 1;
+    }
+    if (outcome === "staged") {
+      counts.consolidateStaged += 1;
+    } else {
+      counts.consolidateApplied += 1;
+    }
+  }
+
+  private async applyConsolidateUnit(input: {
+    assignedByName: Map<string, StoredSkillRecord>;
+    bodyBySkillId: Map<string, string>;
+    losers: ConsolidateCandidateSkill[];
+    mode: SkillConsolidateMode;
+    now: Date;
+    orgId: string;
+    profileId: string;
+    winner: ConsolidateCandidateSkill;
+  }): Promise<"staged" | "applied" | "skipped"> {
+    const winnerRecord = input.assignedByName.get(input.winner.skill.name);
+    if (!winnerRecord) {
+      return "skipped";
+    }
+
+    const winnerBody: SkillConsolidateBodyInput = {
+      body: input.bodyBySkillId.get(winnerRecord.id) ?? "",
+      description: input.winner.skill.description,
+      name: input.winner.skill.name,
+    };
+
+    const loserBodies: SkillConsolidateBodyInput[] = [];
+    for (const loser of input.losers) {
+      const loserRecord = input.assignedByName.get(loser.skill.name);
+      if (!loserRecord) {
+        return "skipped";
+      }
+      loserBodies.push({
+        body: input.bodyBySkillId.get(loserRecord.id) ?? "",
+        description: loser.skill.description,
+        name: loser.skill.name,
+      });
+    }
+
+    let markdown: string | null;
+    try {
+      markdown = await this.generateMarkdown({
+        losers: loserBodies.length > 0 ? loserBodies : undefined,
+        mode: input.mode,
+        orgId: input.orgId,
+        profileId: input.profileId,
+        winner: winnerBody,
+      });
+    } catch {
+      return "skipped";
+    }
+
+    if (!markdown?.trim()) {
+      return "skipped";
+    }
+
+    const loserNames = input.losers.map((loser) => loser.skill.name);
+
+    const writeApprovalRequired = this.skillProposalService
+      ? await this.skillProposalService.isWriteApprovalRequired(
+          input.orgId,
+          input.profileId
+        )
+      : false;
+
+    if (writeApprovalRequired) {
+      if (!this.skillProposalService) {
+        return "skipped";
+      }
+      try {
+        const staged = await this.skillProposalService.stageProposal({
+          action: "edit",
+          consolidateLoserSkillNames:
+            loserNames.length > 0 ? loserNames : undefined,
+          consolidateOrigin: true,
+          content: markdown,
+          orgId: input.orgId,
+          profileId: input.profileId,
+          skillName: input.winner.skill.name,
+        });
+        return staged.outcome === "created" ? "staged" : "skipped";
+      } catch {
+        return "skipped";
+      }
+    }
+
+    try {
+      await this.skillsService.editAssignedProfileSkill(
+        input.orgId,
+        input.profileId,
+        input.winner.skill.name,
+        markdown
+      );
+
+      for (const loserName of loserNames) {
+        const loserSkill = input.assignedByName.get(loserName);
+        if (!loserSkill) {
+          return "skipped";
+        }
+        const archived = await archiveSkillDirectory({
+          now: input.now,
+          orgId: input.orgId,
+          profileId: input.profileId,
+          skillName: loserName,
+        });
+        await this.skillsService.unassignArchivedProfileSkill(
+          input.orgId,
+          input.profileId,
+          loserSkill.id,
+          archived.archivedDirectory
+        );
+      }
+
+      return "applied";
+    } catch {
+      return "skipped";
+    }
   }
 
   private async archiveAssignedSkill(input: {
@@ -260,6 +561,17 @@ function isExemptFromCurator(skill: StoredSkillRecord): boolean {
   );
 }
 
+function hasConsolidateFields(result: SkillCuratorRunResult): boolean {
+  return (
+    result.consolidateApplied !== undefined ||
+    result.consolidateBudgetExhausted !== undefined ||
+    result.consolidateDeslopified !== undefined ||
+    result.consolidateMerged !== undefined ||
+    result.consolidateSkipped !== undefined ||
+    result.consolidateStaged !== undefined
+  );
+}
+
 function formatCuratorReport(result: SkillCuratorRunResult): string {
   const lines = [
     "# Skill curator",
@@ -276,6 +588,17 @@ function formatCuratorReport(result: SkillCuratorRunResult): string {
     `- skippedError: ${result.skippedError}`,
     `- restoreMisses: ${result.restoreMisses.length}`,
   ];
+
+  if (hasConsolidateFields(result)) {
+    lines.push(
+      `- consolidateMerged: ${result.consolidateMerged ?? 0}`,
+      `- consolidateDeslopified: ${result.consolidateDeslopified ?? 0}`,
+      `- consolidateStaged: ${result.consolidateStaged ?? 0}`,
+      `- consolidateApplied: ${result.consolidateApplied ?? 0}`,
+      `- consolidateSkipped: ${result.consolidateSkipped ?? 0}`,
+      `- consolidateBudgetExhausted: ${result.consolidateBudgetExhausted === true}`
+    );
+  }
 
   if (result.restoreMisses.length > 0) {
     lines.push(
