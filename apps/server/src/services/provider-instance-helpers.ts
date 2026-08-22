@@ -499,7 +499,7 @@ export function resolveProfileProviderSelection(options: {
   if (decoded && decoded.providerId !== "__unknown__") {
     const explicit = findProviderInstance({ providers }, decoded.providerId);
 
-    if (explicit && modelExistsOnInstance(explicit, decoded.modelId)) {
+    if (explicit) {
       return {
         instance: explicit,
         model: resolveModel(
@@ -518,23 +518,13 @@ export function resolveProfileProviderSelection(options: {
       modelExistsOnInstance(instance, selectedModel)
     );
 
-    if (
-      active &&
-      matchingProviders.some((instance) => instance.id === active.id)
-    ) {
-      return {
-        instance: active,
-        model: resolveModel(active.type, selectedModel, active.customModels),
-      };
-    }
-
     const catalogProvider = getModelById(selectedModel)?.provider;
     const preferred =
-      (catalogProvider
-        ? matchingProviders.find(
-            (instance) => instance.type === catalogProvider
-          )
-        : null) ?? matchingProviders[0];
+      matchingProviders.find((instance) => instance.type === catalogProvider) ??
+      (active && matchingProviders.some((instance) => instance.id === active.id)
+        ? active
+        : undefined) ??
+      matchingProviders[0];
 
     if (preferred) {
       return {
