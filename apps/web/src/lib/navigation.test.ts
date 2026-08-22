@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import {
   agentWorkTabFromSearchParams,
   agentWorkTabPath,
+  elementIdFromHash,
   pageIdFromPath,
+  SETTINGS_VISION_ID,
+  settingsVisionHref,
   visibleNavGroups,
 } from "./navigation";
 
@@ -81,5 +84,17 @@ describe("agent work navigation", () => {
   test("maps the legacy tasks path to the unified page", () => {
     expect(pageIdFromPath("/tasks")).toBe("automations");
     expect(pageIdFromPath("/automations")).toBe("automations");
+  });
+});
+
+describe("settings vision deep link", () => {
+  test("points at the image parsing card", () => {
+    expect(SETTINGS_VISION_ID).toBe("vision");
+    expect(settingsVisionHref()).toBe("/settings#vision");
+  });
+
+  test("reads a Settings hash target for scroll", () => {
+    expect(elementIdFromHash("#vision")).toBe("vision");
+    expect(elementIdFromHash("")).toBeNull();
   });
 });

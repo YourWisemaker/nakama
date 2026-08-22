@@ -21,6 +21,7 @@ import {
   profileModelSelectionValue,
   resolveModelVisionSupport,
 } from "@/lib/models";
+import { SETTINGS_VISION_ID } from "@/lib/navigation";
 
 const CLEAR_VISION_MODEL_VALUE = "__vision_unset__";
 
@@ -89,6 +90,7 @@ export function VisionSettingsCard() {
           </>
         ) : undefined
       }
+      id={SETTINGS_VISION_ID}
       title="Image parsing model"
     >
       <Select
