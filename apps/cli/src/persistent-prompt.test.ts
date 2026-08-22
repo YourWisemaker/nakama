@@ -3,9 +3,9 @@ import type { PromptSuggestion } from "./commands";
 import { PersistentPrompt } from "./persistent-prompt";
 import type { PromptLineResult } from "./prompt";
 import type { TerminalInput } from "./terminal-input";
-import type { ComposerRenderer, ComposerState } from "./terminal-renderer";
+import type { ComposerState, TerminalRenderer } from "./terminal-renderer";
 
-class FakeRenderer implements ComposerRenderer {
+class FakeRenderer implements Pick<TerminalRenderer, "setComposerState"> {
   state: ComposerState | null = null;
 
   setComposerState(state: ComposerState): void {

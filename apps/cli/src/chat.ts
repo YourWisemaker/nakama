@@ -24,7 +24,7 @@ import {
   resolveSuggestions,
 } from "./commands";
 import { mergeSendInput, parseImageLine } from "./image-input";
-import { MessageQueue, type PendingMessage } from "./message-queue";
+import type { PendingMessage } from "./message-queue";
 import { PersistentPrompt } from "./persistent-prompt";
 import {
   type CliProfileOptions,
@@ -147,7 +147,7 @@ async function runStickyChat(
   let lastUserMessage: string | null = null;
   let modelsCache: ModelsResponse | null = null;
   let profilesCache: ProfileSummary[] = [];
-  const queue = new MessageQueue();
+  const queue: PendingMessage[] = [];
   const thinkingIndicator = new ThinkingIndicator();
   let prompt: PersistentPrompt | null = null;
   thinkingIndicator.setRenderer(renderer);
@@ -186,7 +186,7 @@ async function runStickyChat(
   }
 
   function syncPendingMessages(): void {
-    renderer.setPendingMessages(queue.peekAll());
+    renderer.setPendingMessages([...queue]);
   }
 
   function createStreamHandlers(): StreamHandlers {
@@ -239,7 +239,7 @@ async function runStickyChat(
       return;
     }
 
-    const next = queue.dequeue();
+    const next = queue.shift();
 
     if (!next) {
       syncPendingMessages();
@@ -317,7 +317,7 @@ async function runStickyChat(
 
     if (isStreaming) {
       renderer.appendUserMessage(line, { placement: "below_status" });
-      queue.enqueue({ ...pending, echoed: true });
+      queue.push({ ...pending, echoed: true });
       syncPendingMessages();
       return;
     }
@@ -945,37 +945,7 @@ async function runBlockingChat(context: ChatContext): Promise<void> {
       let promptResult: PromptLineResult;
 
       try {
-        promptResult = await promptLine("> ", {
-          getSuggestions: (input) => {
-            const profile =
-              profilesCache.find((entry) => entry.id === currentProfileId) ??
-              null;
-            const active = effectiveModelState(
-              profile ?? {
-                createdAt: "",
-                hasAvatar: false,
-                id: currentProfileId,
-                isSuper: false,
-                mcpServerCount: 0,
-                model: null,
-                name: "",
-                soulActive: false,
-                toolCount: 0,
-                updatedAt: "",
-              },
-              modelsCache
-            );
-
-            return resolveSuggestions({
-              currentModel: active.modelId,
-              currentProfileId,
-              currentProviderId: active.providerId,
-              input,
-              models: modelsCache?.models,
-              profiles: profilesCache,
-            });
-          },
-        });
+        promptResult = await promptLine("> ");
       } catch (error) {
         if (error instanceof PromptCancelledError) {
           break;

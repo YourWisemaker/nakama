@@ -1,9 +1,5 @@
 import { wrapText } from "./text-measure";
 
-export function formatInputForDisplay(value: string): string {
-  return normalizePastedText(value);
-}
-
 export function normalizePastedText(text: string): string {
   return text.replace(/\r\n?/g, "\n");
 }

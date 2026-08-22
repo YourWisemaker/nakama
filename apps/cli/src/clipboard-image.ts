@@ -1,10 +1,5 @@
 import { getImageBinary, hasImage } from "@crosscopy/clipboard";
-import type { ImageAttachment } from "@nakama/core";
-import { validateImageAttachments } from "@nakama/core";
-
-export function isClipboardImagePasteSupported(): boolean {
-  return true;
-}
+import { type ImageAttachment, validateImageAttachments } from "@nakama/core";
 
 export async function readClipboardImage(): Promise<ImageAttachment | null> {
   if (!hasImage()) {

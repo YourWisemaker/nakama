@@ -44,10 +44,6 @@ export function setTheme(theme: Theme): void {
   currentTheme = theme;
 }
 
-export function getTheme(): Theme {
-  return currentTheme;
-}
-
 export async function detectTheme(): Promise<Theme | null> {
   // macOS system appearance — most reliable for Apple terminals
   if (process.platform === "darwin") {

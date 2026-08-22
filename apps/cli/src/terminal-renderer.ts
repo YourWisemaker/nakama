@@ -2,10 +2,7 @@ import {
   formatPendingDisplayLines,
   type PendingMessage,
 } from "./message-queue";
-import {
-  formatInputForDisplay,
-  splitInputDisplayLines,
-} from "./prompt-display";
+import { normalizePastedText, splitInputDisplayLines } from "./prompt-display";
 import {
   cloneStyledLine,
   plainLine,
@@ -15,15 +12,6 @@ import {
 import type { TerminalInput } from "./terminal-input";
 import { getTerminalColumns, TerminalLayout } from "./terminal-layout";
 import { truncateText, visibleLength } from "./text-measure";
-
-export interface ComposerRenderer {
-  setComposerState(state: ComposerState): void;
-}
-
-export interface StatusRenderer {
-  isEnabled(): boolean;
-  setStatusLine(text: StyledLine | null): void;
-}
 
 export interface ComposerSuggestion {
   description: string;
@@ -38,16 +26,6 @@ export interface ComposerState {
   value: string;
 }
 
-export interface TranscriptEntry {
-  kind: "user" | "output" | "assistant";
-  text: string;
-}
-
-export interface StreamState {
-  active: boolean;
-  text: string;
-}
-
 export interface UserMessageOptions {
   placement?: "scroll" | "below_status";
   prefix?: string;
@@ -57,8 +35,6 @@ export interface TerminalRendererState {
   composer: ComposerState;
   pendingMessages: PendingMessage[];
   statusLine: StyledLine | null;
-  stream: StreamState;
-  transcript: TranscriptEntry[];
 }
 
 export function buildComposerLines(
@@ -76,7 +52,7 @@ export function buildComposerLines(
     state.pendingMessages,
     width
   ).map((line) => styledLine(line, { dim: true }));
-  const display = formatInputForDisplay(state.composer.value);
+  const display = normalizePastedText(state.composer.value);
   const inputWidth = state.composer.cursorVisible
     ? Math.max(1, composerWidth - 1)
     : composerWidth;
@@ -140,15 +116,7 @@ function cloneComposerState(state: ComposerState): ComposerState {
   };
 }
 
-function clonePendingMessages(messages: PendingMessage[]): PendingMessage[] {
-  return [...messages];
-}
-
-function cloneTranscript(entries: TranscriptEntry[]): TranscriptEntry[] {
-  return entries.map((entry) => ({ ...entry }));
-}
-
-export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
+export class TerminalRenderer {
   private readonly layout: TerminalLayout;
   private state: TerminalRendererState = {
     composer: {
@@ -160,11 +128,6 @@ export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
     },
     pendingMessages: [],
     statusLine: null,
-    stream: {
-      active: false,
-      text: "",
-    },
-    transcript: [],
   };
 
   constructor(
@@ -193,11 +156,6 @@ export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
       },
       pendingMessages: [],
       statusLine: null,
-      stream: {
-        active: false,
-        text: "",
-      },
-      transcript: [],
     };
     this.layout.reset();
   }
@@ -212,7 +170,7 @@ export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
   }
 
   setPendingMessages(messages: PendingMessage[]): void {
-    this.state.pendingMessages = clonePendingMessages(messages);
+    this.state.pendingMessages = [...messages];
     this.renderComposer();
   }
 
@@ -229,67 +187,27 @@ export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
 
   beginStream(): void {
     this.state.statusLine = null;
-    this.state.stream = {
-      active: true,
-      text: "",
-    };
     this.layout.beginMessage("assistant");
     this.layout.beginStream();
   }
 
   endStream(): void {
-    if (this.state.stream.text) {
-      this.state.transcript.push({
-        kind: "assistant",
-        text: this.state.stream.text,
-      });
-    }
-
     this.state.statusLine = null;
-    this.state.stream = {
-      active: false,
-      text: "",
-    };
     this.layout.endStream();
     this.layout.endMessage();
   }
 
   appendStreamChunk(text: string): void {
-    this.state.stream.text += text;
     this.layout.writeScroll(text);
   }
 
   appendOutputLine(text: string | StyledLine): void {
-    if (typeof text === "string") {
-      this.state.transcript.push({
-        kind: "output",
-        text,
-      });
-      this.layout.beginMessage("output");
-      this.layout.writelnScroll(text);
-      this.layout.endMessage();
-      return;
-    }
-
-    const plainText = text.segments.map((segment) => segment.text).join("");
-    this.state.transcript.push({
-      kind: "output",
-      text: plainText,
-    });
     this.layout.beginMessage("output");
     this.layout.writelnScroll(text);
     this.layout.endMessage();
   }
 
   appendToolLine(text: string | StyledLine): void {
-    const plainText =
-      typeof text === "string"
-        ? text
-        : text.segments.map((segment) => segment.text).join("");
-    this.state.transcript.push({
-      kind: "output",
-      text: plainText,
-    });
     this.layout.beginMessage("tool");
     this.layout.writelnScroll(text);
     this.layout.endMessage();
@@ -305,11 +223,6 @@ export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
       const linePrefix = index === 0 ? prefix : " ".repeat(prefix.length);
       const text = `${linePrefix}${lines[index] ?? ""}`;
 
-      this.state.transcript.push({
-        kind: "user",
-        text,
-      });
-
       if (placement === "below_status") {
         this.layout.writelnBelowStatus(text);
       } else {
@@ -322,12 +235,10 @@ export class TerminalRenderer implements ComposerRenderer, StatusRenderer {
   getState(): TerminalRendererState {
     return {
       composer: cloneComposerState(this.state.composer),
-      pendingMessages: clonePendingMessages(this.state.pendingMessages),
+      pendingMessages: [...this.state.pendingMessages],
       statusLine: this.state.statusLine
         ? cloneStyledLine(this.state.statusLine)
         : null,
-      stream: { ...this.state.stream },
-      transcript: cloneTranscript(this.state.transcript),
     };
   }
 
