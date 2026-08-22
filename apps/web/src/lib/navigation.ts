@@ -278,17 +278,6 @@ export const PAGE_PATHS: Record<PageId, string> = {
   tasks: "/tasks",
 };
 
-export const SETTINGS_VISION_ID = "vision";
-
-export function settingsVisionHref(): string {
-  return `${PAGE_PATHS.settings}#${SETTINGS_VISION_ID}`;
-}
-
-export function elementIdFromHash(hash: string): string | null {
-  const id = hash.startsWith("#") ? hash.slice(1) : hash;
-  return id.length > 0 ? id : null;
-}
-
 const PREFIX_PAGE_IDS: readonly [string, PageId][] = [
   [PAGE_PATHS.chat, "chat"],
   [PAGE_PATHS.soul, "soul"],

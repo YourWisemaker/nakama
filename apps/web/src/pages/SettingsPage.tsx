@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
 import { DataPortabilityPanel } from "@/components/settings/DataPortabilityPanel";
 import { ImageGenerationSettingsCard } from "@/components/settings/ImageGenerationSettingsCard";
 import { ProviderSettingsCard } from "@/components/settings/ProviderSettingsCard";
@@ -14,11 +13,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/context/use-auth";
 import { useSaveUserTimezone, useUserTimezone } from "@/hooks/use-timezones";
 import { formatError } from "@/lib/client";
-import { elementIdFromHash } from "@/lib/navigation";
 import { getBrowserTimezone } from "@/lib/timezones";
 
 export function SettingsPage() {
-  const { hash } = useLocation();
   const { user, activeOrg } = useAuth();
   const isPlatformAdmin = user?.isPlatformAdmin === true;
   const isOrgAdmin = activeOrg?.role === "admin";
@@ -33,15 +30,6 @@ export function SettingsPage() {
       setTimezone(savedTimezone);
     }
   }, [savedTimezone]);
-
-  useEffect(() => {
-    const id = elementIdFromHash(hash);
-    if (!id) {
-      return;
-    }
-
-    document.getElementById(id)?.scrollIntoView({ block: "nearest" });
-  }, [hash]);
 
   const handleSaveTimezone = useCallback(() => {
     setFormError(null);
