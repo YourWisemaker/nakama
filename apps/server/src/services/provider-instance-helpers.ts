@@ -499,10 +499,6 @@ export function resolveProfileProviderSelection(options: {
   if (decoded && decoded.providerId !== "__unknown__") {
     const explicit = findProviderInstance({ providers }, decoded.providerId);
 
-    // Honor the stored provider even when the model is newer than the static
-    // catalog. OpenAI/Anthropic/Gemini accept unknown ids via resolveModel;
-    // requiring modelExistsOnInstance dropped those selections onto the
-    // default provider (often OpenCode Zen after first-boot seed).
     if (explicit) {
       return {
         instance: explicit,
@@ -523,32 +519,12 @@ export function resolveProfileProviderSelection(options: {
     );
 
     const catalogProvider = getModelById(selectedModel)?.provider;
-    const catalogMatch = catalogProvider
-      ? matchingProviders.find((instance) => instance.type === catalogProvider)
-      : undefined;
-
-    if (catalogMatch) {
-      return {
-        instance: catalogMatch,
-        model: resolveModel(
-          catalogMatch.type,
-          selectedModel,
-          catalogMatch.customModels
-        ),
-      };
-    }
-
-    if (
-      active &&
-      matchingProviders.some((instance) => instance.id === active.id)
-    ) {
-      return {
-        instance: active,
-        model: resolveModel(active.type, selectedModel, active.customModels),
-      };
-    }
-
-    const preferred = matchingProviders[0];
+    const preferred =
+      matchingProviders.find((instance) => instance.type === catalogProvider) ??
+      (active && matchingProviders.some((instance) => instance.id === active.id)
+        ? active
+        : undefined) ??
+      matchingProviders[0];
 
     if (preferred) {
       return {

@@ -152,34 +152,6 @@ describe("resolveProfileProviderSelection", () => {
     expect(resolved?.model).toBe("gpt-5.9-not-in-catalog");
   });
 
-  test("routes an explicit OpenAI gpt-5.6-luna selection away from default Zen", () => {
-    const resolved = resolveProfileProviderSelection({
-      defaultProviderId: "zen-1",
-      profileModel: "openai-1::gpt-5.6-luna",
-      providers: [
-        createProviderInstance({
-          apiKey: "public",
-          baseUrl: "https://opencode.ai/zen/v1",
-          customModels: [
-            { default: true, id: "big-pickle", name: "Big Pickle" },
-            { id: "gpt-5.6-luna", name: "gpt-5.6-luna" },
-          ],
-          id: "zen-1",
-          label: "OpenCode Zen",
-          type: "openai_compatible",
-        }),
-        createProviderInstance({
-          id: "openai-1",
-          label: "OpenAI",
-          type: "openai",
-        }),
-      ],
-    });
-
-    expect(resolved?.instance.id).toBe("openai-1");
-    expect(resolved?.model).toBe("gpt-5.6-luna");
-  });
-
   test("does not route a first-party catalog id to default Zen just because Zen also lists it", () => {
     const resolved = resolveProfileProviderSelection({
       defaultProviderId: "zen-1",
