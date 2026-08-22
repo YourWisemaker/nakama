@@ -1,5 +1,6 @@
 import { AlertCircleIcon, BulbIcon } from "hugeicons-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const TIPS = [
@@ -35,6 +36,8 @@ function ChatComposerNotice({
 }
 
 export function ChatComposerError({ message }: { message: string }) {
+  const [before, after] = message.split("Settings");
+
   return (
     <ChatComposerNotice role="alert">
       <div className="flex items-start gap-2 text-muted-foreground text-xs sm:items-center">
@@ -44,7 +47,20 @@ export function ChatComposerError({ message }: { message: string }) {
         />
         <div className="relative min-w-0 flex-1 sm:min-h-4">
           <span className="block text-destructive/90 leading-relaxed">
-            {message}
+            {after === undefined ? (
+              message
+            ) : (
+              <>
+                {before}
+                <Link
+                  className="font-medium underline underline-offset-2 hover:text-destructive"
+                  to="/settings"
+                >
+                  Settings
+                </Link>
+                {after}
+              </>
+            )}
           </span>
         </div>
       </div>
