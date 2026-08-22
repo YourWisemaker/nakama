@@ -9,9 +9,43 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-22
+
 ### Added
 
-- Optional CloakBrowser stealth Chromium behind the agent-browser skill ([#121], in review)
+- Optional CloakBrowser stealth Chromium behind the agent-browser skill ([#314])
+- Direct MiniMax, xAI Grok, and Zhipu GLM providers with dynamic model discovery ([#392], [#408], [#394])
+- Custom Python tools, including Super Bot authoring ([#352], [#403])
+- Read another profile's sessions from within the same org ([#351])
+- Platform admins can archive an organization ([#393])
+- Composio: connect, auto-assign, and a shorter app list on Integrations ([#337])
+- Knip unused-code CI gate on pull requests ([#336])
+
+### Changed
+
+- Tool-output pruning scales with the model context window ([#350])
+- Mermaid renderer lazy-loaded ([#347])
+- Add and assign MCP share one dialog ([#343])
+- `@composio/core` bumped to 0.17.0 ([#426])
+- Composio docs rewritten for a first-time reader ([#335])
+- Asserts reviewed and low-value tests removed ([#323], [#325], [#348], [#349])
+- Core channel config, heartbeat, and `web_fetch` SSRF helpers shared and shrunk ([#416], [#417], [#418], [#419])
+- ADHD PR description skill set as the default body format ([#411])
+
+### Fixed
+
+- Drop the unawaited session delete that can end the process ([#328])
+- Kill a SIGTERM-proof harness after the version probe times out ([#339])
+- Bound the agent-browser version probe and SIGKILL probes that trap SIGTERM ([#330], [#424])
+- Anthropic replays the streamed tool input instead of an empty object ([#345])
+- OpenAI replays assistant text once when the turn also calls a tool ([#344])
+- Discovery-provider helpers no longer pull in node-only modules ([#395])
+- Live OpenRouter stealth models stay visible ([#404])
+- Model catalog shows after an API key instead of a blank row ([#409])
+- Platform admin required to rotate the local auth token ([#400])
+- All browser sessions revoked on password change ([#402])
+- Viewers blocked from session mutations and paid provider routes ([#401])
+- Docs: local dev dashboard URL points to port 3003 ([#334])
 
 ## [0.4.0] - 2026-08-20
 
@@ -475,7 +509,8 @@ First tagged release. The baseline it established:
 - Export and import for data portability
 - Docker image published from GitHub Actions, and a VitePress documentation site
 
-[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.0...main
+[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.1...main
+[0.4.1]: https://github.com/ahmadrosid/nakama/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ahmadrosid/nakama/compare/v0.3.15...v0.4.0
 [0.3.15]: https://github.com/ahmadrosid/nakama/compare/v0.3.14...v0.3.15
 [0.3.14]: https://github.com/ahmadrosid/nakama/compare/v0.3.13...v0.3.14
@@ -584,3 +619,40 @@ First tagged release. The baseline it established:
 [#319]: https://github.com/ahmadrosid/nakama/pull/319
 [#320]: https://github.com/ahmadrosid/nakama/pull/320
 [#321]: https://github.com/ahmadrosid/nakama/pull/321
+[#314]: https://github.com/ahmadrosid/nakama/pull/314
+[#323]: https://github.com/ahmadrosid/nakama/pull/323
+[#325]: https://github.com/ahmadrosid/nakama/pull/325
+[#328]: https://github.com/ahmadrosid/nakama/pull/328
+[#330]: https://github.com/ahmadrosid/nakama/pull/330
+[#334]: https://github.com/ahmadrosid/nakama/pull/334
+[#335]: https://github.com/ahmadrosid/nakama/pull/335
+[#336]: https://github.com/ahmadrosid/nakama/pull/336
+[#337]: https://github.com/ahmadrosid/nakama/pull/337
+[#339]: https://github.com/ahmadrosid/nakama/pull/339
+[#343]: https://github.com/ahmadrosid/nakama/pull/343
+[#344]: https://github.com/ahmadrosid/nakama/pull/344
+[#345]: https://github.com/ahmadrosid/nakama/pull/345
+[#347]: https://github.com/ahmadrosid/nakama/pull/347
+[#348]: https://github.com/ahmadrosid/nakama/pull/348
+[#349]: https://github.com/ahmadrosid/nakama/pull/349
+[#350]: https://github.com/ahmadrosid/nakama/pull/350
+[#351]: https://github.com/ahmadrosid/nakama/pull/351
+[#352]: https://github.com/ahmadrosid/nakama/pull/352
+[#392]: https://github.com/ahmadrosid/nakama/pull/392
+[#393]: https://github.com/ahmadrosid/nakama/pull/393
+[#394]: https://github.com/ahmadrosid/nakama/pull/394
+[#395]: https://github.com/ahmadrosid/nakama/pull/395
+[#400]: https://github.com/ahmadrosid/nakama/pull/400
+[#401]: https://github.com/ahmadrosid/nakama/pull/401
+[#402]: https://github.com/ahmadrosid/nakama/pull/402
+[#403]: https://github.com/ahmadrosid/nakama/pull/403
+[#404]: https://github.com/ahmadrosid/nakama/pull/404
+[#408]: https://github.com/ahmadrosid/nakama/pull/408
+[#409]: https://github.com/ahmadrosid/nakama/pull/409
+[#411]: https://github.com/ahmadrosid/nakama/pull/411
+[#416]: https://github.com/ahmadrosid/nakama/pull/416
+[#417]: https://github.com/ahmadrosid/nakama/pull/417
+[#418]: https://github.com/ahmadrosid/nakama/pull/418
+[#419]: https://github.com/ahmadrosid/nakama/pull/419
+[#424]: https://github.com/ahmadrosid/nakama/pull/424
+[#426]: https://github.com/ahmadrosid/nakama/pull/426
