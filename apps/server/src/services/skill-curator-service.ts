@@ -271,29 +271,22 @@ export class SkillCuratorService {
         pending.map((proposal) => proposal.skillName)
       );
 
-      const bodyBySkillId = new Map<string, string>();
       const candidates: ConsolidateCandidateSkill[] = [];
 
       for (const skill of assigned) {
         const body =
           (await readTextIfExists(join(skill.sourcePath, "SKILL.md"))) ?? "";
-        bodyBySkillId.set(skill.id, body);
         const usage = usageBySkillId.get(skill.id);
         candidates.push({
-          skill: {
-            bodyCharCount: body.length,
-            createdBy: skill.createdBy,
-            description: skill.description,
-            name: skill.name,
-            sourcePath: skill.sourcePath,
-          },
-          usage: usage
-            ? {
-                lastPatchedAt: usage.lastPatchedAt,
-                lastUsedAt: usage.lastUsedAt,
-                useCount: usage.useCount,
-              }
-            : null,
+          body,
+          createdBy: skill.createdBy,
+          description: skill.description,
+          id: skill.id,
+          lastPatchedAt: usage?.lastPatchedAt,
+          lastUsedAt: usage?.lastUsedAt,
+          name: skill.name,
+          sourcePath: skill.sourcePath,
+          useCount: usage?.useCount,
         });
       }
 
@@ -304,8 +297,8 @@ export class SkillCuratorService {
         skills: candidates,
       });
 
-      input.counts.consolidateSkipped += plan.skipped.length;
-      if (plan.skipped.some((row) => row.reason === "budget_exhausted")) {
+      input.counts.consolidateSkipped += plan.skippedCount;
+      if (plan.budgetExhausted) {
         input.counts.consolidateBudgetExhausted = true;
       }
 
@@ -315,14 +308,8 @@ export class SkillCuratorService {
         continue;
       }
 
-      const assignedByName = new Map(
-        assigned.map((skill) => [skill.name, skill] as const)
-      );
-
       for (const cluster of plan.clusters) {
         const outcome = await this.applyConsolidateUnit({
-          assignedByName,
-          bodyBySkillId,
           losers: cluster.losers,
           mode: "merge",
           now: input.now,
@@ -335,8 +322,6 @@ export class SkillCuratorService {
 
       for (const solo of plan.solos) {
         const outcome = await this.applyConsolidateUnit({
-          assignedByName,
-          bodyBySkillId,
           losers: [],
           mode: "deslopify",
           now: input.now,
@@ -371,8 +356,6 @@ export class SkillCuratorService {
   }
 
   private async applyConsolidateUnit(input: {
-    assignedByName: Map<string, StoredSkillRecord>;
-    bodyBySkillId: Map<string, string>;
     losers: ConsolidateCandidateSkill[];
     mode: SkillConsolidateMode;
     now: Date;
@@ -380,29 +363,17 @@ export class SkillCuratorService {
     profileId: string;
     winner: ConsolidateCandidateSkill;
   }): Promise<"staged" | "applied" | "skipped"> {
-    const winnerRecord = input.assignedByName.get(input.winner.skill.name);
-    if (!winnerRecord) {
-      return "skipped";
-    }
-
     const winnerBody: SkillConsolidateBodyInput = {
-      body: input.bodyBySkillId.get(winnerRecord.id) ?? "",
-      description: input.winner.skill.description,
-      name: input.winner.skill.name,
+      body: input.winner.body,
+      description: input.winner.description,
+      name: input.winner.name,
     };
 
-    const loserBodies: SkillConsolidateBodyInput[] = [];
-    for (const loser of input.losers) {
-      const loserRecord = input.assignedByName.get(loser.skill.name);
-      if (!loserRecord) {
-        return "skipped";
-      }
-      loserBodies.push({
-        body: input.bodyBySkillId.get(loserRecord.id) ?? "",
-        description: loser.skill.description,
-        name: loser.skill.name,
-      });
-    }
+    const loserBodies = input.losers.map((loser) => ({
+      body: loser.body,
+      description: loser.description,
+      name: loser.name,
+    }));
 
     let markdown: string | null;
     try {
@@ -420,7 +391,7 @@ export class SkillCuratorService {
       return "skipped";
     }
 
-    const loserNames = input.losers.map((loser) => loser.skill.name);
+    const loserNames = input.losers.map((loser) => loser.name);
     const proposals = this.skillProposalService;
     const writeApprovalRequired = proposals
       ? await proposals.isWriteApprovalRequired(input.orgId, input.profileId)
@@ -430,13 +401,11 @@ export class SkillCuratorService {
       try {
         const staged = await proposals.stageProposal({
           action: "edit",
-          consolidateLoserSkillNames:
-            loserNames.length > 0 ? loserNames : undefined,
-          consolidateOrigin: true,
+          consolidateLoserSkillNames: loserNames,
           content: markdown,
           orgId: input.orgId,
           profileId: input.profileId,
-          skillName: input.winner.skill.name,
+          skillName: input.winner.name,
         });
         return staged.outcome === "created" ? "staged" : "skipped";
       } catch {
@@ -448,15 +417,11 @@ export class SkillCuratorService {
       await this.skillsService.editAssignedProfileSkill(
         input.orgId,
         input.profileId,
-        input.winner.skill.name,
+        input.winner.name,
         markdown
       );
 
-      for (const loserName of loserNames) {
-        const loserSkill = input.assignedByName.get(loserName);
-        if (!loserSkill) {
-          return "skipped";
-        }
+      for (const loserSkill of input.losers) {
         const outcome = await this.archiveAssignedSkill({
           now: input.now,
           orgId: input.orgId,
@@ -477,7 +442,7 @@ export class SkillCuratorService {
   private async archiveAssignedSkill(input: {
     orgId: string;
     profileId: string;
-    skill: StoredSkillRecord;
+    skill: Pick<StoredSkillRecord, "id" | "name">;
     now: Date;
   }): Promise<
     | { archived: true }

@@ -559,7 +559,6 @@ describe("SkillCuratorService", () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]?.action).toBe("edit");
     expect(pending[0]?.skillName).toBe(cluster.winnerName);
-    expect(pending[0]?.consolidateOrigin).toBe(true);
     expect(pending[0]?.consolidateLoserSkillNames).toEqual([
       "deploy-assistant",
     ]);

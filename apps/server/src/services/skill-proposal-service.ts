@@ -35,7 +35,6 @@ export type StageSkillProposalOutcome = "created" | "already_pending";
 export interface StageSkillProposalInput {
   action: SkillProposalAction;
   consolidateLoserSkillNames?: string[];
-  consolidateOrigin?: boolean;
   content?: string;
   newString?: string;
   oldString?: string;
@@ -466,7 +465,6 @@ export class SkillProposalService {
       ...input,
       action: "edit",
       consolidateLoserSkillNames: input.consolidateLoserSkillNames ?? null,
-      consolidateOrigin: input.consolidateOrigin ?? false,
       content,
       patchNewString: null,
       patchOldString: null,
@@ -603,7 +601,6 @@ export class SkillProposalService {
       skillName: string;
       content: string | null;
       consolidateLoserSkillNames?: string[] | null;
-      consolidateOrigin?: boolean;
       patchOldString: string | null;
       patchNewString: string | null;
       relativePath: string | null;
@@ -614,7 +611,6 @@ export class SkillProposalService {
     const proposal: StoredSkillProposal = {
       action: input.action,
       consolidateLoserSkillNames: input.consolidateLoserSkillNames ?? null,
-      consolidateOrigin: input.consolidateOrigin ?? false,
       content: input.content,
       createdAt: now,
       id: `skprop_${crypto.randomUUID().replace(/-/g, "")}`,

@@ -78,7 +78,6 @@ export type {
 export {
   buildSkillConsolidatePrompt,
   generateSkillConsolidateMarkdown,
-  parseSkillConsolidateResponse,
 } from "./skill-consolidate";
 export type {
   SkillCatalogEntry,

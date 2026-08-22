@@ -352,7 +352,6 @@ interface OrgMemoryProposalRow {
 interface SkillProposalRow {
   action: string;
   consolidate_loser_skill_names: string | null;
-  consolidate_origin: number;
   content: string | null;
   created_at: string;
   id: string;
@@ -1346,15 +1345,15 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     INSERT INTO skill_proposals (
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const listSkillProposalsByStatusStmt = db.prepare(`
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND status = ?
@@ -1364,7 +1363,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND status = ? AND profile_id = ?
@@ -1374,7 +1373,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ?
@@ -1384,7 +1383,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ?
@@ -1394,7 +1393,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND id = ?
@@ -1404,7 +1403,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'create' AND status = 'pending'
@@ -1414,7 +1413,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND status = 'pending'
@@ -1424,7 +1423,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
     SELECT
       id, org_id, profile_id, session_id, proposed_by_user_id,
       action, skill_name, content, patch_old_string, patch_new_string, relative_path,
-      consolidate_loser_skill_names, consolidate_origin,
+      consolidate_loser_skill_names,
       status, reviewer_user_id, reviewed_at, created_at
     FROM skill_proposals
     WHERE org_id = ? AND profile_id = ? AND skill_name = ? AND action = 'patch'
@@ -1696,7 +1695,6 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.consolidateLoserSkillNames
           ? JSON.stringify(record.consolidateLoserSkillNames)
           : null,
-        record.consolidateOrigin ? 1 : 0,
         record.status,
         record.reviewerUserId,
         record.reviewedAt,
@@ -3597,7 +3595,6 @@ function toSkillProposalRecord(row: SkillProposalRow): StoredSkillProposal {
   return {
     action: row.action as StoredSkillProposal["action"],
     consolidateLoserSkillNames,
-    consolidateOrigin: row.consolidate_origin !== 0,
     content: row.content,
     createdAt: row.created_at,
     id: row.id,

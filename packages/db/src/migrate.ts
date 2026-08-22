@@ -467,11 +467,6 @@ function migrateSkillProposalsTable(db: Database): void {
       "ALTER TABLE skill_proposals ADD COLUMN consolidate_loser_skill_names TEXT;"
     );
   }
-  if (!names.has("consolidate_origin")) {
-    db.exec(
-      "ALTER TABLE skill_proposals ADD COLUMN consolidate_origin INTEGER NOT NULL DEFAULT 0;"
-    );
-  }
 }
 
 function migrateSkillSuggestionsTable(db: Database): void {

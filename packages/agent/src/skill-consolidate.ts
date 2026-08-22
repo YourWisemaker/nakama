@@ -58,30 +58,6 @@ export function buildSkillConsolidatePrompt(input: {
   return truncate(lines.join("\n"), PROMPT_CHAR_MAX);
 }
 
-export function parseSkillConsolidateResponse(
-  raw: string,
-  expectedName: string
-): string | null {
-  let text = raw.trim();
-  if (!text) {
-    return null;
-  }
-  if (text.startsWith("```")) {
-    text = text.replace(/^```(?:markdown|md)?\s*/i, "").replace(/\s*```$/, "");
-  }
-  if (!text.includes("---")) {
-    return null;
-  }
-  const nameOk =
-    new RegExp(`^name:\\s*${expectedName}\\s*$`, "m").test(text) ||
-    text.includes(`name: ${expectedName}`) ||
-    text.includes(`name: "${expectedName}"`);
-  if (!nameOk) {
-    return null;
-  }
-  return text;
-}
-
 export async function generateSkillConsolidateMarkdown(input: {
   losers?: SkillConsolidateBodyInput[];
   mode: SkillConsolidateMode;
@@ -94,5 +70,9 @@ export async function generateSkillConsolidateMarkdown(input: {
     prompt,
     system: input.mode === "merge" ? MERGE_SYSTEM : DESLOP_SYSTEM,
   });
-  return parseSkillConsolidateResponse(result.text, input.winner.name);
+  const markdown = result.text
+    .trim()
+    .replace(/^```(?:markdown|md)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  return markdown || null;
 }

@@ -15,22 +15,20 @@ function agentSkill(
   name: string,
   description: string,
   extras: Partial<{
-    bodyCharCount: number;
+    body: string;
     createdBy: string;
     sourcePath: string;
   }> = {}
 ) {
   return {
-    skill: {
-      bodyCharCount: extras.bodyCharCount,
-      createdBy: extras.createdBy ?? "agent",
-      description,
-      name,
-      sourcePath:
-        extras.sourcePath ??
-        `/tmp/nakama/orgs/o1/profiles/p1/skills/${name}/SKILL.md`,
-    },
-    usage: null as null,
+    body: extras.body ?? "",
+    createdBy: extras.createdBy ?? "agent",
+    description,
+    id: `skill_${name}`,
+    name,
+    sourcePath:
+      extras.sourcePath ??
+      `/tmp/nakama/orgs/o1/profiles/p1/skills/${name}/SKILL.md`,
   };
 }
 
@@ -48,8 +46,7 @@ describe("classifyConsolidateEligibility", () => {
   test("skips non-agent skills", () => {
     expect(
       classifyConsolidateEligibility({
-        skill: agentSkill("x", "desc", { createdBy: "human" }).skill,
-        usage: null,
+        skill: agentSkill("x", "desc", { createdBy: "human" }),
       })
     ).toBe("not_agent");
   });
@@ -57,8 +54,7 @@ describe("classifyConsolidateEligibility", () => {
   test("skips bundled skill names", () => {
     expect(
       classifyConsolidateEligibility({
-        skill: agentSkill("manage-skills", "desc").skill,
-        usage: null,
+        skill: agentSkill("manage-skills", "desc"),
       })
     ).toBe("bundled");
   });
@@ -67,8 +63,8 @@ describe("classifyConsolidateEligibility", () => {
     expect(
       classifyConsolidateEligibility({
         now: NOW,
-        skill: agentSkill("foo", "bar").skill,
-        usage: {
+        skill: {
+          ...agentSkill("foo", "bar"),
           lastPatchedAt: new Date(
             NOW.getTime() - SKILL_CONSOLIDATE_RECENT_PATCH_MS / 2
           ).toISOString(),
@@ -79,8 +75,7 @@ describe("classifyConsolidateEligibility", () => {
     expect(
       classifyConsolidateEligibility({
         now: NOW,
-        skill: agentSkill("foo", "bar").skill,
-        usage: { lastPatchedAt: null },
+        skill: { ...agentSkill("foo", "bar"), lastPatchedAt: null },
       })
     ).toBeNull();
   });
@@ -89,16 +84,14 @@ describe("classifyConsolidateEligibility", () => {
     expect(
       classifyConsolidateEligibility({
         pendingSkillNames: new Set(["foo"]),
-        skill: agentSkill("foo", "bar").skill,
-        usage: null,
+        skill: agentSkill("foo", "bar"),
       })
     ).toBe("pending_proposal");
 
     expect(
       classifyConsolidateEligibility({
         hasEnabledAutomation: true,
-        skill: agentSkill("foo", "bar").skill,
-        usage: null,
+        skill: agentSkill("foo", "bar"),
       })
     ).toBe("automation_profile");
   });
@@ -111,21 +104,23 @@ describe("buildConsolidatePlan", () => {
         "deploy-helper",
         "deploy production release checklist helper"
       ),
-      usage: { lastUsedAt: "2026-08-01T00:00:00.000Z", useCount: 10 },
+      lastUsedAt: "2026-08-01T00:00:00.000Z",
+      useCount: 10,
     };
     const low = {
       ...agentSkill(
         "deploy-assistant",
         "deploy production release checklist assistant"
       ),
-      usage: { lastUsedAt: "2026-07-01T00:00:00.000Z", useCount: 1 },
+      lastUsedAt: "2026-07-01T00:00:00.000Z",
+      useCount: 1,
     };
 
     const plan = buildConsolidatePlan({ now: NOW, skills: [low, high] });
 
     expect(plan.clusters).toHaveLength(1);
-    expect(plan.clusters[0]?.winner.skill.name).toBe("deploy-helper");
-    expect(plan.clusters[0]?.losers.map((item) => item.skill.name)).toEqual([
+    expect(plan.clusters[0]?.winner.name).toBe("deploy-helper");
+    expect(plan.clusters[0]?.losers.map((item) => item.name)).toEqual([
       "deploy-assistant",
     ]);
   });
@@ -153,16 +148,14 @@ describe("buildConsolidatePlan", () => {
     ];
     const skills = topics.map((description, index) =>
       agentSkill(`verbose-${index}`, description, {
-        bodyCharCount: verboseBody.length,
+        body: verboseBody,
       })
     );
     const plan = buildConsolidatePlan({ now: NOW, skills });
 
     expect(plan.clusters).toHaveLength(0);
     expect(plan.solos).toHaveLength(SKILL_CONSOLIDATE_MAX_SOLOS_PER_RUN);
-    expect(
-      plan.skipped.some((item) => item.reason === "budget_exhausted")
-    ).toBe(true);
+    expect(plan.budgetExhausted).toBe(true);
   });
 
   test("never includes human or bundled skills in clusters", () => {
@@ -178,16 +171,15 @@ describe("buildConsolidatePlan", () => {
     });
 
     expect(plan.clusters).toHaveLength(0);
-    expect(plan.skipped.map((item) => item.reason).sort()).toEqual([
-      "bundled",
-      "not_agent",
-    ]);
+    expect(plan.skippedCount).toBe(2);
   });
 
   test("skillTokenSet includes name and description tokens", () => {
     const tokens = skillTokenSet({
+      body: "",
       createdBy: "agent",
       description: "Hello World",
+      id: "skill_hello",
       name: "hello-skill",
       sourcePath: "/tmp/x",
     });

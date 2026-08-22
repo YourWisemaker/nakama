@@ -19,27 +19,18 @@ export type SkillConsolidateSkipReason =
   | "global"
   | "recent_patch"
   | "pending_proposal"
-  | "automation_profile"
-  | "budget_exhausted";
-
-export interface ConsolidateSkillInput {
-  /** Optional SKILL.md body length for solo verbosity; omit when unknown. */
-  bodyCharCount?: number;
-  createdBy: string;
-  description: string;
-  name: string;
-  sourcePath: string;
-}
-
-export interface ConsolidateUsageInput {
-  lastPatchedAt?: string | null;
-  lastUsedAt?: string | null;
-  useCount?: number;
-}
+  | "automation_profile";
 
 export interface ConsolidateCandidateSkill {
-  skill: ConsolidateSkillInput;
-  usage: ConsolidateUsageInput | null;
+  body: string;
+  createdBy: string;
+  description: string;
+  id: string;
+  lastPatchedAt?: string | null;
+  lastUsedAt?: string | null;
+  name: string;
+  sourcePath: string;
+  useCount?: number;
 }
 
 export interface ConsolidateCluster {
@@ -47,14 +38,10 @@ export interface ConsolidateCluster {
   winner: ConsolidateCandidateSkill;
 }
 
-export interface ConsolidateSkippedSkill {
-  reason: SkillConsolidateSkipReason;
-  skill: ConsolidateSkillInput;
-}
-
 export interface ConsolidatePlan {
+  budgetExhausted: boolean;
   clusters: ConsolidateCluster[];
-  skipped: ConsolidateSkippedSkill[];
+  skippedCount: number;
   solos: ConsolidateCandidateSkill[];
 }
 
@@ -79,7 +66,7 @@ function tokenize(text: string): Set<string> {
   return new Set(tokens);
 }
 
-export function skillTokenSet(skill: ConsolidateSkillInput): Set<string> {
+export function skillTokenSet(skill: ConsolidateCandidateSkill): Set<string> {
   return tokenize(`${skill.name} ${skill.description}`);
 }
 
@@ -97,7 +84,9 @@ export function jaccardOverlap(left: Set<string>, right: Set<string>): number {
   return union === 0 ? 0 : intersection / union;
 }
 
-export function isExemptFromConsolidate(skill: ConsolidateSkillInput): boolean {
+export function isExemptFromConsolidate(
+  skill: ConsolidateCandidateSkill
+): boolean {
   if (skill.createdBy === "bundled") {
     return true;
   }
@@ -111,8 +100,7 @@ export function classifyConsolidateEligibility(input: {
   hasEnabledAutomation?: boolean;
   now?: Date;
   pendingSkillNames?: ReadonlySet<string>;
-  skill: ConsolidateSkillInput;
-  usage: ConsolidateUsageInput | null;
+  skill: ConsolidateCandidateSkill;
 }): SkillConsolidateSkipReason | null {
   if (input.hasEnabledAutomation) {
     return "automation_profile";
@@ -129,7 +117,7 @@ export function classifyConsolidateEligibility(input: {
   if (input.pendingSkillNames?.has(input.skill.name)) {
     return "pending_proposal";
   }
-  const patchedAt = input.usage?.lastPatchedAt;
+  const patchedAt = input.skill.lastPatchedAt;
   if (patchedAt) {
     const patchedMs = toTimestamp(patchedAt);
     if (patchedMs != null) {
@@ -143,9 +131,9 @@ export function classifyConsolidateEligibility(input: {
 }
 
 function rankScore(candidate: ConsolidateCandidateSkill): number {
-  const useCount = candidate.usage?.useCount ?? 0;
-  const lastUsed = candidate.usage?.lastUsedAt
-    ? (toTimestamp(candidate.usage.lastUsedAt) ?? 0)
+  const useCount = candidate.useCount ?? 0;
+  const lastUsed = candidate.lastUsedAt
+    ? (toTimestamp(candidate.lastUsedAt) ?? 0)
     : 0;
   return useCount * 1_000_000_000_000 + lastUsed;
 }
@@ -158,12 +146,11 @@ function compareCandidates(
   if (scoreDiff !== 0) {
     return scoreDiff;
   }
-  return left.skill.name.localeCompare(right.skill.name);
+  return left.name.localeCompare(right.name);
 }
 
 function contentLength(candidate: ConsolidateCandidateSkill): number {
-  const body = candidate.skill.bodyCharCount ?? 0;
-  return candidate.skill.description.length + body;
+  return candidate.description.length + candidate.body.length;
 }
 
 /**
@@ -173,7 +160,7 @@ function contentLength(candidate: ConsolidateCandidateSkill): number {
 export function buildConsolidatePlan(
   input: BuildConsolidatePlanInput
 ): ConsolidatePlan {
-  const skipped: ConsolidateSkippedSkill[] = [];
+  let skippedCount = 0;
   const eligible: ConsolidateCandidateSkill[] = [];
 
   for (const candidate of input.skills) {
@@ -181,11 +168,10 @@ export function buildConsolidatePlan(
       hasEnabledAutomation: input.hasEnabledAutomation,
       now: input.now,
       pendingSkillNames: input.pendingSkillNames,
-      skill: candidate.skill,
-      usage: candidate.usage,
+      skill: candidate,
     });
     if (reason) {
-      skipped.push({ reason, skill: candidate.skill });
+      skippedCount += 1;
       continue;
     }
     eligible.push(candidate);
@@ -193,7 +179,7 @@ export function buildConsolidatePlan(
 
   const tokenByName = new Map<string, Set<string>>();
   for (const candidate of eligible) {
-    tokenByName.set(candidate.skill.name, skillTokenSet(candidate.skill));
+    tokenByName.set(candidate.name, skillTokenSet(candidate));
   }
 
   const assigned = new Set<string>();
@@ -202,27 +188,27 @@ export function buildConsolidatePlan(
   const sorted = [...eligible].sort(compareCandidates);
 
   for (const seed of sorted) {
-    if (assigned.has(seed.skill.name)) {
+    if (assigned.has(seed.name)) {
       continue;
     }
     if (clusters.length >= SKILL_CONSOLIDATE_MAX_CLUSTERS_PER_RUN) {
       break;
     }
 
-    const seedTokens = tokenByName.get(seed.skill.name);
+    const seedTokens = tokenByName.get(seed.name);
     if (!seedTokens) {
       continue;
     }
 
     const members: ConsolidateCandidateSkill[] = [seed];
     for (const other of sorted) {
-      if (other.skill.name === seed.skill.name) {
+      if (other.name === seed.name) {
         continue;
       }
-      if (assigned.has(other.skill.name)) {
+      if (assigned.has(other.name)) {
         continue;
       }
-      const otherTokens = tokenByName.get(other.skill.name);
+      const otherTokens = tokenByName.get(other.name);
       if (!otherTokens) {
         continue;
       }
@@ -244,30 +230,26 @@ export function buildConsolidatePlan(
     }
     const losers = members.slice(1);
     for (const member of members) {
-      assigned.add(member.skill.name);
+      assigned.add(member.name);
     }
     clusters.push({ losers, winner });
   }
 
-  const remaining = sorted.filter(
-    (candidate) => !assigned.has(candidate.skill.name)
-  );
+  const remaining = sorted.filter((candidate) => !assigned.has(candidate.name));
 
   const solos: ConsolidateCandidateSkill[] = [];
+  let budgetExhausted = false;
   for (const candidate of remaining) {
     if (contentLength(candidate) < SKILL_CONSOLIDATE_VERBOSE_CHAR_THRESHOLD) {
       continue;
     }
     if (solos.length >= SKILL_CONSOLIDATE_MAX_SOLOS_PER_RUN) {
-      skipped.push({
-        reason: "budget_exhausted",
-        skill: candidate.skill,
-      });
+      skippedCount += 1;
+      budgetExhausted = true;
       continue;
     }
     solos.push(candidate);
-    assigned.add(candidate.skill.name);
   }
 
-  return { clusters, skipped, solos };
+  return { budgetExhausted, clusters, skippedCount, solos };
 }

@@ -308,7 +308,8 @@ export function SkillProposalsPanel({
           }
           proposal={proposal}
           proposer={
-            proposal.consolidateOrigin
+            proposal.consolidateLoserSkillNames !== null &&
+            proposal.consolidateLoserSkillNames !== undefined
               ? "Skill curator"
               : resolveProposer(proposal.proposedByUserId, members)
           }

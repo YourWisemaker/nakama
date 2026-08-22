@@ -388,7 +388,6 @@ Merged body.
     const staged = await service.stageProposal({
       action: "edit",
       consolidateLoserSkillNames: ["deploy-assistant"],
-      consolidateOrigin: true,
       content: mergedMarkdown,
       orgId: ORG_ID,
       profileId: profile.id,
@@ -402,7 +401,6 @@ Merged body.
     expect(listed.proposals[0]?.consolidateLoserSkillNames).toEqual([
       "deploy-assistant",
     ]);
-    expect(listed.proposals[0]?.consolidateOrigin).toBe(true);
 
     await service.approveProposal(ORG_ID, staged.proposalId!, "admin_user");
 

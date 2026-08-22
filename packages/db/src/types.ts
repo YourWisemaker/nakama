@@ -455,7 +455,6 @@ export type SkillProposalAction =
 export interface StoredSkillProposal {
   action: SkillProposalAction;
   consolidateLoserSkillNames?: string[] | null;
-  consolidateOrigin?: boolean;
   content: string | null;
   createdAt: string;
   id: string;
