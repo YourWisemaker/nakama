@@ -5,15 +5,13 @@ import {
   registerActiveStream,
   resetActiveStreamsForTests,
   stopActiveStream,
-} from "./active-stream";
-
-// Telegram/WhatsApp keep identical active-stream.ts copies — cover the Discord one.
+} from "./channel-active-stream";
 
 afterEach(() => {
   resetActiveStreamsForTests();
 });
 
-describe("active-stream", () => {
+describe("channel-active-stream", () => {
   test("registerActiveStream returns a signal and tracks the chat", () => {
     expect(hasActiveStreams()).toBe(false);
 
@@ -47,7 +45,6 @@ describe("active-stream", () => {
     const signal = registerActiveStream("chat-1");
     expect(stopActiveStream("chat-1")).toBe(true);
     expect(signal.aborted).toBe(true);
-    // stop leaves the entry until clear; size still reflects an active registration
     expect(hasActiveStreams()).toBe(true);
 
     clearActiveStream("chat-1");

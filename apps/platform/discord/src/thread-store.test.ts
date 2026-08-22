@@ -48,7 +48,7 @@ describe("ThreadStore ownership", () => {
     });
   });
 
-  test("loads non-object JSON as empty ownership", async () => {
+  test("persists owned threads as a JSON array", async () => {
     await withTempHome(async (homeDir) => {
       const filePath = path.join(
         homeDir,
@@ -56,13 +56,15 @@ describe("ThreadStore ownership", () => {
         "discord",
         "chat-threads.json"
       );
-      await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, "[]\n");
-
       const store = new ThreadStore(filePath);
       await store.load();
+      store.add("thread_a");
+      await store.save();
 
-      expect(store.hasThreadId("thread_any")).toBe(false);
+      const reloaded = new ThreadStore(filePath);
+      await reloaded.load();
+      expect(reloaded.hasThreadId("thread_a")).toBe(true);
+      expect(JSON.parse(await Bun.file(filePath).text())).toEqual(["thread_a"]);
     });
   });
 });

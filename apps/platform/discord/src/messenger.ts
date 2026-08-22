@@ -34,18 +34,9 @@ export function createDiscordMessenger(
   };
 }
 
-export async function replyAsChat(
-  messenger: DiscordMessenger,
-  text: string
-): Promise<void> {
-  await messenger.send(text);
-}
-
 export function createInteractionMessenger(
-  reply: (content: string) => Promise<unknown>,
   followUp: (content: string) => Promise<unknown>,
-  editReply: (content: string) => Promise<unknown>,
-  deferred: boolean
+  editReply: (content: string) => Promise<unknown>
 ): DiscordMessenger {
   let answered = false;
 
@@ -58,11 +49,7 @@ export function createInteractionMessenger(
 
       for (const chunk of chunks) {
         if (!answered) {
-          if (deferred) {
-            await editReply(chunk);
-          } else {
-            await reply(chunk);
-          }
+          await editReply(chunk);
           answered = true;
           continue;
         }

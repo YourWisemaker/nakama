@@ -1,8 +1,6 @@
 import {
   type Client,
   InteractionContextType,
-  REST,
-  Routes,
   SlashCommandBuilder,
 } from "discord.js";
 
@@ -53,9 +51,7 @@ export function buildSlashCommands(): SlashCommandBuilder[] {
 export async function registerSlashCommands(
   client: Client<true>
 ): Promise<void> {
-  const rest = new REST({ version: "10" }).setToken(client.token);
   const body = buildSlashCommands().map((command) => command.toJSON());
-
-  await rest.put(Routes.applicationCommands(client.user.id), { body });
+  await client.application.commands.set(body);
   console.log(`Registered ${body.length} Discord slash commands.`);
 }

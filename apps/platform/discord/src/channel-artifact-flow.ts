@@ -9,13 +9,47 @@ import {
   pushDeliverableArtifact,
   resolveArtifactForAttach,
 } from "@nakama/core";
+import { DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES } from "@nakama/core/discord-attachment";
 import type { TextBasedChannel } from "discord.js";
 import type { DiscordMessenger } from "./messenger";
-import {
-  DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES,
-  sendDiscordArtifactAttachment,
-} from "./send-artifact-attachment";
+import { sendDiscordArtifactAttachment } from "./send-artifact-attachment";
 import type { SessionStore } from "./session-store";
+
+async function uploadArtifactBytes(input: {
+  channel: TextBasedChannel;
+  client: NakamaClient;
+  profileId: string;
+  path: string;
+  filename: string;
+  mimeType: string;
+  onError?: (message: string) => Promise<void>;
+}): Promise<boolean> {
+  try {
+    const { data } = await input.client.readProfileArtifactContent(
+      input.profileId,
+      input.path
+    );
+    const result = await sendDiscordArtifactAttachment(input.channel, {
+      bytes: new Uint8Array(data),
+      filename: input.filename,
+      mimeType: input.mimeType,
+    });
+
+    if (!result.ok && result.error) {
+      await input.onError?.(result.error);
+      return false;
+    }
+
+    return result.ok;
+  } catch (error) {
+    await input.onError?.(
+      error instanceof Error
+        ? error.message
+        : "Failed to read the artifact for attachment."
+    );
+    return false;
+  }
+}
 
 export async function uploadDiscordArtifactFromToolResult(input: {
   channel: TextBasedChannel;
@@ -29,31 +63,15 @@ export async function uploadDiscordArtifactFromToolResult(input: {
     return false;
   }
 
-  try {
-    const { data } = await input.client.readProfileArtifactContent(
-      input.profileId,
-      artifact.path
-    );
-    const result = await sendDiscordArtifactAttachment(input.channel, {
-      bytes: new Uint8Array(data),
-      filename: artifact.filename,
-      mimeType: artifact.mimeType,
-    });
-
-    if (!result.ok && result.error) {
-      await input.messenger.send(result.error);
-      return false;
-    }
-
-    return result.ok;
-  } catch (error) {
-    await input.messenger.send(
-      error instanceof Error
-        ? error.message
-        : "Failed to read the artifact for attachment."
-    );
-    return false;
-  }
+  return uploadArtifactBytes({
+    channel: input.channel,
+    client: input.client,
+    filename: artifact.filename,
+    mimeType: artifact.mimeType,
+    onError: (message) => input.messenger.send(message).then(() => undefined),
+    path: artifact.path,
+    profileId: input.profileId,
+  });
 }
 
 function parseSendDiscordArtifactResult(result: unknown): {
@@ -136,31 +154,15 @@ export async function maybeSendRequestedDiscordArtifactAttachment(input: {
     await input.sessionStore.save();
   }
 
-  try {
-    const { data } = await input.client.readProfileArtifactContent(
-      input.profileId,
-      artifact.path
-    );
-    const result = await sendDiscordArtifactAttachment(input.channel, {
-      bytes: new Uint8Array(data),
-      filename: artifact.filename,
-      mimeType: artifact.mimeType,
-    });
-
-    if (!result.ok && result.error) {
-      await input.messenger.send(result.error);
-      return false;
-    }
-
-    return result.ok;
-  } catch (error) {
-    await input.messenger.send(
-      error instanceof Error
-        ? error.message
-        : "Failed to read the artifact for attachment."
-    );
-    return false;
-  }
+  return uploadArtifactBytes({
+    channel: input.channel,
+    client: input.client,
+    filename: artifact.filename,
+    mimeType: artifact.mimeType,
+    onError: (message) => input.messenger.send(message).then(() => undefined),
+    path: artifact.path,
+    profileId: input.profileId,
+  });
 }
 
 export async function deliverDiscordTurnArtifactShares(input: {
@@ -221,7 +223,6 @@ export async function deliverDiscordTurnArtifactShares(input: {
     });
   }
 
-  // Always post share links (like Telegram); attachment upload is additive.
   const footer = formatArtifactShareFooter(delivered, {
     webPublicUrlConfigured,
   });
@@ -241,35 +242,20 @@ async function tryUploadDiscordArtifact(input: {
     return false;
   }
 
-  try {
-    const { data } = await input.client.readProfileArtifactContent(
-      input.profileId,
-      input.artifact.path
-    );
-    const bytes = new Uint8Array(data);
-    if (bytes.byteLength > DISCORD_ARTIFACT_ATTACHMENT_MAX_BYTES) {
-      return false;
-    }
+  const ok = await uploadArtifactBytes({
+    channel: input.channel,
+    client: input.client,
+    filename: input.artifact.filename,
+    mimeType: input.artifact.mimeType,
+    path: input.artifact.path,
+    profileId: input.profileId,
+  });
 
-    const result = await sendDiscordArtifactAttachment(input.channel, {
-      bytes,
-      filename: input.artifact.filename,
-      mimeType: input.artifact.mimeType,
-    });
-
-    if (!result.ok) {
-      console.warn(
-        `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
-        result.error ?? "unknown error"
-      );
-    }
-
-    return result.ok;
-  } catch (error) {
+  if (!ok) {
     console.warn(
-      `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`,
-      error instanceof Error ? error.message : error
+      `Discord artifact upload failed for ${input.artifact.filename}; falling back to share link.`
     );
-    return false;
   }
+
+  return ok;
 }

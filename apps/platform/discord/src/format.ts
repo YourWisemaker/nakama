@@ -3,21 +3,21 @@ import type { AgentTodo } from "@nakama/core/contract";
 
 const DISCORD_MAX_MESSAGE_LENGTH = 2000;
 
-type DiscordTodoRunState = "working" | "completed" | "stopped" | "failed";
+export type DiscordTodoRunState =
+  | "working"
+  | "completed"
+  | "stopped"
+  | "failed";
 
 export function formatError(error: unknown): string {
   return formatClientError(error);
-}
-
-export function prepareDiscordReply(text: string): string {
-  return text.trim();
 }
 
 export function splitDiscordMessage(
   text: string,
   maxLen = DISCORD_MAX_MESSAGE_LENGTH
 ): string[] {
-  const trimmed = prepareDiscordReply(text);
+  const trimmed = text.trim();
 
   if (!trimmed) {
     return [];
