@@ -188,6 +188,15 @@ Org admins: **System → Organization → Skill curator**.
 
 The card shows last-run time and counts (stale / archived / skipped).
 
+### Consolidate overlapping skills (optional LLM)
+
+A second opt-in toggle — **Consolidate overlapping skills** — runs after the archive pass on the same schedule. It uses an LLM to merge near-duplicate **agent-authored** skills and to tighten noisy solo skills. Bundled, hub, and human-authored skills are never touched.
+
+- **Both flags required:** org curator on, and consolidate on (org and profile). Profile can inherit org or override.
+- **Write approval polarity differs from archive:** when skill write approval is on, consolidate **stages an edit proposal** for admin review instead of writing immediately. When approval is off, the merged skill is applied and losers are archived + unassigned. Curator **archives** still bypass write approval; consolidate does not.
+- Dry run lists consolidate candidates only — no LLM call and no writes.
+- Merge losers are archived under `skills/.archive/` and unassigned (never hard-deleted). Approving a consolidate proposal archives those losers the same way.
+
 ## Related
 
 - [Skills](/skills) — what skills are, how to assign them, and manual authoring

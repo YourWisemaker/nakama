@@ -1,7 +1,7 @@
 import type { ProfileDetail } from "@nakama/core/contract";
 import { ProfileOrgBooleanOverrideField } from "@/components/profiles/ProfileOrgBooleanOverrideField";
 
-export function ProfileSkillsWriteApprovalField({
+export function ProfileSkillsCuratorConsolidateField({
   profile,
   disabled = false,
 }: {
@@ -11,13 +11,13 @@ export function ProfileSkillsWriteApprovalField({
   return (
     <ProfileOrgBooleanOverrideField
       disabled={disabled}
-      field="skillsWriteApproval"
-      id="profile-skills-write-approval"
-      label="Skill write approval"
-      offLabel="Allow immediate writes"
-      onLabel="Require approval"
+      field="skillsCuratorConsolidateEnabled"
+      id="profile-skills-curator-consolidate"
+      label="Skill consolidate"
+      offLabel="Disable consolidate"
+      onLabel="Enable consolidate"
       profile={profile}
-      savedToast="Skill write approval setting saved."
+      savedToast="Skill consolidate setting saved."
     />
   );
 }

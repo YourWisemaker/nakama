@@ -5,6 +5,7 @@ import { ensureProcessPath } from "./lib/ensure-process-path";
 
 ensureProcessPath();
 
+import { generateSkillConsolidateMarkdown } from "@nakama/agent";
 import {
   clearRuntimeServerUrl,
   DEFAULT_SERVER_HOST,
@@ -27,6 +28,7 @@ import {
   disableBunIdleTimeoutForLongHeldRequest,
   disableBunIdleTimeoutForSse,
 } from "./http/sse-idle-timeout";
+import { createProviderForInstance } from "./providers/create";
 import { runFirstBootSeed } from "./seed";
 import { AgentService } from "./services/agent-service";
 import { AuthService } from "./services/auth-service";
@@ -43,6 +45,7 @@ import {
 import { McpService } from "./services/mcp-service";
 import { OrgMemoryService } from "./services/org-memory-service";
 import { OrgService } from "./services/org-service";
+import { resolveProfileProviderSelection } from "./services/provider-instance-helpers";
 import { SkillCuratorService } from "./services/skill-curator-service";
 import { SkillProposalService } from "./services/skill-proposal-service";
 import { SkillSuggestionService } from "./services/skill-suggestion-service";
@@ -120,10 +123,6 @@ const mcpClientManager = new McpClientManager();
 const mcpService = new McpService(database.adapter, mcpClientManager);
 const composioService = new ComposioService(database.adapter, authService);
 const skillsService = new SkillsService(database.adapter);
-const skillCuratorService = new SkillCuratorService(
-  database.adapter,
-  skillsService
-);
 
 agent.setMcpClientManager(mcpClientManager);
 agent.setMcpService(mcpService);
@@ -170,6 +169,41 @@ const orgMemoryService = new OrgMemoryService(database.adapter);
 const skillProposalService = new SkillProposalService(
   database.adapter,
   skillsService
+);
+const skillCuratorService = new SkillCuratorService(
+  database.adapter,
+  skillsService,
+  skillProposalService,
+  {
+    generateMarkdown: async (input) => {
+      const userConfig = agent.getUserConfig();
+      if (!userConfig) {
+        return null;
+      }
+      const profile = await database.adapter.getProfile(input.profileId);
+      if (!profile) {
+        return null;
+      }
+      const selection = resolveProfileProviderSelection({
+        defaultProviderId: userConfig.defaultProviderId,
+        profileModel: profile.model,
+        providers: userConfig.providers,
+      });
+      if (!selection) {
+        return null;
+      }
+      const provider = createProviderForInstance(
+        selection.instance,
+        selection.model
+      );
+      return generateSkillConsolidateMarkdown({
+        losers: input.losers,
+        mode: input.mode,
+        provider,
+        winner: input.winner,
+      });
+    },
+  }
 );
 agent.setSkillProposalService(skillProposalService);
 const skillSuggestionService = new SkillSuggestionService(

@@ -107,6 +107,26 @@ describe("OrgService", () => {
     expect(switched.slug).toBe("beta-switch");
   });
 
+  test("updates organization consolidate flag", async () => {
+    const { orgService } = createOrgService();
+
+    const created = await orgService.createOrganization({
+      name: "Acme Corp",
+      slug: "acme-corp",
+    });
+
+    expect(created.organization.skillsCuratorConsolidateEnabled).toBe(false);
+
+    const updated = await orgService.updateOrganization(
+      created.organization.id,
+      {
+        skillsCuratorConsolidateEnabled: true,
+      }
+    );
+
+    expect(updated.skillsCuratorConsolidateEnabled).toBe(true);
+  });
+
   test("updates organization name", async () => {
     const { orgService } = createOrgService();
 

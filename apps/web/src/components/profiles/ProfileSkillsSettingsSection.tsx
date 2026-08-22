@@ -1,4 +1,5 @@
 import type { ProfileDetail } from "@nakama/core/contract";
+import { ProfileSkillsCuratorConsolidateField } from "@/components/profiles/ProfileSkillsCuratorConsolidateField";
 import { ProfileSkillsPostTurnReviewField } from "@/components/profiles/ProfileSkillsPostTurnReviewField";
 import { ProfileSkillsWriteApprovalField } from "@/components/profiles/ProfileSkillsWriteApprovalField";
 import { useAuth } from "@/context/use-auth";
@@ -26,6 +27,12 @@ export function ProfileSkillsSettingsSection({
       </div>
       <div className="p-3 sm:p-4">
         <ProfileSkillsPostTurnReviewField
+          disabled={disabled}
+          profile={profile}
+        />
+      </div>
+      <div className="border-border p-3 sm:col-span-2 sm:border-t sm:p-4">
+        <ProfileSkillsCuratorConsolidateField
           disabled={disabled}
           profile={profile}
         />

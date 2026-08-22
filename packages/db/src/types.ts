@@ -47,6 +47,8 @@ export interface StoredProfileRecord {
   model: string | null;
   name: string;
   orgId?: string | null;
+  /** null = inherit org default; true/false = force consolidate on/off for this profile */
+  skillsCuratorConsolidateEnabled?: boolean | null;
   /** null = inherit org default; true/false = force post-turn review on/off for this profile */
   skillsPostTurnReview?: boolean | null;
   /** null = inherit org default; true/false = force gate on/off for this profile */
@@ -389,6 +391,7 @@ export interface StoredOrganizationRecord {
   createdAt: string;
   id: string;
   name: string;
+  skillsCuratorConsolidateEnabled?: boolean;
   skillsCuratorEnabled?: boolean;
   skillsCuratorLastRunAt?: string | null;
   skillsPostTurnReview?: boolean;
@@ -451,6 +454,7 @@ export type SkillProposalAction =
 
 export interface StoredSkillProposal {
   action: SkillProposalAction;
+  consolidateLoserSkillNames?: string[] | null;
   content: string | null;
   createdAt: string;
   id: string;

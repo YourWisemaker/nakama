@@ -307,7 +307,12 @@ export function SkillProposalsPanel({
               : null
           }
           proposal={proposal}
-          proposer={resolveProposer(proposal.proposedByUserId, members)}
+          proposer={
+            proposal.consolidateLoserSkillNames !== null &&
+            proposal.consolidateLoserSkillNames !== undefined
+              ? "Skill curator"
+              : resolveProposer(proposal.proposedByUserId, members)
+          }
         />
       ))}
     </div>
