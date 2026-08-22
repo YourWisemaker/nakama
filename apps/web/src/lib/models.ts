@@ -749,7 +749,9 @@ export function profileModelSelectionValue(
       (entry) => entry.providerId === decoded.providerId
     );
 
-    if (group?.models.some((model) => model.id === decoded.modelId)) {
+    // Keep the stored provider even if this model's id is also listed
+    // under another instance (OpenCode Zen proxies gpt-5.6-luna).
+    if (group) {
       return modelId;
     }
   }

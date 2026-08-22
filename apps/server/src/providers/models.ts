@@ -56,6 +56,15 @@ export const AVAILABLE_MODELS: ProviderModelOption[] = withVisionDefaults([
     provider: "anthropic",
   },
   {
+    contextWindow: 1_050_000,
+    id: "gpt-5.6-luna",
+    inputPerMillionUsd: 0.2,
+    maxOutputTokens: 128_000,
+    name: "GPT-5.6 Luna",
+    outputPerMillionUsd: 1.2,
+    provider: "openai",
+  },
+  {
     contextWindow: 128_000,
     id: "gpt-5.5",
     inputPerMillionUsd: 2.5,
