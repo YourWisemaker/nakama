@@ -232,6 +232,7 @@ export class ProfileService {
       model: source.model,
       name,
       orgId,
+      skillsCuratorConsolidateEnabled: source.skillsCuratorConsolidateEnabled,
       skillsPostTurnReview: source.skillsPostTurnReview,
       skillsWriteApproval: source.skillsWriteApproval,
       systemPrompt: source.systemPrompt,
@@ -331,6 +332,10 @@ export class ProfileService {
       ...profile,
       model: request.model === undefined ? profile.model : request.model,
       name: request.name?.trim() ?? profile.name,
+      skillsCuratorConsolidateEnabled:
+        request.skillsCuratorConsolidateEnabled === undefined
+          ? profile.skillsCuratorConsolidateEnabled
+          : request.skillsCuratorConsolidateEnabled,
       skillsPostTurnReview:
         request.skillsPostTurnReview === undefined
           ? profile.skillsPostTurnReview
@@ -767,6 +772,8 @@ export class ProfileService {
       mcpServerCount: mcpServers.length,
       model: profile.model,
       name: profile.name,
+      skillsCuratorConsolidateEnabled:
+        profile.skillsCuratorConsolidateEnabled ?? null,
       skillsPostTurnReview: profile.skillsPostTurnReview ?? null,
       skillsWriteApproval: profile.skillsWriteApproval ?? null,
       soulActive: soulStack !== null,

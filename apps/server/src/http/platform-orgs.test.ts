@@ -71,6 +71,7 @@ describe("platform org routes", () => {
         createdAt: expect.any(String),
         id: expect.stringMatching(/^org_/),
         name: "Acme Corp",
+        skillsCuratorConsolidateEnabled: false,
         skillsCuratorEnabled: false,
         skillsCuratorLastRunAt: null,
         skillsPostTurnReview: false,

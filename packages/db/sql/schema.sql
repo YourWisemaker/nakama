@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   is_default INTEGER DEFAULT 0 NOT NULL,
   skills_write_approval INTEGER,
   skills_post_turn_review INTEGER,
+  skills_curator_consolidate_enabled INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
@@ -258,6 +259,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   skills_write_approval INTEGER NOT NULL DEFAULT 0,
   skills_post_turn_review INTEGER NOT NULL DEFAULT 0,
   skills_curator_enabled INTEGER NOT NULL DEFAULT 0,
+  skills_curator_consolidate_enabled INTEGER NOT NULL DEFAULT 0,
   skills_curator_last_run_at TEXT,
   archived_at TEXT,
   created_at TEXT NOT NULL,

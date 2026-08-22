@@ -400,6 +400,7 @@ export interface OrganizationSummary {
   createdAt: string;
   id: string;
   name: string;
+  skillsCuratorConsolidateEnabled?: boolean;
   skillsCuratorEnabled?: boolean;
   skillsCuratorLastRunAt?: string | null;
   skillsPostTurnReview?: boolean;
@@ -420,6 +421,7 @@ export interface CreateOrganizationRequest {
 
 export interface UpdateOrganizationRequest {
   name?: string;
+  skillsCuratorConsolidateEnabled?: boolean;
   skillsCuratorEnabled?: boolean;
   skillsPostTurnReview?: boolean;
   skillsWriteApproval?: boolean;
@@ -1515,6 +1517,8 @@ export interface ProfileSummary {
   mcpServerCount: number;
   model: string | null;
   name: string;
+  /** null = inherit org default; true/false = force consolidate on/off for this profile */
+  skillsCuratorConsolidateEnabled?: boolean | null;
   /** null = inherit org default; true/false = force post-turn review on/off for this profile */
   skillsPostTurnReview?: boolean | null;
   /** null = inherit org default; true/false = force gate on/off for this profile */
@@ -1730,6 +1734,7 @@ export interface CreateProfileRequest {
 export interface UpdateProfileRequest {
   model?: string | null;
   name?: string;
+  skillsCuratorConsolidateEnabled?: boolean | null;
   skillsPostTurnReview?: boolean | null;
   skillsWriteApproval?: boolean | null;
   systemPrompt?: string;

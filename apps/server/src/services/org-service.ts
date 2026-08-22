@@ -123,6 +123,10 @@ export class OrgService {
     const updated: StoredOrganizationRecord = {
       ...org,
       name,
+      skillsCuratorConsolidateEnabled:
+        request.skillsCuratorConsolidateEnabled === undefined
+          ? (org.skillsCuratorConsolidateEnabled ?? false)
+          : request.skillsCuratorConsolidateEnabled,
       skillsCuratorEnabled:
         request.skillsCuratorEnabled === undefined
           ? (org.skillsCuratorEnabled ?? false)
@@ -924,6 +928,8 @@ function toOrganizationSummary(
     createdAt: record.createdAt,
     id: record.id,
     name: record.name,
+    skillsCuratorConsolidateEnabled:
+      record.skillsCuratorConsolidateEnabled ?? false,
     skillsCuratorEnabled: record.skillsCuratorEnabled ?? false,
     skillsCuratorLastRunAt: record.skillsCuratorLastRunAt ?? null,
     skillsPostTurnReview: record.skillsPostTurnReview ?? false,

@@ -78,6 +78,7 @@ interface ProfileRow {
   model: string | null;
   name: string;
   org_id: string | null;
+  skills_curator_consolidate_enabled: number | null;
   skills_post_turn_review: number | null;
   skills_write_approval: number | null;
   system_prompt: string;
@@ -312,6 +313,7 @@ interface OrganizationRow {
   created_at: string;
   id: string;
   name: string;
+  skills_curator_consolidate_enabled: number;
   skills_curator_enabled: number;
   skills_curator_last_run_at: string | null;
   skills_post_turn_review: number;
@@ -538,10 +540,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       is_default,
       skills_write_approval,
       skills_post_turn_review,
+      skills_curator_consolidate_enabled,
       created_at,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       system_prompt = excluded.system_prompt,
@@ -553,6 +556,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       is_default = excluded.is_default,
       skills_write_approval = excluded.skills_write_approval,
       skills_post_turn_review = excluded.skills_post_turn_review,
+      skills_curator_consolidate_enabled = excluded.skills_curator_consolidate_enabled,
       updated_at = excluded.updated_at
   `);
   const deleteProfileStmt = db.prepare("DELETE FROM profiles WHERE id = ?");
@@ -1231,31 +1235,32 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       AND (SELECT COUNT(*) FROM organizations WHERE archived_at IS NULL) > 1
   `);
   const upsertOrganizationStmt = db.prepare(`
-    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO organizations (id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_consolidate_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = excluded.slug,
       skills_write_approval = excluded.skills_write_approval,
       skills_post_turn_review = excluded.skills_post_turn_review,
       skills_curator_enabled = excluded.skills_curator_enabled,
+      skills_curator_consolidate_enabled = excluded.skills_curator_consolidate_enabled,
       skills_curator_last_run_at = excluded.skills_curator_last_run_at,
       archived_at = excluded.archived_at,
       updated_at = excluded.updated_at
   `);
   const listOrganizationsStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_consolidate_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
     FROM organizations
     ORDER BY name ASC
   `);
   const getOrganizationBySlugStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_consolidate_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
     FROM organizations
     WHERE slug = ?
     LIMIT 1
   `);
   const getOrganizationByIdStmt = db.prepare(`
-    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
+    SELECT id, name, slug, skills_write_approval, skills_post_turn_review, skills_curator_enabled, skills_curator_consolidate_enabled, skills_curator_last_run_at, archived_at, created_at, updated_at
     FROM organizations
     WHERE id = ?
     LIMIT 1
@@ -1517,6 +1522,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       o.skills_write_approval,
       o.skills_post_turn_review,
       o.skills_curator_enabled,
+      o.skills_curator_consolidate_enabled,
       o.skills_curator_last_run_at,
       o.archived_at,
       o.created_at,
@@ -2814,6 +2820,7 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.skillsWriteApproval ? 1 : 0,
         record.skillsPostTurnReview ? 1 : 0,
         record.skillsCuratorEnabled ? 1 : 0,
+        record.skillsCuratorConsolidateEnabled ? 1 : 0,
         record.skillsCuratorLastRunAt ?? null,
         record.archivedAt ?? null,
         record.createdAt,
@@ -2854,6 +2861,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.skillsPostTurnReview == null
           ? null
           : record.skillsPostTurnReview
+            ? 1
+            : 0,
+        record.skillsCuratorConsolidateEnabled == null
+          ? null
+          : record.skillsCuratorConsolidateEnabled
             ? 1
             : 0,
         record.createdAt,
@@ -2975,6 +2987,10 @@ function toProfileRecord(row: ProfileRow): StoredProfileRecord {
     model: row.model,
     name: row.name,
     orgId: row.org_id ?? null,
+    skillsCuratorConsolidateEnabled:
+      row.skills_curator_consolidate_enabled == null
+        ? null
+        : row.skills_curator_consolidate_enabled !== 0,
     skillsPostTurnReview:
       row.skills_post_turn_review == null
         ? null
@@ -3503,6 +3519,8 @@ function toOrganizationRecord(row: OrganizationRow): StoredOrganizationRecord {
     createdAt: row.created_at,
     id: row.id,
     name: row.name,
+    skillsCuratorConsolidateEnabled:
+      row.skills_curator_consolidate_enabled !== 0,
     skillsCuratorEnabled: row.skills_curator_enabled !== 0,
     skillsCuratorLastRunAt: row.skills_curator_last_run_at,
     skillsPostTurnReview: row.skills_post_turn_review !== 0,

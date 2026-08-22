@@ -22,6 +22,7 @@ export function migrateDatabase(db: Database): void {
   migrateSkillsWriteApprovalColumns(db);
   migrateSkillsPostTurnReviewColumns(db);
   migrateSkillsCuratorColumns(db);
+  migrateSkillsCuratorConsolidateColumns(db);
   migrateOrganizationArchivedAt(db);
   migrateSkillUsageTables(db);
   migrateTenantOrgScope(db);
@@ -555,6 +556,34 @@ function migrateSkillsCuratorColumns(db: Database): void {
   if (!names.has("skills_curator_last_run_at")) {
     db.exec(
       "ALTER TABLE organizations ADD COLUMN skills_curator_last_run_at TEXT;"
+    );
+  }
+}
+
+function migrateSkillsCuratorConsolidateColumns(db: Database): void {
+  const orgColumns = db
+    .prepare("PRAGMA table_info(organizations)")
+    .all() as Array<{ name: string }>;
+  if (
+    !new Set(orgColumns.map((column) => column.name)).has(
+      "skills_curator_consolidate_enabled"
+    )
+  ) {
+    db.exec(
+      "ALTER TABLE organizations ADD COLUMN skills_curator_consolidate_enabled INTEGER NOT NULL DEFAULT 0;"
+    );
+  }
+
+  const profileColumns = db
+    .prepare("PRAGMA table_info(profiles)")
+    .all() as Array<{ name: string }>;
+  if (
+    !new Set(profileColumns.map((column) => column.name)).has(
+      "skills_curator_consolidate_enabled"
+    )
+  ) {
+    db.exec(
+      "ALTER TABLE profiles ADD COLUMN skills_curator_consolidate_enabled INTEGER;"
     );
   }
 }
