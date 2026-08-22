@@ -9,6 +9,16 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-22
+
+### Fixed
+
+- OpenAI model picks (including GPT-5.6 Luna) stay on OpenAI instead of falling through to OpenCode Zen ([#431])
+
+### Changed
+
+- CLI: drop unreachable prompt stack and dead screen buffer ([#432])
+
 ## [0.4.1] - 2026-08-22
 
 ### Added
@@ -509,7 +519,8 @@ First tagged release. The baseline it established:
 - Export and import for data portability
 - Docker image published from GitHub Actions, and a VitePress documentation site
 
-[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.1...main
+[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.2...main
+[0.4.2]: https://github.com/ahmadrosid/nakama/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/ahmadrosid/nakama/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ahmadrosid/nakama/compare/v0.3.15...v0.4.0
 [0.3.15]: https://github.com/ahmadrosid/nakama/compare/v0.3.14...v0.3.15
@@ -656,3 +667,5 @@ First tagged release. The baseline it established:
 [#419]: https://github.com/ahmadrosid/nakama/pull/419
 [#424]: https://github.com/ahmadrosid/nakama/pull/424
 [#426]: https://github.com/ahmadrosid/nakama/pull/426
+[#431]: https://github.com/ahmadrosid/nakama/pull/431
+[#432]: https://github.com/ahmadrosid/nakama/pull/432
