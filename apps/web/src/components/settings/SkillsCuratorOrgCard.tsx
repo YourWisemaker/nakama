@@ -52,11 +52,25 @@ export function SkillsCuratorOrgCard() {
 
   const currentOrgId = activeOrg.id;
   const enabled = activeOrg.skillsCuratorEnabled === true;
+  const consolidateEnabled = activeOrg.skillsCuratorConsolidateEnabled === true;
 
   async function handleToggle(checked: boolean) {
     setBusy(true);
     try {
       await updateOrg(currentOrgId, { skillsCuratorEnabled: checked });
+    } catch (error) {
+      toast(formatError(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConsolidateToggle(checked: boolean) {
+    setBusy(true);
+    try {
+      await updateOrg(currentOrgId, {
+        skillsCuratorConsolidateEnabled: checked,
+      });
     } catch (error) {
       toast(formatError(error));
     } finally {
@@ -102,6 +116,24 @@ export function SkillsCuratorOrgCard() {
           </div>
         </div>
       </div>
+      <div className="border-border border-b px-4 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <p className="font-medium text-foreground text-sm">
+            Consolidate overlapping skills (LLM)
+          </p>
+          <div className="flex shrink-0 items-center gap-2 pt-0.5">
+            {busy ? <Spinner /> : null}
+            <Switch
+              aria-label="Enable skill consolidate"
+              checked={consolidateEnabled}
+              disabled={busy || !enabled}
+              onCheckedChange={(checked) =>
+                void handleConsolidateToggle(checked)
+              }
+            />
+          </div>
+        </div>
+      </div>
       <div className="flex flex-col gap-3 px-4 py-3">
         <p className="text-muted-foreground text-xs">
           Last run{" "}
@@ -115,6 +147,12 @@ export function SkillsCuratorOrgCard() {
               latest.skippedAutomation +
               latest.skippedTooNew +
               latest.skippedError}
+            {latest.consolidateMerged != null ||
+            latest.consolidateDeslopified != null ||
+            latest.consolidateStaged != null ||
+            latest.consolidateApplied != null
+              ? ` · consolidate merged ${latest.consolidateMerged ?? 0} · deslop ${latest.consolidateDeslopified ?? 0} · staged ${latest.consolidateStaged ?? 0} · applied ${latest.consolidateApplied ?? 0}`
+              : null}
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
