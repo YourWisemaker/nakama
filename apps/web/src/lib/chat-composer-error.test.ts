@@ -1,41 +1,36 @@
 import { describe, expect, test } from "bun:test";
-import { composerErrorSegments } from "./chat-composer-error";
+import { splitComposerErrorOnSettings } from "./chat-composer-error";
 
-describe("composerErrorSegments", () => {
-  test("turns Settings into a dedicated segment so the composer can link it", () => {
+describe("splitComposerErrorOnSettings", () => {
+  test("splits so Settings can be a link", () => {
     expect(
-      composerErrorSegments(
+      splitComposerErrorOnSettings(
         "This model cannot see images. Configure an image parsing model in Settings before sending images."
       )
-    ).toEqual([
-      {
-        type: "text",
-        value:
-          "This model cannot see images. Configure an image parsing model in ",
-      },
-      { type: "settings" },
-      { type: "text", value: " before sending images." },
-    ]);
+    ).toEqual({
+      after: " before sending images.",
+      before:
+        "This model cannot see images. Configure an image parsing model in ",
+    });
   });
 
-  test("links the shorter Update it in Settings errors too", () => {
+  test("splits the shorter Update it in Settings errors too", () => {
     expect(
-      composerErrorSegments(
+      splitComposerErrorOnSettings(
         "Configured image parsing model is invalid. Update it in Settings."
       )
-    ).toEqual([
-      {
-        type: "text",
-        value: "Configured image parsing model is invalid. Update it in ",
-      },
-      { type: "settings" },
-      { type: "text", value: "." },
-    ]);
+    ).toEqual({
+      after: ".",
+      before: "Configured image parsing model is invalid. Update it in ",
+    });
   });
 
   test("leaves messages without Settings as plain text", () => {
-    expect(composerErrorSegments("Choose a vision-capable model.")).toEqual([
-      { type: "text", value: "Choose a vision-capable model." },
-    ]);
+    expect(
+      splitComposerErrorOnSettings("Choose a vision-capable model.")
+    ).toEqual({
+      after: null,
+      before: "Choose a vision-capable model.",
+    });
   });
 });

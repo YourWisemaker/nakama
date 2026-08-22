@@ -1,7 +1,7 @@
 import { AlertCircleIcon, BulbIcon } from "hugeicons-react";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { composerErrorSegments } from "@/lib/chat-composer-error";
+import { splitComposerErrorOnSettings } from "@/lib/chat-composer-error";
 import { settingsVisionHref } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,26 @@ function ChatComposerNotice({
   );
 }
 
+function ComposerErrorMessage({ message }: { message: string }) {
+  const { after, before } = splitComposerErrorOnSettings(message);
+  if (after === null) {
+    return message;
+  }
+
+  return (
+    <>
+      {before}
+      <Link
+        className="font-medium underline underline-offset-2 hover:text-destructive"
+        to={settingsVisionHref()}
+      >
+        Settings
+      </Link>
+      {after}
+    </>
+  );
+}
+
 export function ChatComposerError({ message }: { message: string }) {
   return (
     <ChatComposerNotice role="alert">
@@ -47,21 +67,7 @@ export function ChatComposerError({ message }: { message: string }) {
         />
         <div className="relative min-w-0 flex-1 sm:min-h-4">
           <span className="block text-destructive/90 leading-relaxed">
-            {composerErrorSegments(message).map((segment, index) =>
-              segment.type === "settings" ? (
-                <Link
-                  className="font-medium underline underline-offset-2 hover:text-destructive"
-                  key={`${segment.type}-${index}`}
-                  to={settingsVisionHref()}
-                >
-                  Settings
-                </Link>
-              ) : (
-                <Fragment key={`${segment.type}-${index}`}>
-                  {segment.value}
-                </Fragment>
-              )
-            )}
+            <ComposerErrorMessage message={message} />
           </span>
         </div>
       </div>
