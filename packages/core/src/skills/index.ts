@@ -6,6 +6,7 @@ export {
 export * from "./bundled/install";
 export * from "./bundled-names";
 export * from "./compose";
+export * from "./consolidate";
 export * from "./curator-consolidate";
 export * from "./curator-schedule";
 export * from "./dedupe";
