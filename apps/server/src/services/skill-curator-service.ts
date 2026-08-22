@@ -39,7 +39,6 @@ export interface SkillCuratorRunOptions {
 export type SkillCuratorGenerateMarkdown = (input: {
   losers?: SkillConsolidateBodyInput[];
   mode: SkillConsolidateMode;
-  orgId: string;
   profileId: string;
   winner: SkillConsolidateBodyInput;
 }) => Promise<string | null>;
@@ -276,13 +275,8 @@ export class SkillCuratorService {
       const candidates: ConsolidateCandidateSkill[] = [];
 
       for (const skill of assigned) {
-        let body = "";
-        try {
-          const detail = await this.skillsService.getSkill(skill.id);
-          body = detail.skill.body ?? "";
-        } catch {
-          body = "";
-        }
+        const body =
+          (await readTextIfExists(join(skill.sourcePath, "SKILL.md"))) ?? "";
         bodyBySkillId.set(skill.id, body);
         const usage = usageBySkillId.get(skill.id);
         candidates.push({
@@ -415,7 +409,6 @@ export class SkillCuratorService {
       markdown = await this.generateMarkdown({
         losers: loserBodies.length > 0 ? loserBodies : undefined,
         mode: input.mode,
-        orgId: input.orgId,
         profileId: input.profileId,
         winner: winnerBody,
       });
@@ -428,20 +421,14 @@ export class SkillCuratorService {
     }
 
     const loserNames = input.losers.map((loser) => loser.skill.name);
-
-    const writeApprovalRequired = this.skillProposalService
-      ? await this.skillProposalService.isWriteApprovalRequired(
-          input.orgId,
-          input.profileId
-        )
+    const proposals = this.skillProposalService;
+    const writeApprovalRequired = proposals
+      ? await proposals.isWriteApprovalRequired(input.orgId, input.profileId)
       : false;
 
-    if (writeApprovalRequired) {
-      if (!this.skillProposalService) {
-        return "skipped";
-      }
+    if (writeApprovalRequired && proposals) {
       try {
-        const staged = await this.skillProposalService.stageProposal({
+        const staged = await proposals.stageProposal({
           action: "edit",
           consolidateLoserSkillNames:
             loserNames.length > 0 ? loserNames : undefined,
@@ -470,18 +457,15 @@ export class SkillCuratorService {
         if (!loserSkill) {
           return "skipped";
         }
-        const archived = await archiveSkillDirectory({
+        const outcome = await this.archiveAssignedSkill({
           now: input.now,
           orgId: input.orgId,
           profileId: input.profileId,
-          skillName: loserName,
+          skill: loserSkill,
         });
-        await this.skillsService.unassignArchivedProfileSkill(
-          input.orgId,
-          input.profileId,
-          loserSkill.id,
-          archived.archivedDirectory
-        );
+        if (!outcome.archived) {
+          return "skipped";
+        }
       }
 
       return "applied";
@@ -561,17 +545,6 @@ function isExemptFromCurator(skill: StoredSkillRecord): boolean {
   );
 }
 
-function hasConsolidateFields(result: SkillCuratorRunResult): boolean {
-  return (
-    result.consolidateApplied !== undefined ||
-    result.consolidateBudgetExhausted !== undefined ||
-    result.consolidateDeslopified !== undefined ||
-    result.consolidateMerged !== undefined ||
-    result.consolidateSkipped !== undefined ||
-    result.consolidateStaged !== undefined
-  );
-}
-
 function formatCuratorReport(result: SkillCuratorRunResult): string {
   const lines = [
     "# Skill curator",
@@ -587,18 +560,13 @@ function formatCuratorReport(result: SkillCuratorRunResult): string {
     `- skippedTooNew: ${result.skippedTooNew}`,
     `- skippedError: ${result.skippedError}`,
     `- restoreMisses: ${result.restoreMisses.length}`,
+    `- consolidateMerged: ${result.consolidateMerged ?? 0}`,
+    `- consolidateDeslopified: ${result.consolidateDeslopified ?? 0}`,
+    `- consolidateStaged: ${result.consolidateStaged ?? 0}`,
+    `- consolidateApplied: ${result.consolidateApplied ?? 0}`,
+    `- consolidateSkipped: ${result.consolidateSkipped ?? 0}`,
+    `- consolidateBudgetExhausted: ${result.consolidateBudgetExhausted === true}`,
   ];
-
-  if (hasConsolidateFields(result)) {
-    lines.push(
-      `- consolidateMerged: ${result.consolidateMerged ?? 0}`,
-      `- consolidateDeslopified: ${result.consolidateDeslopified ?? 0}`,
-      `- consolidateStaged: ${result.consolidateStaged ?? 0}`,
-      `- consolidateApplied: ${result.consolidateApplied ?? 0}`,
-      `- consolidateSkipped: ${result.consolidateSkipped ?? 0}`,
-      `- consolidateBudgetExhausted: ${result.consolidateBudgetExhausted === true}`
-    );
-  }
 
   if (result.restoreMisses.length > 0) {
     lines.push(

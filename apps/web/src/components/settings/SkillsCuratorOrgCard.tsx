@@ -54,23 +54,12 @@ export function SkillsCuratorOrgCard() {
   const enabled = activeOrg.skillsCuratorEnabled === true;
   const consolidateEnabled = activeOrg.skillsCuratorConsolidateEnabled === true;
 
-  async function handleToggle(checked: boolean) {
+  async function updateOrgFlag(
+    patch: Parameters<typeof updateOrg>[1]
+  ): Promise<void> {
     setBusy(true);
     try {
-      await updateOrg(currentOrgId, { skillsCuratorEnabled: checked });
-    } catch (error) {
-      toast(formatError(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleConsolidateToggle(checked: boolean) {
-    setBusy(true);
-    try {
-      await updateOrg(currentOrgId, {
-        skillsCuratorConsolidateEnabled: checked,
-      });
+      await updateOrg(currentOrgId, patch);
     } catch (error) {
       toast(formatError(error));
     } finally {
@@ -111,7 +100,9 @@ export function SkillsCuratorOrgCard() {
               aria-label="Enable skill curator"
               checked={enabled}
               disabled={busy}
-              onCheckedChange={(checked) => void handleToggle(checked)}
+              onCheckedChange={(checked) =>
+                void updateOrgFlag({ skillsCuratorEnabled: checked })
+              }
             />
           </div>
         </div>
@@ -128,7 +119,9 @@ export function SkillsCuratorOrgCard() {
               checked={consolidateEnabled}
               disabled={busy || !enabled}
               onCheckedChange={(checked) =>
-                void handleConsolidateToggle(checked)
+                void updateOrgFlag({
+                  skillsCuratorConsolidateEnabled: checked,
+                })
               }
             />
           </div>
@@ -147,12 +140,7 @@ export function SkillsCuratorOrgCard() {
               latest.skippedAutomation +
               latest.skippedTooNew +
               latest.skippedError}
-            {latest.consolidateMerged != null ||
-            latest.consolidateDeslopified != null ||
-            latest.consolidateStaged != null ||
-            latest.consolidateApplied != null
-              ? ` · consolidate merged ${latest.consolidateMerged ?? 0} · deslop ${latest.consolidateDeslopified ?? 0} · staged ${latest.consolidateStaged ?? 0} · applied ${latest.consolidateApplied ?? 0}`
-              : null}
+            {` · consolidate merged ${latest.consolidateMerged ?? 0} · deslop ${latest.consolidateDeslopified ?? 0} · staged ${latest.consolidateStaged ?? 0} · applied ${latest.consolidateApplied ?? 0}`}
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">

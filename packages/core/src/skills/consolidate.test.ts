@@ -3,6 +3,7 @@ import {
   buildConsolidatePlan,
   classifyConsolidateEligibility,
   jaccardOverlap,
+  SKILL_CONSOLIDATE_MAX_SOLOS_PER_RUN,
   SKILL_CONSOLIDATE_RECENT_PATCH_MS,
   SKILL_CONSOLIDATE_VERBOSE_CHAR_THRESHOLD,
   skillTokenSet,
@@ -144,20 +145,21 @@ describe("buildConsolidatePlan", () => {
 
   test("lists verbose solo skills and skips budget-exhausted extras", () => {
     const verboseBody = "x".repeat(SKILL_CONSOLIDATE_VERBOSE_CHAR_THRESHOLD);
-    const plan = buildConsolidatePlan({
-      maxSolos: 1,
-      now: NOW,
-      skills: [
-        agentSkill("verbose-one", "alpha", {
-          bodyCharCount: verboseBody.length,
-        }),
-        agentSkill("verbose-two", "beta", {
-          bodyCharCount: verboseBody.length,
-        }),
-      ],
-    });
+    const topics = [
+      "invoice parser pdf vendor",
+      "calendar sync google events",
+      "slack notifier channel alerts",
+      "github pr review comments",
+    ];
+    const skills = topics.map((description, index) =>
+      agentSkill(`verbose-${index}`, description, {
+        bodyCharCount: verboseBody.length,
+      })
+    );
+    const plan = buildConsolidatePlan({ now: NOW, skills });
 
-    expect(plan.solos).toHaveLength(1);
+    expect(plan.clusters).toHaveLength(0);
+    expect(plan.solos).toHaveLength(SKILL_CONSOLIDATE_MAX_SOLOS_PER_RUN);
     expect(
       plan.skipped.some((item) => item.reason === "budget_exhausted")
     ).toBe(true);

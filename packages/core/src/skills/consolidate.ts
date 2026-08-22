@@ -61,14 +61,9 @@ export interface ConsolidatePlan {
 export interface BuildConsolidatePlanInput {
   /** When true, every skill is skipped as automation_profile. */
   hasEnabledAutomation?: boolean;
-  maxClusters?: number;
-  maxSolos?: number;
-  minOverlap?: number;
   now?: Date;
   pendingSkillNames?: ReadonlySet<string>;
-  recentPatchMs?: number;
   skills: ConsolidateCandidateSkill[];
-  verboseCharThreshold?: number;
 }
 
 function toTimestamp(value: string): number | null {
@@ -116,7 +111,6 @@ export function classifyConsolidateEligibility(input: {
   hasEnabledAutomation?: boolean;
   now?: Date;
   pendingSkillNames?: ReadonlySet<string>;
-  recentPatchMs?: number;
   skill: ConsolidateSkillInput;
   usage: ConsolidateUsageInput | null;
 }): SkillConsolidateSkipReason | null {
@@ -140,8 +134,7 @@ export function classifyConsolidateEligibility(input: {
     const patchedMs = toTimestamp(patchedAt);
     if (patchedMs != null) {
       const now = input.now?.getTime() ?? Date.now();
-      const window = input.recentPatchMs ?? SKILL_CONSOLIDATE_RECENT_PATCH_MS;
-      if (now - patchedMs < window) {
+      if (now - patchedMs < SKILL_CONSOLIDATE_RECENT_PATCH_MS) {
         return "recent_patch";
       }
     }
@@ -188,7 +181,6 @@ export function buildConsolidatePlan(
       hasEnabledAutomation: input.hasEnabledAutomation,
       now: input.now,
       pendingSkillNames: input.pendingSkillNames,
-      recentPatchMs: input.recentPatchMs,
       skill: candidate.skill,
       usage: candidate.usage,
     });
@@ -198,13 +190,6 @@ export function buildConsolidatePlan(
     }
     eligible.push(candidate);
   }
-
-  const minOverlap = input.minOverlap ?? SKILL_CONSOLIDATE_MIN_OVERLAP;
-  const maxClusters =
-    input.maxClusters ?? SKILL_CONSOLIDATE_MAX_CLUSTERS_PER_RUN;
-  const maxSolos = input.maxSolos ?? SKILL_CONSOLIDATE_MAX_SOLOS_PER_RUN;
-  const verboseThreshold =
-    input.verboseCharThreshold ?? SKILL_CONSOLIDATE_VERBOSE_CHAR_THRESHOLD;
 
   const tokenByName = new Map<string, Set<string>>();
   for (const candidate of eligible) {
@@ -220,7 +205,7 @@ export function buildConsolidatePlan(
     if (assigned.has(seed.skill.name)) {
       continue;
     }
-    if (clusters.length >= maxClusters) {
+    if (clusters.length >= SKILL_CONSOLIDATE_MAX_CLUSTERS_PER_RUN) {
       break;
     }
 
@@ -241,7 +226,9 @@ export function buildConsolidatePlan(
       if (!otherTokens) {
         continue;
       }
-      if (jaccardOverlap(seedTokens, otherTokens) >= minOverlap) {
+      if (
+        jaccardOverlap(seedTokens, otherTokens) >= SKILL_CONSOLIDATE_MIN_OVERLAP
+      ) {
         members.push(other);
       }
     }
@@ -268,10 +255,10 @@ export function buildConsolidatePlan(
 
   const solos: ConsolidateCandidateSkill[] = [];
   for (const candidate of remaining) {
-    if (contentLength(candidate) < verboseThreshold) {
+    if (contentLength(candidate) < SKILL_CONSOLIDATE_VERBOSE_CHAR_THRESHOLD) {
       continue;
     }
-    if (solos.length >= maxSolos) {
+    if (solos.length >= SKILL_CONSOLIDATE_MAX_SOLOS_PER_RUN) {
       skipped.push({
         reason: "budget_exhausted",
         skill: candidate.skill,
