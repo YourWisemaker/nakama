@@ -2,28 +2,28 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import {
   formatPendingDisplayLines,
   formatPendingSummary,
-  MessageQueue,
+  type PendingMessage,
 } from "./message-queue";
 import { plainLine, styledLine, styledLineText } from "./styled-text";
 import { TerminalLayout } from "./terminal-layout";
 import { VirtualMessageList } from "./virtual-message-list";
 
-describe("MessageQueue", () => {
+describe("pending message queue", () => {
   test("dequeues in fifo order", () => {
-    const queue = new MessageQueue();
+    const queue: PendingMessage[] = [];
 
-    queue.enqueue({
+    queue.push({
       line: "first",
       sendInput: { message: "first" },
     });
-    queue.enqueue({
+    queue.push({
       line: "second",
       sendInput: { message: "second" },
     });
 
-    expect(queue.dequeue()?.line).toBe("first");
-    expect(queue.dequeue()?.line).toBe("second");
-    expect(queue.dequeue()).toBeUndefined();
+    expect(queue.shift()?.line).toBe("first");
+    expect(queue.shift()?.line).toBe("second");
+    expect(queue.shift()).toBeUndefined();
   });
 });
 

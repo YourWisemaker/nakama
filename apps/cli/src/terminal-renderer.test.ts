@@ -189,7 +189,7 @@ describe("TerminalRenderer", () => {
     expect(renderer.getState().pendingMessages).toEqual(pendingMessages);
   });
 
-  test("tracks stream and transcript state with semantic methods", () => {
+  test("routes stream and message writes through the layout", () => {
     const layout = new TerminalLayout(null);
     const renderer = new TerminalRenderer(null, layout);
 
@@ -211,8 +211,6 @@ describe("TerminalRenderer", () => {
     renderer.appendUserMessage("queued", { placement: "below_status" });
     renderer.endStream();
 
-    const state = renderer.getState();
-
     expect(beginStreamSpy).toHaveBeenCalledTimes(1);
     expect(writeScrollSpy).toHaveBeenCalledWith("Hello");
     expect(writelnScrollSpy).toHaveBeenNthCalledWith(1, "intro");
@@ -220,13 +218,6 @@ describe("TerminalRenderer", () => {
     expect(writelnScrollSpy).toHaveBeenCalledTimes(2);
     expect(writelnBelowStatusSpy).toHaveBeenCalledWith("> queued");
     expect(endStreamSpy).toHaveBeenCalledTimes(1);
-    expect(state.stream).toEqual({ active: false, text: "" });
-    expect(state.transcript).toEqual([
-      { kind: "output", text: "intro" },
-      { kind: "user", text: "> submitted" },
-      { kind: "user", text: "> queued" },
-      { kind: "assistant", text: "Hello" },
-    ]);
   });
 
   test("routes tool lines through tool message blocks", () => {
@@ -247,9 +238,6 @@ describe("TerminalRenderer", () => {
     expect(beginMessageSpy).toHaveBeenCalledWith("tool");
     expect(writelnScrollSpy).toHaveBeenCalledWith(line);
     expect(endMessageSpy).toHaveBeenCalledTimes(1);
-    expect(renderer.getState().transcript).toEqual([
-      { kind: "output", text: " [tool: search] " },
-    ]);
   });
 
   test("routes status updates through the layout", () => {

@@ -11,19 +11,6 @@ export type TextToken =
   | { type: "ansi"; value: string }
   | { type: "char"; value: string; width: number };
 
-export interface SgrState {
-  background?: string;
-  blink?: boolean;
-  bold?: boolean;
-  faint?: boolean;
-  foreground?: string;
-  hidden?: boolean;
-  inverse?: boolean;
-  italic?: boolean;
-  strikethrough?: boolean;
-  underline?: boolean;
-}
-
 /**
  * Returns the visible column width of a single character.
  * Zero-width joiners/combining marks return 0, common CJK and emoji ranges
@@ -184,185 +171,25 @@ export function parseSgrParams(seq: string): number[] {
   });
 }
 
-export function applySgr(state: SgrState, params: number[]): SgrState {
-  const next: SgrState = { ...state };
-
-  for (let i = 0; i < params.length; i += 1) {
-    const code = params[i] ?? 0;
-
-    switch (code) {
-      case 0:
-        return {};
-      case 1:
-        next.bold = true;
-        break;
-      case 2:
-        next.faint = true;
-        break;
-      case 3:
-        next.italic = true;
-        break;
-      case 4:
-        next.underline = true;
-        break;
-      case 5:
-        next.blink = true;
-        break;
-      case 7:
-        next.inverse = true;
-        break;
-      case 8:
-        next.hidden = true;
-        break;
-      case 9:
-        next.strikethrough = true;
-        break;
-      case 22:
-        delete next.bold;
-        delete next.faint;
-        break;
-      case 23:
-        delete next.italic;
-        break;
-      case 24:
-        delete next.underline;
-        break;
-      case 25:
-        delete next.blink;
-        break;
-      case 27:
-        delete next.inverse;
-        break;
-      case 28:
-        delete next.hidden;
-        break;
-      case 29:
-        delete next.strikethrough;
-        break;
-      case 30:
-      case 31:
-      case 32:
-      case 33:
-      case 34:
-      case 35:
-      case 36:
-      case 37:
-        next.foreground = String(code);
-        break;
-      case 38: {
-        const mode = params[i + 1];
-        if (mode === 5) {
-          next.foreground = `38;5;${params[i + 2]}`;
-          i += 2;
-        } else if (mode === 2) {
-          next.foreground = `38;2;${params[i + 2]};${params[i + 3]};${params[i + 4]}`;
-          i += 4;
-        }
-        break;
-      }
-      case 39:
-        delete next.foreground;
-        break;
-      case 40:
-      case 41:
-      case 42:
-      case 43:
-      case 44:
-      case 45:
-      case 46:
-      case 47:
-        next.background = String(code);
-        break;
-      case 48: {
-        const mode = params[i + 1];
-        if (mode === 5) {
-          next.background = `48;5;${params[i + 2]}`;
-          i += 2;
-        } else if (mode === 2) {
-          next.background = `48;2;${params[i + 2]};${params[i + 3]};${params[i + 4]}`;
-          i += 4;
-        }
-        break;
-      }
-      case 49:
-        delete next.background;
-        break;
-      case 90:
-      case 91:
-      case 92:
-      case 93:
-      case 94:
-      case 95:
-      case 96:
-      case 97:
-        next.foreground = String(code);
-        break;
-      case 100:
-      case 101:
-      case 102:
-      case 103:
-      case 104:
-      case 105:
-      case 106:
-      case 107:
-        next.background = String(code);
-        break;
-    }
-  }
-
-  return next;
-}
-
-export function encodeSgr(state: SgrState): string {
-  const codes: string[] = [];
-  if (state.bold) {
-    codes.push("1");
-  }
-  if (state.faint) {
-    codes.push("2");
-  }
-  if (state.italic) {
-    codes.push("3");
-  }
-  if (state.underline) {
-    codes.push("4");
-  }
-  if (state.blink) {
-    codes.push("5");
-  }
-  if (state.inverse) {
-    codes.push("7");
-  }
-  if (state.hidden) {
-    codes.push("8");
-  }
-  if (state.strikethrough) {
-    codes.push("9");
-  }
-  if (state.foreground) {
-    codes.push(state.foreground);
-  }
-  if (state.background) {
-    codes.push(state.background);
-  }
-
-  if (codes.length === 0) {
-    return "";
-  }
-
-  return `\x1b[${codes.join(";")}m`;
-}
-
+/** Last open SGR sequence stack as a re-emit prefix (reset clears). */
 export function activeAnsiPrefix(text: string): string {
-  let state: SgrState = {};
+  const opens: string[] = [];
 
   for (const token of tokenizeText(text)) {
-    if (token.type === "ansi" && isSgrSequence(token.value)) {
-      state = applySgr(state, parseSgrParams(token.value));
+    if (token.type !== "ansi" || !isSgrSequence(token.value)) {
+      continue;
     }
+
+    const params = parseSgrParams(token.value);
+    if (params.length === 1 && params[0] === 0) {
+      opens.length = 0;
+      continue;
+    }
+
+    opens.push(token.value);
   }
 
-  return encodeSgr(state);
+  return opens.join("");
 }
 
 /**
@@ -425,47 +252,6 @@ export function wrapText(text: string, width: number): string[] {
   }
 
   return lines;
-}
-
-/**
- * Slice text by visible columns, preserving ANSI sequences that intersect the
- * requested range. The slice includes any ANSI codes that are active within the
- * range so that color/style remain correct.
- */
-export function sliceByColumns(
-  text: string,
-  start: number,
-  end: number
-): string {
-  if (start >= end) {
-    return "";
-  }
-
-  let result = "";
-  let width = 0;
-
-  for (const token of tokenizeText(text)) {
-    if (token.type === "ansi") {
-      if (width < end && width >= start) {
-        result += token.value;
-      }
-      continue;
-    }
-
-    const charWidth = token.width;
-
-    if (width >= end) {
-      break;
-    }
-
-    if (width + charWidth > start) {
-      result += token.value;
-    }
-
-    width += charWidth;
-  }
-
-  return result;
 }
 
 /**

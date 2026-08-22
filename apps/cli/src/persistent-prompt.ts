@@ -1,13 +1,10 @@
 import type { ImageAttachment } from "@nakama/core";
-import {
-  isClipboardImagePasteSupported,
-  readClipboardImage,
-} from "./clipboard-image";
+import { readClipboardImage } from "./clipboard-image";
 import type { PromptSuggestion } from "./commands";
 import type { PromptLineResult } from "./prompt";
 import { normalizePastedText } from "./prompt-display";
 import type { TerminalInput } from "./terminal-input";
-import type { ComposerRenderer } from "./terminal-renderer";
+import type { TerminalRenderer } from "./terminal-renderer";
 
 const BRACKETED_PASTE_START = "\x1b[200~";
 const BRACKETED_PASTE_END = "\x1b[201~";
@@ -24,13 +21,13 @@ export interface PersistentPromptOptions {
   ) => void;
   onSubmit: (result: PromptLineResult) => void | Promise<void>;
   prefix?: string;
-  renderer: ComposerRenderer;
+  renderer: Pick<TerminalRenderer, "setComposerState">;
   terminalInput: TerminalInput;
 }
 
 export class PersistentPrompt {
   private readonly prefix: string;
-  private readonly renderer: ComposerRenderer;
+  private readonly renderer: Pick<TerminalRenderer, "setComposerState">;
   private readonly terminalInput: TerminalInput;
   private readonly getSuggestions: (input: string) => PromptSuggestion[];
   private readonly onSubmit: (result: PromptLineResult) => void | Promise<void>;
@@ -51,7 +48,6 @@ export class PersistentPrompt {
   private blinkTimer: ReturnType<typeof setInterval> | null = null;
   private clipboardAttachTask: Promise<void> = Promise.resolve();
   private unsubscribeInput: (() => void) | null = null;
-  private readonly clipboardPasteSupported = isClipboardImagePasteSupported();
 
   constructor(options: PersistentPromptOptions) {
     this.prefix = options.prefix ?? "> ";
@@ -159,13 +155,6 @@ export class PersistentPrompt {
   }
 
   private async attachClipboardImage(): Promise<boolean> {
-    if (!this.clipboardPasteSupported) {
-      this.notifyClipboard(
-        "Clipboard images are not supported on this platform."
-      );
-      return false;
-    }
-
     try {
       const image = await readClipboardImage();
 

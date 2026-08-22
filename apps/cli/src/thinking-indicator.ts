@@ -3,7 +3,7 @@ import {
   serializeStyledLine,
   styledLine,
 } from "./styled-text";
-import type { StatusRenderer } from "./terminal-renderer";
+import type { TerminalRenderer } from "./terminal-renderer";
 
 const THINKING_FRAMES = [
   "⠋",
@@ -29,10 +29,15 @@ export class ThinkingIndicator {
   private active = false;
   private frame = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
-  private renderer: StatusRenderer | null = null;
+  private renderer: Pick<
+    TerminalRenderer,
+    "isEnabled" | "setStatusLine"
+  > | null = null;
   private lineStarted = false;
 
-  setRenderer(renderer: StatusRenderer | null): void {
+  setRenderer(
+    renderer: Pick<TerminalRenderer, "isEnabled" | "setStatusLine"> | null
+  ): void {
     this.renderer = renderer;
   }
 

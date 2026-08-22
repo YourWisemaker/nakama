@@ -17,25 +17,6 @@ import { wrapText } from "./text-measure";
 import type { MessageKind } from "./virtual-message-list";
 import { VirtualMessageList } from "./virtual-message-list";
 
-export function computeReservedRows(options: {
-  pendingLineCount: number;
-  promptLineCount: number;
-}): number {
-  return Math.max(1, options.pendingLineCount + options.promptLineCount);
-}
-
-export function shouldPinToBottom(
-  contentBottomRow: number,
-  inputRows: number,
-  terminalRows: number
-): boolean {
-  return contentBottomRow + inputRows >= terminalRows;
-}
-
-export function getInputStartLine(contentBottomRow: number): number {
-  return contentBottomRow + 1;
-}
-
 export function getVisiblePinnedInputRows(
   inputRows: number,
   terminalRows: number
@@ -43,22 +24,6 @@ export function getVisiblePinnedInputRows(
   const rows = Math.max(1, inputRows);
   const maxVisibleRows = terminalRows > 1 ? terminalRows - 1 : 1;
   return Math.min(rows, maxVisibleRows);
-}
-
-export function getPinnedInputStartLine(
-  inputRows: number,
-  terminalRows: number
-): number {
-  const visibleRows = getVisiblePinnedInputRows(inputRows, terminalRows);
-  return Math.max(1, terminalRows - visibleRows + 1);
-}
-
-export function getContentBottomLine(state: {
-  lastOutputLine: number;
-  statusRow: number | null;
-  streamRow: number;
-}): number {
-  return Math.max(state.lastOutputLine, state.statusRow ?? 0, state.streamRow);
 }
 
 export function getTerminalRows(): number {

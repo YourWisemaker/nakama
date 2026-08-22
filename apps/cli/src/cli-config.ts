@@ -6,52 +6,36 @@ export function getCliConfigPath(): string {
 }
 
 export async function loadSavedCliProfileId(): Promise<string | null> {
-  const raw = await readTextOrNull(getCliConfigPath());
-
-  if (raw === null) {
-    return null;
-  }
-
-  const profileId = parseIni(raw).profile_id?.trim();
-
-  return profileId || null;
+  return loadCliConfigValue("profile_id");
 }
 
 export async function loadSavedCliOrgId(): Promise<string | null> {
-  const raw = await readTextOrNull(getCliConfigPath());
-
-  if (raw === null) {
-    return null;
-  }
-
-  const orgId = parseIni(raw).org_id?.trim();
-
-  return orgId || null;
+  return loadCliConfigValue("org_id");
 }
 
 export async function saveCliProfileId(profileId: string): Promise<void> {
-  const trimmed = profileId.trim();
-
-  if (!trimmed) {
-    return;
-  }
-
-  const values = await readCliConfigValues();
-  values.profile_id = trimmed;
-
-  await writeCliConfig(values);
+  await saveCliConfigValue("profile_id", profileId);
 }
 
 export async function saveCliOrgId(orgId: string): Promise<void> {
-  const trimmed = orgId.trim();
+  await saveCliConfigValue("org_id", orgId);
+}
+
+async function loadCliConfigValue(key: string): Promise<string | null> {
+  const values = await readCliConfigValues();
+  const value = values[key]?.trim();
+  return value || null;
+}
+
+async function saveCliConfigValue(key: string, value: string): Promise<void> {
+  const trimmed = value.trim();
 
   if (!trimmed) {
     return;
   }
 
   const values = await readCliConfigValues();
-  values.org_id = trimmed;
-
+  values[key] = trimmed;
   await writeCliConfig(values);
 }
 
