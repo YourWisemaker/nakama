@@ -1,0 +1,56 @@
+name: New feature
+description: A capability, surface, or integration that does not exist yet.
+labels: ["new-feature"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        If the surface already exists and you want it improved, use the
+        **Enhancement** form instead.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What the capability is, and who uses it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What is impossible today without it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed scope and non-goals
+      description: >
+        Optional. Say what a first pass covers and what it deliberately leaves
+        out. Large items ship in phases here.
+    validations:
+      required: false
+
+  - type: textarea
+    id: touchpoints
+    attributes:
+      label: Implementation touch points
+      description: Optional. Files, routes, or packages you expect this to touch.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: >
+        Checklist a reviewer can verify one item at a time. This is what the
+        closing PR is judged against, not the diff.
+      placeholder: |
+        - [ ] the endpoint returns 400 without ?orgId=
+        - [ ] existing callers keep working
+    validations:
+      required: true
