@@ -1,4 +1,4 @@
-import { parseAllowedWhatsAppPhones } from "@nakama/core/whatsapp-config";
+import { parseAllowedWhatsAppPhones } from "@nakama/core/whatsapp-phones";
 import { Delete02Icon } from "hugeicons-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";

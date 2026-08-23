@@ -12,6 +12,9 @@ import {
   writeTextFile,
 } from "./fs";
 import { getUserConfigDir } from "./user-config";
+import { parseAllowedWhatsAppPhones } from "./whatsapp-phones";
+
+export { parseAllowedWhatsAppPhones } from "./whatsapp-phones";
 
 /** WhatsApp name for shared handshake helpers. */
 export const generatePairingCode = generateHandshakeCode;
@@ -119,28 +122,6 @@ function isSameWhatsAppUserJid(left: string, right: string): boolean {
   const leftDigits = whatsAppUserDigits(left);
   const rightDigits = whatsAppUserDigits(right);
   return Boolean(leftDigits && leftDigits === rightDigits);
-}
-
-const MIN_ALLOWED_PHONE_DIGITS = 8;
-
-export function parseAllowedWhatsAppPhones(raw: string): string[] {
-  const phones = new Set<string>();
-
-  for (const part of raw.split(",")) {
-    const digits = phoneDigits(part);
-
-    if (!digits) {
-      continue;
-    }
-
-    if (digits.length < MIN_ALLOWED_PHONE_DIGITS) {
-      throw new Error(`Invalid WhatsApp number: ${part.trim()}`);
-    }
-
-    phones.add(digits);
-  }
-
-  return [...phones];
 }
 
 export function isWhatsAppUserAuthorized(

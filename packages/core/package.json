@@ -41,6 +41,7 @@
     "./discord-attachment": "./src/discord-attachment.ts",
     "./discord-worker": "./src/discord-worker.ts",
     "./whatsapp-config": "./src/whatsapp-config.ts",
+    "./whatsapp-phones": "./src/whatsapp-phones.ts",
     "./whatsapp-worker": "./src/whatsapp-worker.ts",
     "./skills/archive": "./src/skills/archive.ts",
     "./skills/freshness": "./src/skills/freshness.ts",
