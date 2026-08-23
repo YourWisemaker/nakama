@@ -208,15 +208,20 @@ export function FilesPage() {
                 emptyFilterMessage={emptyFilterMessage}
                 error={error}
                 folders={listing.folders}
-                hasMore={hasNextPage ?? false}
                 isLoading={isLoading}
-                isLoadingMore={isFetchingNextPage}
                 listingFiles={listing.files}
                 onDelete={setDeleteTarget}
                 onOpenFolder={handleFolderChange}
-                onShowMore={() => void fetchNextPage()}
+                pagination={
+                  hasNextPage
+                    ? {
+                        loadingMore: isFetchingNextPage,
+                        onShowMore: () => void fetchNextPage(),
+                        remainingCount,
+                      }
+                    : null
+                }
                 profileId={profileId}
-                remainingCount={remainingCount}
                 showFullPath={isSearching}
                 viewMode={viewMode}
               />

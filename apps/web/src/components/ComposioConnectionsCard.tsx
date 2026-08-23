@@ -5,6 +5,7 @@ import type {
   ComposioUserConnectionSummary,
   ListComposioToolkitsResponse,
   ProfileSummary,
+  UpdateProfileComposioToolkitsRequest,
 } from "@nakama/core/contract";
 import { useQueries } from "@tanstack/react-query";
 import { MoreHorizontalIcon, Search01Icon } from "hugeicons-react";
@@ -37,6 +38,7 @@ import { formatError } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
 const CATALOG_PAGE_SIZE = 15;
+const EMPTY_PROFILES: ProfileSummary[] = [];
 
 /**
  * The catalog is 200 apps, which buries the ones a team actually asks for. The
@@ -612,7 +614,9 @@ export function ComposioConnectionsCard({
   const enableMutation = useEnableComposioToolkit();
   const assignMutation = useUpdateProfileComposioToolkitsMutation();
   const profilesQuery = useProfilesQuery();
-  const profiles = isOrgAdmin ? (profilesQuery.data ?? []) : [];
+  const profiles = isOrgAdmin
+    ? (profilesQuery.data ?? EMPTY_PROFILES)
+    : EMPTY_PROFILES;
 
   // Assignments live per profile, so the reverse map is built here rather than
   // asking the toolkits endpoint for it. Only org admins may read them, and the
@@ -646,20 +650,22 @@ export function ComposioConnectionsCard({
   ) => {
     const index = profiles.findIndex((profile) => profile.id === profileId);
     const current = assignmentQueries[index]?.data?.assignments ?? [];
-    const next = assigned
-      ? [
-          ...current.map((entry) => ({
-            allowedActions: entry.allowedActions,
-            toolkitId: entry.toolkitId,
-          })),
-          { allowedActions: null, toolkitId },
-        ]
-      : current
-          .filter((entry) => entry.toolkitId !== toolkitId)
-          .map((entry) => ({
-            allowedActions: entry.allowedActions,
-            toolkitId: entry.toolkitId,
-          }));
+    const next: UpdateProfileComposioToolkitsRequest["assignments"] = [];
+
+    for (const entry of current) {
+      if (!assigned && entry.toolkitId === toolkitId) {
+        continue;
+      }
+
+      next.push({
+        allowedActions: entry.allowedActions,
+        toolkitId: entry.toolkitId,
+      });
+    }
+
+    if (assigned) {
+      next.push({ allowedActions: null, toolkitId });
+    }
 
     assignMutation.mutate({ assignments: next, profileId });
   };

@@ -8,31 +8,31 @@ import { ArtifactGridView } from "@/pages/files/files-artifact-grid-view";
 import { ArtifactListSkeleton } from "@/pages/files/files-artifact-list-skeleton";
 import { ArtifactListView } from "@/pages/files/files-artifact-list-view";
 
-function ShowMoreArtifactsButton({
-  hasMore,
-  isLoadingMore,
-  onShowMore,
-  remainingCount,
-}: {
-  hasMore: boolean;
-  isLoadingMore: boolean;
+type FilesArtifactPagination = {
+  loadingMore: boolean;
   onShowMore: () => void;
   remainingCount: number;
-}) {
-  if (!hasMore || remainingCount <= 0) {
+};
+
+function ShowMoreArtifactsButton({
+  loadingMore,
+  onShowMore,
+  remainingCount,
+}: FilesArtifactPagination) {
+  if (remainingCount <= 0) {
     return null;
   }
 
   return (
     <div className="border-border border-t bg-muted/20 px-4 py-3 text-center">
       <Button
-        disabled={isLoadingMore}
+        disabled={loadingMore}
         onClick={onShowMore}
         size="sm"
         type="button"
         variant="outline"
       >
-        {isLoadingMore ? (
+        {loadingMore ? (
           "Loading…"
         ) : (
           <>
@@ -49,7 +49,6 @@ function ShowMoreArtifactsButton({
 export function FilesArtifactViews({
   viewMode,
   isLoading,
-  isLoadingMore,
   error,
   artifacts,
   folders,
@@ -58,15 +57,12 @@ export function FilesArtifactViews({
   showFullPath,
   profileId,
   deletePending,
-  hasMore,
-  remainingCount,
+  pagination,
   onDelete,
   onOpenFolder,
-  onShowMore,
 }: {
   viewMode: FilesViewMode;
   isLoading: boolean;
-  isLoadingMore: boolean;
   error: unknown;
   artifacts: ArtifactFile[];
   folders: ArtifactFolderEntry[];
@@ -75,11 +71,9 @@ export function FilesArtifactViews({
   showFullPath: boolean;
   profileId: string;
   deletePending: boolean;
-  hasMore: boolean;
-  remainingCount: number;
+  pagination: FilesArtifactPagination | null;
   onDelete: (artifact: ArtifactFile) => void;
   onOpenFolder: (prefix: string) => void;
-  onShowMore: () => void;
 }) {
   const listingEmpty = folders.length === 0 && listingFiles.length === 0;
 
@@ -126,12 +120,11 @@ export function FilesArtifactViews({
           showFullPath={showFullPath}
         />
       )}
-      {isLoading || error || artifacts.length === 0 ? null : (
+      {isLoading || error || artifacts.length === 0 || !pagination ? null : (
         <ShowMoreArtifactsButton
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          onShowMore={onShowMore}
-          remainingCount={remainingCount}
+          loadingMore={pagination.loadingMore}
+          onShowMore={pagination.onShowMore}
+          remainingCount={pagination.remainingCount}
         />
       )}
     </div>
