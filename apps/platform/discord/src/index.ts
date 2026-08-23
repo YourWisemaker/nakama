@@ -1,4 +1,5 @@
 import { createClient } from "@nakama/client";
+import { installErrorHandlers, installErrorTrackingSink } from "@nakama/core";
 import {
   ChannelOrgStore,
   getChannelOrgSelectionPath,
@@ -21,6 +22,9 @@ import { createBot } from "./bot";
 import { loadConfig } from "./config";
 import { SessionStore } from "./session-store";
 import { ThreadStore } from "./thread-store";
+
+installErrorHandlers("worker:discord");
+void installErrorTrackingSink();
 
 let spawnedChild: Bun.Subprocess | null = null;
 let clientStop: (() => void) | null = null;

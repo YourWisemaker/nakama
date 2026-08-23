@@ -1,4 +1,5 @@
 import { createClient } from "@nakama/client";
+import { installErrorHandlers, installErrorTrackingSink } from "@nakama/core";
 import {
   ChannelOrgStore,
   getChannelOrgSelectionPath,
@@ -20,6 +21,9 @@ import { TelegramAuthStore } from "./auth-store";
 import { createBot } from "./bot";
 import { loadConfig } from "./config";
 import { SessionStore } from "./session-store";
+
+installErrorHandlers("worker:telegram");
+void installErrorTrackingSink();
 
 let spawnedChild: Bun.Subprocess | null = null;
 let botStop: (() => void) | null = null;
