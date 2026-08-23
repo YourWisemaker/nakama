@@ -106,6 +106,27 @@ describe("AutomationService", () => {
     });
   });
 
+  test("falls back to the prompt when description is omitted", async () => {
+    const db = await createTestDb();
+    const service = new AutomationService(db, {
+      getUserTimezone: async () => "UTC",
+    });
+
+    // The HTTP route casts the body with readJson, so an absent field reaches
+    // create() as undefined however the type is declared.
+    const automation = await service.create(
+      ORG_ID,
+      {
+        name: "Nightly pull",
+        prompt: "run the tool",
+        trigger: { type: "manual" },
+      } as Parameters<typeof service.create>[1],
+      PROFILE_ID
+    );
+
+    expect(automation.description).toBe("run the tool");
+  });
+
   test("defaults schedule timezone from user config", async () => {
     const db = await createTestDb();
     const service = new AutomationService(db, {
