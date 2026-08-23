@@ -15,7 +15,6 @@ import {
   useSendErrorTrackingTest,
 } from "@/hooks/use-error-tracking";
 import { formatError } from "@/lib/client";
-import { cn } from "@/lib/utils";
 
 function StatusBadge({ configured }: { configured: boolean }) {
   if (configured) {
@@ -38,11 +37,7 @@ function StatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
-export function ErrorTrackingSettingsCard({
-  embedded = false,
-}: {
-  embedded?: boolean;
-}) {
+export function ErrorTrackingSettingsCard() {
   const {
     data: settings,
     isLoading,
@@ -57,11 +52,8 @@ export function ErrorTrackingSettingsCard({
 
   if (isLoading) {
     return (
-      <IntegrationCardShell
-        busyLabel="Loading error tracking settings"
-        embedded={embedded}
-      >
-        <div className={cn("space-y-2", embedded ? "pb-1.5" : "p-5")}>
+      <IntegrationCardShell busyLabel="Loading error tracking settings">
+        <div className="space-y-2 p-5">
           <div className="h-4 w-40 rounded bg-muted" />
           <div className="h-9 w-full rounded bg-muted" />
         </div>
@@ -71,8 +63,6 @@ export function ErrorTrackingSettingsCard({
 
   const configured = settings?.configured === true;
   const errorMessage = formError ?? (loadError ? formatError(loadError) : null);
-  const sectionPadding = embedded ? "pb-1.5" : "p-5";
-  const footerPadding = embedded ? "pt-1.5" : "px-5 py-3";
 
   async function handleSave() {
     setFormError(null);
@@ -99,38 +89,31 @@ export function ErrorTrackingSettingsCard({
   }
 
   return (
-    <IntegrationCardShell embedded={embedded}>
-      {embedded ? null : (
-        <>
-          <div className="flex items-start justify-between gap-4 p-5 pb-4">
-            <div className="min-w-0 space-y-1">
-              <h2 className="font-semibold text-base text-foreground leading-tight [text-wrap:balance]">
-                Error tracking
-              </h2>
-              <p className="text-muted-foreground text-sm leading-snug [text-wrap:pretty]">
-                Send this instance's own errors to the error tracker you already
-                run.
-              </p>
-            </div>
-            <StatusBadge configured={configured} />
-          </div>
+    <IntegrationCardShell>
+      <div className="flex items-start justify-between gap-4 p-5 pb-4">
+        <div className="min-w-0 space-y-1">
+          <h2 className="font-semibold text-base text-foreground leading-tight [text-wrap:balance]">
+            Error tracking
+          </h2>
+          <p className="text-muted-foreground text-sm leading-snug [text-wrap:pretty]">
+            Send this instance's own errors to the error tracker you already
+            run.
+          </p>
+        </div>
+        <StatusBadge configured={configured} />
+      </div>
 
-          <div className="border-border border-t" />
-        </>
-      )}
+      <div className="border-border border-t" />
 
-      <div className={cn("space-y-2", sectionPadding, embedded && "pt-0")}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <p className="font-medium text-foreground text-sm">
-              Sentry-compatible DSN
-            </p>
-            <p className="text-muted-foreground text-sm [text-wrap:pretty]">
-              Works with Sentry, GlitchTip, Bugsink and a self-hosted Sentry.
-              Leave it empty to send nothing.
-            </p>
-          </div>
-          {embedded ? <StatusBadge configured={configured} /> : null}
+      <div className="space-y-2 p-5">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium text-foreground text-sm">
+            Sentry-compatible DSN
+          </p>
+          <p className="text-muted-foreground text-sm [text-wrap:pretty]">
+            Works with Sentry, GlitchTip, Bugsink and a self-hosted Sentry.
+            Leave it empty to send nothing.
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -208,7 +191,7 @@ export function ErrorTrackingSettingsCard({
         ) : null}
       </div>
 
-      <div className={cn(footerPadding)}>
+      <div className="px-5 py-3">
         <a
           className="inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
           href="https://docs.sentry.io/concepts/key-terms/dsn-explainer/"
@@ -218,7 +201,7 @@ export function ErrorTrackingSettingsCard({
           <Link01Icon aria-hidden className="size-3.5 shrink-0" />
           <span>
             Find your DSN:{" "}
-            <span className={cn("font-medium text-primary")}>
+            <span className="font-medium text-primary">
               Project Settings → Client Keys
             </span>
           </span>

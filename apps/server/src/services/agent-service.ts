@@ -1167,7 +1167,7 @@ export class AgentService {
 
     const delivered = await createErrorTrackingSink()(
       buildErrorReport(new Error("Test event from nakama"), {
-        kind: "invariant",
+        kind: "test",
         source: "settings",
       })
     );
