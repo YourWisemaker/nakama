@@ -145,6 +145,18 @@ export function registerModelRoutes(
     .object({})
     .passthrough()
     .openapi("ComposioSettingsResponse");
+  const errorTrackingSettingsSchema = z
+    .object({})
+    .passthrough()
+    .openapi("ErrorTrackingSettingsResponse");
+  const updateErrorTrackingRequestSchema = z
+    .object({})
+    .passthrough()
+    .openapi("UpdateErrorTrackingSettingsRequest");
+  const sendErrorTrackingTestSchema = z
+    .object({})
+    .passthrough()
+    .openapi("SendErrorTrackingTestResponse");
   const emailSettingsSchema = z
     .object({})
     .passthrough()
@@ -865,6 +877,65 @@ export function registerModelRoutes(
   );
   app.openAPIRegistry.registerPath(
     createRoute({
+      method: "get",
+      operationId: "getErrorTrackingSettings",
+      path: "/v1/settings/error-tracking",
+      responses: {
+        200: {
+          content: {
+            "application/json": { schema: errorTrackingSettingsSchema },
+          },
+          description: "Error tracking settings",
+        },
+      },
+      summary: "Get error tracking settings",
+      tags: ["Models"],
+    })
+  );
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "put",
+      operationId: "setErrorTrackingSettings",
+      path: "/v1/settings/error-tracking",
+      request: {
+        body: {
+          content: {
+            "application/json": { schema: updateErrorTrackingRequestSchema },
+          },
+          required: true,
+        },
+      },
+      responses: {
+        200: {
+          content: {
+            "application/json": { schema: errorTrackingSettingsSchema },
+          },
+          description: "Error tracking settings",
+        },
+      },
+      summary: "Set error tracking settings",
+      tags: ["Models"],
+    })
+  );
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "post",
+      operationId: "sendErrorTrackingTest",
+      path: "/v1/settings/error-tracking/test",
+      responses: {
+        200: {
+          content: {
+            "application/json": { schema: sendErrorTrackingTestSchema },
+          },
+          description: "Test event result",
+        },
+      },
+      summary: "Send a test event",
+      tags: ["Models"],
+    })
+  );
+  app.openAPIRegistry.registerPath(
+    createRoute({
       method: "put",
       operationId: "setComposioSettings",
       path: "/v1/settings/composio",
@@ -1465,6 +1536,48 @@ export function registerModelRoutes(
       return errorResponse(message, 400);
     }
   });
+  app.get("/v1/settings/error-tracking", async (c) => {
+    getRequestAuth(c);
+    return json<ErrorTrackingSettingsResponse>(
+      await agent.getErrorTrackingSettings()
+    );
+  });
+
+  app.put("/v1/settings/error-tracking", async (c) => {
+    // Workspace-global config, so there is no org to scope it to and a role guard is
+    // the only thing standing between a viewer and the whole install's error routing.
+    requireOrgAdminOrPlatformAdminFromContext(c);
+    const body = await readJson<UpdateErrorTrackingSettingsRequest>(c.req.raw);
+
+    try {
+      return json<ErrorTrackingSettingsResponse>(
+        await agent.setErrorTrackingSettings(body)
+      );
+    } catch (error) {
+      if (error instanceof NakamaApiError) {
+        return errorResponse(error.message, error.status);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      return errorResponse(message, 400);
+    }
+  });
+
+  app.post("/v1/settings/error-tracking/test", async (c) => {
+    requireOrgAdminOrPlatformAdminFromContext(c);
+
+    try {
+      return json<SendErrorTrackingTestResponse>(
+        await agent.sendErrorTrackingTest()
+      );
+    } catch (error) {
+      if (error instanceof NakamaApiError) {
+        return errorResponse(error.message, error.status);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      return errorResponse(message, 400);
+    }
+  });
+
   app.get("/v1/settings/whatsapp", async (c) => {
     getRequestAuth(c);
     return json<WhatsAppSettingsResponse>(await agent.getWhatsAppSettings());

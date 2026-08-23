@@ -35,6 +35,7 @@ import type {
   DiscoverModelsRequest,
   DocumentAttachment,
   EmailSettingsResponse,
+  ErrorTrackingSettingsResponse,
   GenerateImageRequest,
   GenerateImageResponse,
   ImageAttachment,
@@ -58,6 +59,7 @@ import type {
   ProviderClient,
   RunToolResponse,
   SendEmailTestResponse,
+  SendErrorTrackingTestResponse,
   SkillResponse,
   SoulStackResponse,
   SoulStatusResponse,
@@ -77,6 +79,7 @@ import type {
   UpdateComposioSettingsRequest,
   UpdateDiscordSettingsRequest,
   UpdateEmailSettingsRequest,
+  UpdateErrorTrackingSettingsRequest,
   UpdateImageGenerationRequest,
   UpdateProfileRequest,
   UpdateProviderRequest,
@@ -98,11 +101,13 @@ import type {
 import {
   apiKeyEnvVarForProvider,
   appendOrgMemorySection,
+  buildErrorReport,
   buildThinkingProviderOptions,
   buildToolExecutionContext,
   buildUserContextStatus,
   composeKnowledgeBaseCatalog,
   composeSoulSystemPrompt,
+  createErrorTrackingSink,
   createSmtpSender,
   DEFAULT_THINKING_EFFORT,
   DEFAULT_THINKING_ENABLED,
@@ -123,6 +128,7 @@ import {
   loadDiscordSettingsPublic,
   loadEmailConfig,
   loadEmailSettingsPublic,
+  loadErrorTrackingSettingsPublic,
   loadSoulStack,
   loadTelegramSettingsPublic,
   loadUserConfig,
@@ -137,10 +143,12 @@ import {
   normalizeUserContextContent,
   type OrgRole,
   ollamaRequiresApiKey,
+  parseSentryDsn,
   persistInlineAttachmentsInContent,
   readArtifactFile,
   readBundledSkillBody,
   readEnvValue,
+  refreshErrorTrackingEnabled,
   regenerateDiscordHandshake,
   regenerateTelegramHandshake,
   regenerateWhatsAppPairingCode,
@@ -152,6 +160,7 @@ import {
   saveComposioConfig,
   saveDiscordConfig,
   saveEmailConfig,
+  saveErrorTrackingDsn,
   saveTelegramConfig,
   saveUserConfig,
   saveUserThinkingSettings,
@@ -1120,6 +1129,55 @@ export class AgentService {
     }
 
     return this.getComposioSettings();
+  }
+
+  async getErrorTrackingSettings(): Promise<ErrorTrackingSettingsResponse> {
+    return loadErrorTrackingSettingsPublic();
+  }
+
+  async setErrorTrackingSettings(
+    input: UpdateErrorTrackingSettingsRequest
+  ): Promise<ErrorTrackingSettingsResponse> {
+    const dsn = input.dsn?.trim() ?? "";
+
+    if (dsn && !parseSentryDsn(dsn)) {
+      throw new NakamaApiError(
+        "That does not look like a Sentry-compatible DSN.",
+        400
+      );
+    }
+
+    await saveErrorTrackingDsn(dsn || null);
+    // The flag gates whether anything is recorded at all, so it has to move with the
+    // DSN or saving one would need a restart to take effect.
+    await refreshErrorTrackingEnabled();
+    return this.getErrorTrackingSettings();
+  }
+
+  /**
+   * Sends one event immediately rather than through reportError, so a failed test does
+   * not leave a fake crash sitting in the delivery queue.
+   */
+  async sendErrorTrackingTest(): Promise<SendErrorTrackingTestResponse> {
+    const { configured } = await loadErrorTrackingSettingsPublic();
+
+    if (!configured) {
+      throw new NakamaApiError("Save a DSN first.", 400);
+    }
+
+    const delivered = await createErrorTrackingSink()(
+      buildErrorReport(new Error("Test event from nakama"), {
+        kind: "invariant",
+        source: "settings",
+      })
+    );
+
+    return {
+      delivered,
+      message: delivered
+        ? "Test event delivered. It should appear in your project within a few seconds."
+        : "The ingest rejected the event or could not be reached. Check the DSN.",
+    };
   }
 
   async getEmailSettings(): Promise<EmailSettingsResponse> {

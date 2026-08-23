@@ -1239,6 +1239,21 @@ export interface UpdateComposioSettingsRequest {
   apiKey?: string;
 }
 
+export interface ErrorTrackingSettingsResponse {
+  configured: boolean;
+  dsnMasked: string | null;
+}
+
+export interface UpdateErrorTrackingSettingsRequest {
+  /** Empty string clears the DSN and turns error tracking off. */
+  dsn?: string;
+}
+
+export interface SendErrorTrackingTestResponse {
+  delivered: boolean;
+  message: string;
+}
+
 export type NotificationDestinationChannel = "telegram";
 
 export type NotificationWebhookLevel = "info" | "success" | "warning" | "error";
