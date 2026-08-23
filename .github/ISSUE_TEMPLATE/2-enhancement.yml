@@ -1,0 +1,46 @@
+name: Enhancement
+description: Improve a surface that already exists.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        If the capability does not exist yet (a new provider, channel, or
+        integration), use the **New feature** form instead.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What changes, on which existing surface.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: What is painful today. One paragraph.
+    validations:
+      required: true
+
+  - type: textarea
+    id: touchpoints
+    attributes:
+      label: Implementation touch points
+      description: Optional. Files, routes, or packages you expect this to touch.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: >
+        Checklist a reviewer can verify one item at a time. This is what the
+        closing PR is judged against, not the diff.
+      placeholder: |
+        - [ ] the endpoint returns 400 without ?orgId=
+        - [ ] existing callers keep working
+    validations:
+      required: true

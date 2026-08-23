@@ -1,0 +1,59 @@
+name: Bug report
+description: Something behaves differently from what it documents or intends.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What breaks, and where in the code. Name the file and line if you have it.
+      placeholder: |
+        `POST /v1/...` returns 500 when the org has no default profile.
+        apps/server/src/http/routes/....ts:61
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Measured on
+      description: Commit SHA, tag, or Docker image tag you observed this on.
+      placeholder: v0.3.9, or 25c6bf24
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: >
+        Steps, a curl command, or a failing test. A test that fails on the named
+        commit and passes after the fix is the strongest form.
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptoms
+    attributes:
+      label: Expected vs actual
+      description: Paste the real output, not a description of it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cause
+    attributes:
+      label: Root cause or proposed fix
+      description: Optional. Skip it if you have not traced it.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security
+      options:
+        - label: >
+            This touches authentication, authorization, tenant isolation,
+            credentials, or untrusted code execution.
+          required: false
