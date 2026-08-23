@@ -166,7 +166,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
       const messageText = isGroup ? stripWhatsAppBotMention(trimmed) : trimmed;
       await handleChatMessage(conversationKey, jid, {
-        message: withGroupContext(messageText, isGroup),
+        message: withGroupContext(
+          withQuotedContext(messageText, inbound.quotedText),
+          isGroup
+        ),
       });
     });
   };
@@ -503,10 +506,24 @@ function normalizeInboundChat(
     me: data.me,
     mentionedJids: data.mentionedJids ?? [],
     quotedParticipant: data.quotedParticipant ?? null,
+    quotedText: data.quotedText ?? null,
     senderJid: data.senderJid ?? data.jid,
     senderJids: data.senderJids ?? [data.senderJid ?? data.jid],
     text: data.text,
   };
+}
+
+function withQuotedContext(message: string, quotedText: string | null): string {
+  const quote = quotedText?.trim();
+  if (!quote) {
+    return message;
+  }
+
+  if (message.trim()) {
+    return `[Quoted message]\n${quote}\n\n${message}`;
+  }
+
+  return `[Quoted message]\n${quote}`;
 }
 
 function withGroupContext(message: string, isGroup: boolean): string {

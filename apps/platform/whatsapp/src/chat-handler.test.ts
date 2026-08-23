@@ -774,6 +774,7 @@ function groupInbound(options: {
   senderJids?: string[];
   mentionedJids?: string[];
   quotedParticipant?: string | null;
+  quotedText?: string | null;
   fromMe?: boolean;
 }) {
   const senderJid = options.senderJid ?? PAIRED_JID;
@@ -784,6 +785,7 @@ function groupInbound(options: {
     me: BOT_ME,
     mentionedJids: options.mentionedJids ?? [],
     quotedParticipant: options.quotedParticipant ?? null,
+    quotedText: options.quotedText ?? null,
     senderJid,
     senderJids: options.senderJids ?? [senderJid],
     text: options.text,
@@ -864,6 +866,48 @@ describe("createChatHandler group chats", () => {
           "[WhatsApp group — your reply is visible to everyone in this group.]\nhello",
       });
       expect(sent.at(-1)?.jid).toBe(GROUP_JID);
+    });
+  });
+
+  test("includes quoted group message text in the agent turn", async () => {
+    await withTempHome(async (homeDir) => {
+      await writeWhatsAppConfigIni(homeDir, {
+        pairedJid: PAIRED_JID,
+        phoneNumber: "1234567890",
+      });
+
+      const authStore = new WhatsAppAuthStore();
+      await authStore.reload();
+      const { client, calls } = createMockClient();
+      const sessionStore = new SessionStore(
+        path.join(homeDir, ".nakama", "whatsapp", "chat-sessions.json")
+      );
+      const orgStore = createTestOrgStore(homeDir);
+      await orgStore.load();
+      const { socket } = createMockSocket();
+      const handleMessage = createChatHandler({
+        authStore,
+        client,
+        config: { phoneNumber: "1234567890", profileId: "default" },
+        getSocket: () => socket as any,
+        orgStore,
+        sessionStore,
+      });
+
+      await handleMessage(
+        groupInbound({
+          mentionedJids: [BOT_ME.id],
+          quotedParticipant: "6281352311912@s.whatsapp.net",
+          quotedText: "Update Daily Well PHSS 20-08-2026\nSFT-01 Unload flow",
+          text: "@Nakama ini data laporan hari berikutnya",
+        })
+      );
+
+      expect(calls.sendStream).toBe(1);
+      expect(calls.streamInputs[0]).toEqual({
+        message:
+          "[WhatsApp group — your reply is visible to everyone in this group.]\n[Quoted message]\nUpdate Daily Well PHSS 20-08-2026\nSFT-01 Unload flow\n\nini data laporan hari berikutnya",
+      });
     });
   });
 

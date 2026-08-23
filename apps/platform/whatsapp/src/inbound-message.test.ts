@@ -171,9 +171,41 @@ describe("inbound message routing", () => {
       me: ME,
       mentionedJids: [ME.lid],
       quotedParticipant: null,
+      quotedText: null,
       senderJid: "9999999999@s.whatsapp.net",
       senderJids: ["9999999999@s.whatsapp.net", "104784384290844@lid"],
       text: "@Nakama hello",
     });
+  });
+
+  test("parseInboundWhatsAppMessage keeps quoted message text", () => {
+    const inbound = parseInboundWhatsAppMessage(
+      {
+        key: {
+          participant: "9999999999@s.whatsapp.net",
+          remoteJid: "120363@g.us",
+        },
+        message: {
+          extendedTextMessage: {
+            contextInfo: {
+              mentionedJid: [ME.id],
+              participant: "6281352311912@s.whatsapp.net",
+              quotedMessage: {
+                conversation:
+                  "Update Daily Well PHSS 20-08-2026\nSFT-01 Unload flow",
+              },
+            },
+            text: "@Nakama ini data laporan hari berikutnya",
+          },
+        },
+      },
+      ME
+    );
+
+    expect(inbound?.quotedParticipant).toBe("6281352311912@s.whatsapp.net");
+    expect(inbound?.quotedText).toBe(
+      "Update Daily Well PHSS 20-08-2026\nSFT-01 Unload flow"
+    );
+    expect(inbound?.text).toBe("@Nakama ini data laporan hari berikutnya");
   });
 });

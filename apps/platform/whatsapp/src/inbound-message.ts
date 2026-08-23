@@ -28,6 +28,7 @@ export interface WhatsAppInboundChat {
   me?: WhatsAppAccount;
   mentionedJids: string[];
   quotedParticipant: string | null;
+  quotedText: string | null;
   senderJid: string;
   senderJids: string[];
   text: string;
@@ -86,6 +87,14 @@ function extractQuotedParticipant(
   return extractContextInfo(message)?.participant ?? null;
 }
 
+function extractQuotedText(
+  message: proto.IMessage | null | undefined
+): string | null {
+  const quotedMessage = extractContextInfo(message)?.quotedMessage;
+  const quotedText = extractInboundText(quotedMessage).trim();
+  return quotedText || null;
+}
+
 export function shouldHandleInboundMessage(
   msg: {
     key: WhatsAppInboundKey;
@@ -114,6 +123,7 @@ export function parseInboundWhatsAppMessage(
   const fromMe = Boolean(msg.key.fromMe);
   const mentionedJids = extractMentionedJids(msg.message);
   const quotedParticipant = extractQuotedParticipant(msg.message);
+  const quotedText = extractQuotedText(msg.message);
 
   if (isGroup) {
     const decision = explainGroupMessageHandling({
@@ -146,6 +156,7 @@ export function parseInboundWhatsAppMessage(
     me,
     mentionedJids,
     quotedParticipant,
+    quotedText,
     senderJid,
     senderJids,
     text,
