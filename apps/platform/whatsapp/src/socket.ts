@@ -11,13 +11,14 @@ import {
 import {
   extractInboundText,
   isPrivateWhatsAppChat,
-  shouldHandleInboundMessage,
+  parseInboundWhatsAppMessage,
+  type WhatsAppInboundChat,
 } from "./inbound-message";
 
 export interface WhatsAppSocketDeps {
   onConnected?: (me: { id: string; lid?: string | null }) => void;
   onDisconnected?: () => void;
-  onMessage: (data: { jid: string; text: string }) => Promise<void>;
+  onMessage: (data: WhatsAppInboundChat) => Promise<void>;
   onQr?: (qr: string) => void;
 }
 
@@ -110,11 +111,11 @@ export async function createWhatsAppSocket(
         for (const msg of m.messages) {
           const remoteJid = msg.key.remoteJid ?? null;
           const text = extractInboundText(msg.message);
-          const shouldHandle = shouldHandleInboundMessage(msg, me);
+          const inbound = parseInboundWhatsAppMessage(msg, me);
 
           if (remoteJid) {
             console.log(
-              `WhatsApp upsert item jid=${remoteJid} fromMe=${msg.key.fromMe ? "yes" : "no"} participant=${msg.key.participant ?? "-"} text=${text ? "yes" : "no"} handle=${shouldHandle ? "yes" : "no"}`
+              `WhatsApp upsert item jid=${remoteJid} fromMe=${msg.key.fromMe ? "yes" : "no"} participant=${msg.key.participant ?? "-"} text=${text ? "yes" : "no"} handle=${inbound ? "yes" : "no"}`
             );
           }
 
@@ -131,21 +132,24 @@ export async function createWhatsAppSocket(
             );
           }
 
-          if (!(shouldHandle && remoteJid)) {
+          if (!inbound) {
             continue;
           }
 
-          const preview = text.length > 120 ? `${text.slice(0, 120)}…` : text;
+          const preview =
+            inbound.text.length > 120
+              ? `${inbound.text.slice(0, 120)}…`
+              : inbound.text;
           console.log(
-            `WhatsApp message received from ${remoteJid}: ${preview}`
+            `WhatsApp message received from ${inbound.jid}: ${preview}`
           );
 
           try {
-            await deps.onMessage({ jid: remoteJid, text });
+            await deps.onMessage(inbound);
           } catch (error) {
             console.error("WhatsApp inbound message handling failed.", {
               error: error instanceof Error ? error.message : String(error),
-              jid: remoteJid,
+              jid: inbound.jid,
             });
           }
         }

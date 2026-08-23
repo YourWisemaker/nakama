@@ -12,6 +12,9 @@ import {
   writeTextFile,
 } from "./fs";
 import { getUserConfigDir } from "./user-config";
+import { parseAllowedWhatsAppPhones } from "./whatsapp-phones";
+
+export { parseAllowedWhatsAppPhones } from "./whatsapp-phones";
 
 /** WhatsApp name for shared handshake helpers. */
 export const generatePairingCode = generateHandshakeCode;
@@ -19,6 +22,7 @@ export const normalizePairingCode = normalizeHandshakeInput;
 
 export const DEFAULT_WHATSAPP_PROFILE_ID = "default";
 export interface WhatsAppConfigFile {
+  allowedPhones: string[];
   outboundPort?: string | null;
   pairedJid: string | null;
   pairedLid: string | null;
@@ -28,6 +32,7 @@ export interface WhatsAppConfigFile {
 }
 
 export interface WhatsAppSettingsPublic {
+  allowedPhones: string[];
   configured: boolean;
   pairedJid: string | null;
   pairingCode: string | null;
@@ -36,6 +41,7 @@ export interface WhatsAppSettingsPublic {
 }
 
 export interface UpdateWhatsAppSettingsInput {
+  allowedPhones?: string;
   phoneNumber?: string;
   profileId?: string;
 }
@@ -119,21 +125,74 @@ function isSameWhatsAppUserJid(left: string, right: string): boolean {
 }
 
 export function isWhatsAppUserAuthorized(
-  jid: string,
-  config: Pick<WhatsAppConfigFile, "pairedJid" | "pairedLid">
-): boolean {
-  if (!config.pairedJid) {
-    return false;
+  jid: string | readonly string[],
+  config: Pick<WhatsAppConfigFile, "pairedJid" | "pairedLid"> & {
+    allowedPhones?: string[];
   }
+): boolean {
+  const jids = typeof jid === "string" ? [jid] : jid;
+  const allowedPhones = config.allowedPhones ?? [];
+
+  return jids.some((entry) => {
+    if (!entry) {
+      return false;
+    }
+
+    if (
+      config.pairedJid &&
+      (isSameWhatsAppUserJid(entry, config.pairedJid) ||
+        (config.pairedLid
+          ? isSameWhatsAppUserJid(entry, config.pairedLid)
+          : false))
+    ) {
+      return true;
+    }
+
+    const digits = whatsAppUserDigits(entry);
+    return Boolean(digits && allowedPhones.includes(digits));
+  });
+}
+
+export async function rememberWhatsAppPairedIdentities(
+  jids: readonly string[]
+): Promise<void> {
+  const config = await loadWhatsAppConfigFile();
 
   if (
-    isSameWhatsAppUserJid(jid, config.pairedJid) ||
-    (config.pairedLid ? isSameWhatsAppUserJid(jid, config.pairedLid) : false)
+    !(
+      config &&
+      isWhatsAppUserAuthorized(jids, {
+        allowedPhones: [],
+        pairedJid: config.pairedJid,
+        pairedLid: config.pairedLid,
+      })
+    )
   ) {
-    return true;
+    return;
   }
 
-  return false;
+  const phoneJid = jids.find(
+    (jid) => whatsAppJidServer(jid) === "s.whatsapp.net"
+  );
+  const lidJid = jids.find((jid) => whatsAppJidServer(jid) === "lid");
+  const nextPairedJid =
+    phoneJid && isSameWhatsAppUserJid(phoneJid, config.pairedJid)
+      ? phoneJid
+      : config.pairedJid;
+  const nextPairedLid = lidJid ?? config.pairedLid;
+
+  if (
+    nextPairedJid === config.pairedJid &&
+    nextPairedLid === config.pairedLid
+  ) {
+    return;
+  }
+
+  await writeWhatsAppConfigFile({
+    ...config,
+    pairedJid: nextPairedJid,
+    pairedLid: nextPairedLid,
+  });
 }
 
 export async function loadWhatsAppConfigFile(): Promise<WhatsAppConfigFile | null> {
@@ -152,6 +211,7 @@ export async function loadWhatsAppConfigFile(): Promise<WhatsAppConfigFile | nul
   const outboundPort = values.outbound_port?.trim() || null;
 
   return {
+    allowedPhones: parseAllowedWhatsAppPhones(values.allowed_phones ?? ""),
     outboundPort,
     pairedJid,
     pairedLid,
@@ -166,6 +226,7 @@ export function toWhatsAppSettingsPublic(
 ): WhatsAppSettingsPublic {
   if (!file) {
     return {
+      allowedPhones: [],
       configured: false,
       pairedJid: null,
       pairingCode: null,
@@ -175,6 +236,7 @@ export function toWhatsAppSettingsPublic(
   }
 
   return {
+    allowedPhones: file.allowedPhones,
     configured: true,
     pairedJid: file.pairedJid,
     pairingCode: file.pairingCode,
@@ -201,6 +263,9 @@ async function writeWhatsAppConfigFile(
     ...(config.pairingCode ? [`pairing_code=${config.pairingCode}`] : []),
     ...(config.pairedJid ? [`paired_jid=${config.pairedJid}`] : []),
     ...(config.pairedLid ? [`paired_lid=${config.pairedLid}`] : []),
+    ...(config.allowedPhones.length > 0
+      ? [`allowed_phones=${config.allowedPhones.join(",")}`]
+      : []),
     "",
   ];
 
@@ -248,12 +313,22 @@ function buildSavedWhatsAppConfig(
   const pairedJid = existing?.pairedJid ?? null;
 
   return {
+    allowedPhones: resolveAllowedPhones(input, existing),
     pairedJid,
     pairedLid: existing?.pairedLid ?? null,
     pairingCode: resolvePairingCode(existing, pairedJid),
     phoneNumber,
     profileId: resolveProfileId(input, existing),
   };
+}
+
+function resolveAllowedPhones(
+  input: UpdateWhatsAppSettingsInput,
+  existing: WhatsAppConfigFile | null
+): string[] {
+  return input.allowedPhones === undefined
+    ? (existing?.allowedPhones ?? [])
+    : parseAllowedWhatsAppPhones(input.allowedPhones);
 }
 
 export async function saveWhatsAppConfig(
@@ -425,6 +500,7 @@ export function resolveWhatsAppConfigFromSources(options: {
   }
 
   return {
+    allowedPhones: file?.allowedPhones ?? [],
     pairedJid: file?.pairedJid ?? null,
     pairedLid: file?.pairedLid ?? null,
     pairingCode: file?.pairingCode ?? null,

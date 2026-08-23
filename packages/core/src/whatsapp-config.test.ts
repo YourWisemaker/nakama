@@ -8,6 +8,7 @@ import {
   loadWhatsAppConfigFile,
   maskPhoneNumber,
   normalizePairingCode,
+  parseAllowedWhatsAppPhones,
   resetWhatsAppSessionForReconnect,
   resolveWhatsAppConfigFromSources,
   saveWhatsAppConfig,
@@ -90,6 +91,40 @@ describe("isWhatsAppUserAuthorized", () => {
       })
     ).toBe(false);
   });
+
+  test("returns true when any candidate JID matches", () => {
+    expect(
+      isWhatsAppUserAuthorized(
+        ["104784384290844@lid", "1234567890@s.whatsapp.net"],
+        {
+          pairedJid: "1234567890@s.whatsapp.net",
+          pairedLid: null,
+        }
+      )
+    ).toBe(true);
+  });
+
+  test("returns true when JID matches an allowed phone", () => {
+    expect(
+      isWhatsAppUserAuthorized("628111111111@s.whatsapp.net", {
+        allowedPhones: ["628111111111"],
+        pairedJid: "1234567890@s.whatsapp.net",
+        pairedLid: null,
+      })
+    ).toBe(true);
+  });
+});
+
+describe("parseAllowedWhatsAppPhones", () => {
+  test("normalizes country-code numbers", () => {
+    expect(
+      parseAllowedWhatsAppPhones("+62 811-1111-1111, 628222222222")
+    ).toEqual(["6281111111111", "628222222222"]);
+  });
+
+  test("rejects short numbers", () => {
+    expect(() => parseAllowedWhatsAppPhones("123")).toThrow();
+  });
 });
 
 describe("generatePairingCode", () => {
@@ -161,6 +196,20 @@ describe("saveWhatsAppConfig", () => {
     await withTempHomedir("nakama-core-wa-home-", async () => {
       const result = await saveWhatsAppConfig({ profileId: "default" });
       expect(result.configured).toBe(true);
+    });
+  });
+
+  test("saves allowed phones", async () => {
+    await withTempHomedir("nakama-core-wa-home-", async () => {
+      const result = await saveWhatsAppConfig({
+        allowedPhones: "+62 811-1111-1111, 628222222222",
+        profileId: "default",
+      });
+
+      expect(result.allowedPhones).toEqual(["6281111111111", "628222222222"]);
+
+      const saved = await loadWhatsAppConfigFile();
+      expect(saved?.allowedPhones).toEqual(["6281111111111", "628222222222"]);
     });
   });
 });
@@ -257,6 +306,7 @@ describe("resolveWhatsAppConfigFromSources", () => {
         WHATSAPP_PHONE_NUMBER: "+1234567890",
       },
       file: {
+        allowedPhones: [],
         pairedJid: null,
         pairedLid: null,
         pairingCode: null,
@@ -266,6 +316,7 @@ describe("resolveWhatsAppConfigFromSources", () => {
     });
 
     expect(resolved).toEqual({
+      allowedPhones: [],
       pairedJid: null,
       pairedLid: null,
       pairingCode: null,
@@ -278,6 +329,7 @@ describe("resolveWhatsAppConfigFromSources", () => {
     const resolved = resolveWhatsAppConfigFromSources({
       env: {},
       file: {
+        allowedPhones: ["628111111111"],
         pairedJid: "9876543210@s.whatsapp.net",
         pairedLid: null,
         pairingCode: "ABCD1234",

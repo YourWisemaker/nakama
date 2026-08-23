@@ -77,6 +77,7 @@ export function createMockClient(
     profileIds: [] as string[],
     sendStream: 0,
     setOrgId: 0,
+    streamInputs: [] as unknown[],
   };
   const orgIds: string[] = [];
 
@@ -88,6 +89,7 @@ export function createMockClient(
     streamOptions?: { signal?: AbortSignal }
   ) => {
     calls.sendStream += 1;
+    calls.streamInputs.push(_input);
 
     if (!options.streaming) {
       return "Agent reply";
@@ -261,6 +263,7 @@ export async function writeWhatsAppConfigIni(
     profileId?: string;
     pairingCode?: string | null;
     pairedJid?: string | null;
+    allowedPhones?: string[];
   }
 ): Promise<void> {
   const dir = path.join(homeDir, ".nakama", "whatsapp");
@@ -278,6 +281,10 @@ export async function writeWhatsAppConfigIni(
 
   if (config.pairedJid) {
     lines.push(`paired_jid=${config.pairedJid}`);
+  }
+
+  if (config.allowedPhones?.length) {
+    lines.push(`allowed_phones=${config.allowedPhones.join(",")}`);
   }
 
   lines.push("");

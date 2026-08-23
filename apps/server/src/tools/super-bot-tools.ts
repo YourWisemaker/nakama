@@ -12,6 +12,7 @@ import {
 import type { ProfileService } from "../services/profile-service";
 import {
   PROFILE_CREATE_CONFIRMATION_MESSAGE,
+  PROFILE_UPDATE_CONFIRMATION_MESSAGE,
   type SuperBotSessionState,
   TOOL_ASSIGNMENT_CONFIRMATION_MESSAGE,
 } from "../services/super-bot-session-state";
@@ -129,6 +130,47 @@ export function createSuperBotTools(
     },
     {
       description:
+        "Update a profile's stored system prompt. Draft the new prompt in chat, wait for explicit user confirmation, then call this. Use get_profile first when you need the current prompt.",
+      name: "update_profile",
+      parameters: {
+        additionalProperties: false,
+        properties: {
+          profileId: {
+            description: "Profile id to update.",
+            type: "string",
+          },
+          systemPrompt: {
+            description:
+              "Replacement system prompt stored on the profile. Pass an empty string to clear it.",
+            type: "string",
+          },
+        },
+        required: ["profileId", "systemPrompt"],
+        type: "object",
+      },
+      async run(input, context: ToolContext) {
+        const profileId = readString(input, "profileId");
+        const systemPrompt = readStringAllowEmpty(input, "systemPrompt");
+
+        if (!profileId) {
+          throw new Error("profileId is required.");
+        }
+
+        if (systemPrompt === null) {
+          throw new Error("systemPrompt is required.");
+        }
+
+        if (!sessionState.canCreateProfile(context.sessionId)) {
+          throw new Error(PROFILE_UPDATE_CONFIRMATION_MESSAGE);
+        }
+
+        return profileService.updateProfile(requireOrgId(context), profileId, {
+          systemPrompt,
+        });
+      },
+    },
+    {
+      description:
         "Assign an existing tool to a profile. Use only when the user explicitly asks to assign a tool to a profile.",
       name: "assign_tool_to_profile",
       parameters: {
@@ -239,12 +281,17 @@ export function createSuperBotTools(
 }
 
 function readString(input: unknown, key: string): string | null {
+  const value = readStringAllowEmpty(input, key);
+  return value?.trim() ? value.trim() : null;
+}
+
+function readStringAllowEmpty(input: unknown, key: string): string | null {
   if (typeof input !== "object" || input === null || !(key in input)) {
     return null;
   }
 
   const value = (input as Record<string, unknown>)[key];
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  return typeof value === "string" ? value : null;
 }
 
 function readOptionalString(

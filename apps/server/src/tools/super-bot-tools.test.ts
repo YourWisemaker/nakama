@@ -7,10 +7,12 @@ import type {
   CreateToolRequest,
   ProfileResponse,
   ToolDetail,
+  UpdateProfileRequest,
 } from "@nakama/core";
 import type { ProfileService } from "../services/profile-service";
 import {
   PROFILE_CREATE_CONFIRMATION_MESSAGE,
+  PROFILE_UPDATE_CONFIRMATION_MESSAGE,
   SuperBotSessionState,
   TOOL_ASSIGNMENT_CONFIRMATION_MESSAGE,
 } from "../services/super-bot-session-state";
@@ -574,9 +576,152 @@ describe("super bot create_profile", () => {
   });
 });
 
+describe("super bot update_profile", () => {
+  test("refuses update_profile on the first turn", async () => {
+    let updateProfileCalled = false;
+    const sessionState = new SuperBotSessionState();
+    sessionState.beginTurn(SESSION_ID);
+    const updateProfile = getUpdateProfileTool(
+      {
+        async updateProfile(): Promise<ProfileResponse> {
+          updateProfileCalled = true;
+          throw new Error("should not be called");
+        },
+      },
+      sessionState
+    );
+
+    const error = await captureError(
+      updateProfile.run(
+        { profileId: "support-bot", systemPrompt: "You are support." },
+        { orgId: ORG_ID, sessionId: SESSION_ID }
+      )
+    );
+
+    expect(error?.message).toBe(PROFILE_UPDATE_CONFIRMATION_MESSAGE);
+    expect(updateProfileCalled).toBe(false);
+  });
+
+  test("updates the stored system prompt after a later user turn confirms", async () => {
+    const captured: Array<{
+      orgId: string;
+      profileId: string;
+      request: UpdateProfileRequest;
+    }> = [];
+    const sessionState = new SuperBotSessionState();
+    sessionState.beginTurn(SESSION_ID);
+    sessionState.beginTurn(SESSION_ID);
+    const updateProfile = getUpdateProfileTool(
+      {
+        async updateProfile(
+          orgId: string,
+          profileId: string,
+          request: UpdateProfileRequest
+        ): Promise<ProfileResponse> {
+          captured.push({ orgId, profileId, request });
+          return {
+            profile: {
+              createdAt: "2026-01-01T00:00:00.000Z",
+              hasAvatar: false,
+              id: profileId,
+              isSuper: false,
+              mcpServerCount: 0,
+              mcpServers: [],
+              model: null,
+              name: "Support Bot",
+              skills: [],
+              soulActive: true,
+              systemPrompt: request.systemPrompt ?? "",
+              toolCount: 0,
+              tools: [],
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          };
+        },
+      },
+      sessionState
+    );
+
+    await expect(
+      updateProfile.run(
+        { profileId: "support-bot", systemPrompt: "You are support." },
+        { orgId: ORG_ID, sessionId: SESSION_ID }
+      )
+    ).resolves.toMatchObject({
+      profile: { id: "support-bot", systemPrompt: "You are support." },
+    });
+    expect(captured[0]).toEqual({
+      orgId: ORG_ID,
+      profileId: "support-bot",
+      request: { systemPrompt: "You are support." },
+    });
+  });
+
+  test("clears the stored system prompt when an empty string is passed", async () => {
+    const captured: UpdateProfileRequest[] = [];
+    const updateProfile = getUpdateProfileTool({
+      async updateProfile(
+        _orgId: string,
+        _profileId: string,
+        request: UpdateProfileRequest
+      ): Promise<ProfileResponse> {
+        captured.push(request);
+        return {
+          profile: {
+            createdAt: "2026-01-01T00:00:00.000Z",
+            hasAvatar: false,
+            id: "support-bot",
+            isSuper: false,
+            mcpServerCount: 0,
+            mcpServers: [],
+            model: null,
+            name: "Support Bot",
+            skills: [],
+            soulActive: true,
+            systemPrompt: request.systemPrompt ?? "",
+            toolCount: 0,
+            tools: [],
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        };
+      },
+    });
+
+    await updateProfile.run(
+      { profileId: "support-bot", systemPrompt: "" },
+      { orgId: ORG_ID, sessionId: SESSION_ID }
+    );
+
+    expect(captured[0]?.systemPrompt).toBe("");
+  });
+
+  test("rejects a missing profileId", async () => {
+    let updateProfileCalled = false;
+    const updateProfile = getUpdateProfileTool({
+      async updateProfile(): Promise<ProfileResponse> {
+        updateProfileCalled = true;
+        throw new Error("should not be called");
+      },
+    });
+
+    const error = await captureError(
+      updateProfile.run(
+        { systemPrompt: "You are support." },
+        { orgId: ORG_ID, sessionId: SESSION_ID }
+      )
+    );
+
+    expect(error?.message).toBe("profileId is required.");
+    expect(updateProfileCalled).toBe(false);
+  });
+});
+
 function createTestTools(
   profileService: Partial<
-    Pick<ProfileService, "createTool" | "assignTool" | "createProfile">
+    Pick<
+      ProfileService,
+      "createTool" | "assignTool" | "createProfile" | "updateProfile"
+    >
   >
 ) {
   const sessionState = new SuperBotSessionState();
@@ -613,6 +758,28 @@ function getCreateProfileTool(
 
   if (!tool) {
     throw new Error("create_profile was not registered");
+  }
+
+  return tool;
+}
+
+function getUpdateProfileTool(
+  profileService: Pick<ProfileService, "updateProfile">,
+  sessionState?: SuperBotSessionState
+) {
+  const state = sessionState ?? new SuperBotSessionState();
+  if (!sessionState) {
+    state.beginTurn(SESSION_ID);
+    state.beginTurn(SESSION_ID);
+  }
+
+  const tool = createSuperBotTools(
+    profileService as ProfileService,
+    state
+  ).find((candidate) => candidate.name === "update_profile");
+
+  if (!tool) {
+    throw new Error("update_profile was not registered");
   }
 
   return tool;
