@@ -25,11 +25,11 @@ export class SuperBotSessionState {
   }
 
   canCreateProfile(sessionId: string | undefined): boolean {
-    return this.hasConfirmedTurn(sessionId);
-  }
+    if (!sessionId) {
+      return true;
+    }
 
-  canUpdateProfile(sessionId: string | undefined): boolean {
-    return this.hasConfirmedTurn(sessionId);
+    return (this.turns.get(sessionId)?.turnIndex ?? 0) >= 2;
   }
 
   canAssignTool(sessionId: string | undefined, toolId: string): boolean {
@@ -56,14 +56,6 @@ export class SuperBotSessionState {
 
   clearSession(sessionId: string): void {
     this.turns.delete(sessionId);
-  }
-
-  private hasConfirmedTurn(sessionId: string | undefined): boolean {
-    if (!sessionId) {
-      return true;
-    }
-
-    return (this.turns.get(sessionId)?.turnIndex ?? 0) >= 2;
   }
 
   private turnFor(sessionId: string): TurnState {

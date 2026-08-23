@@ -160,7 +160,7 @@ export function createSuperBotTools(
           throw new Error("systemPrompt is required.");
         }
 
-        if (!sessionState.canUpdateProfile(context.sessionId)) {
+        if (!sessionState.canCreateProfile(context.sessionId)) {
           throw new Error(PROFILE_UPDATE_CONFIRMATION_MESSAGE);
         }
 
