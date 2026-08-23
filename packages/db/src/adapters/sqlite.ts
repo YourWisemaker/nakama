@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
+import { chmodSync } from "node:fs";
 import type { AgentQuestionnaire, ChatMessage } from "@nakama/core";
-import { getUserMessageText } from "@nakama/core";
+import { getUserMessageText, PRIVATE_FILE_MODE } from "@nakama/core";
 import { LOCAL_CLIENT_USER_ID } from "@nakama/core/local-auth";
 import { LLM_USAGE_STATS_ID, WORKSPACE_SETTINGS_ID } from "../constants";
 import { ensureDatabaseDirectory, resolveDatabasePath } from "../database-url";
@@ -401,13 +402,28 @@ interface ArtifactShareRow {
   token_hash: string;
 }
 
+/**
+ * The file holds plaintext MCP credentials and every transcript, so it carries
+ * the same 0600 the rest of ~/.nakama already uses. bun:sqlite takes no mode, and
+ * an existing loose file keeps its own, so chmod after open rather than at create.
+ */
+function openPrivateDatabase(databasePath: string): Database {
+  ensureDatabaseDirectory(databasePath);
+  const db = new Database(databasePath, { create: true });
+
+  if (databasePath !== ":memory:") {
+    chmodSync(databasePath, PRIVATE_FILE_MODE);
+  }
+
+  return db;
+}
+
 export async function createSqliteDatabase(
   databaseUrl: string
 ): Promise<SqliteDatabase> {
   const databasePath = resolveDatabasePath(databaseUrl);
-  ensureDatabaseDirectory(databasePath);
 
-  let db = new Database(databasePath, { create: true });
+  let db = openPrivateDatabase(databasePath);
   migrateDatabase(db);
   let adapter = createSqliteDatabaseAdapter(db);
 
@@ -427,8 +443,7 @@ export async function createSqliteDatabase(
       db.close();
     },
     async reopen() {
-      ensureDatabaseDirectory(databasePath);
-      const nextDb = new Database(databasePath, { create: true });
+      const nextDb = openPrivateDatabase(databasePath);
       migrateDatabase(nextDb);
       const nextAdapter = createSqliteDatabaseAdapter(nextDb);
       const previousDb = db;
