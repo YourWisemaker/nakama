@@ -6,7 +6,6 @@ import {
   getErrorTrackingConfigPath,
   isErrorTrackingEnabled,
   loadErrorTrackingConfig,
-  resetErrorTrackingConfigCache,
   resolveErrorTrackingDsn,
   saveErrorTrackingDsn,
 } from "./error-tracking-config";
@@ -22,7 +21,6 @@ beforeEach(async () => {
   process.env.NAKAMA_CONFIG_DIR = configDir;
   delete process.env.NAKAMA_ERROR_TRACKING_DSN;
   delete process.env.DO_NOT_TRACK;
-  resetErrorTrackingConfigCache();
 });
 
 afterEach(async () => {
@@ -34,7 +32,6 @@ afterEach(async () => {
 
   delete process.env.NAKAMA_ERROR_TRACKING_DSN;
   delete process.env.DO_NOT_TRACK;
-  resetErrorTrackingConfigCache();
   await rm(configDir, { force: true, recursive: true });
 });
 
@@ -90,7 +87,7 @@ test("the env DSN overrides the file, and an empty one means off", () => {
   ).toBeNull();
 });
 
-test("saving refreshes the cache, so a new DSN needs no restart", async () => {
+test("a saved DSN takes effect without a restart", async () => {
   expect(await isErrorTrackingEnabled()).toBe(false);
   await saveErrorTrackingDsn(DSN);
   expect(await isErrorTrackingEnabled()).toBe(true);

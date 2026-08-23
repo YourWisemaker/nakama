@@ -6,7 +6,7 @@ export interface ErrorTrackingConfig {
   dsn: string | null;
 }
 
-const TRUTHY = new Set(["1", "true", "on", "yes"]);
+const TRUTHY = ["1", "true", "on", "yes"];
 
 export function getErrorTrackingConfigDir(): string {
   return join(getUserConfigDir(), "error-tracking");
@@ -35,7 +35,7 @@ export function resolveErrorTrackingDsn(
   file: ErrorTrackingConfig,
   env: Record<string, string | undefined> = process.env
 ): string | null {
-  if (TRUTHY.has(env.DO_NOT_TRACK?.trim().toLowerCase() ?? "")) {
+  if (TRUTHY.includes(env.DO_NOT_TRACK?.trim().toLowerCase() ?? "")) {
     return null;
   }
 
@@ -65,31 +65,11 @@ export async function saveErrorTrackingDsn(
   await writeTextFile(getErrorTrackingConfigPath(), lines.join("\n"), {
     ensureDir: getErrorTrackingConfigDir(),
   });
-  resetErrorTrackingConfigCache();
   return next;
 }
 
-let cached: Promise<ErrorTrackingConfig> | null = null;
-
-export function resetErrorTrackingConfigCache(): void {
-  cached = null;
-}
-
-/**
- * Read per send rather than once at startup, so a DSN saved from the Integrations tab
- * takes effect without a restart. Crashes are rare enough that the cached read is free.
- */
-export async function loadCachedErrorTrackingConfig(): Promise<ErrorTrackingConfig> {
-  cached ??= loadErrorTrackingConfig();
-  return cached;
-}
-
 export async function currentErrorTrackingDsn(): Promise<string | null> {
-  try {
-    return resolveErrorTrackingDsn(await loadCachedErrorTrackingConfig());
-  } catch {
-    return null;
-  }
+  return resolveErrorTrackingDsn(await loadErrorTrackingConfig());
 }
 
 export async function isErrorTrackingEnabled(): Promise<boolean> {

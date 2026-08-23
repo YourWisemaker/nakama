@@ -12,10 +12,7 @@ import {
   reportError,
   setErrorSink,
 } from "./error-tracking";
-import {
-  resetErrorTrackingConfigCache,
-  saveErrorTrackingDsn,
-} from "./error-tracking-config";
+import { saveErrorTrackingDsn } from "./error-tracking-config";
 import {
   getPendingErrorReportsPath,
   MAX_PENDING_ERROR_REPORTS,
@@ -37,7 +34,6 @@ beforeEach(async () => {
   process.env.NAKAMA_CONFIG_DIR = configDir;
   delete process.env.NAKAMA_ERROR_TRACKING_DSN;
   delete process.env.DO_NOT_TRACK;
-  resetErrorTrackingConfigCache();
   await saveErrorTrackingDsn(DSN);
   await refreshErrorTrackingEnabled();
   consoleErrorCalls = [];
@@ -55,7 +51,6 @@ afterEach(async () => {
 
   delete process.env.NAKAMA_ERROR_TRACKING_DSN;
   delete process.env.DO_NOT_TRACK;
-  resetErrorTrackingConfigCache();
   await refreshErrorTrackingEnabled();
   console.error = realConsoleError;
   setErrorSink(null);

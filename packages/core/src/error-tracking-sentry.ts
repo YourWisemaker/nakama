@@ -5,7 +5,7 @@ import {
   setErrorSink,
 } from "./error-tracking";
 import {
-  loadCachedErrorTrackingConfig,
+  loadErrorTrackingConfig,
   resolveErrorTrackingDsn,
 } from "./error-tracking-config";
 
@@ -113,7 +113,7 @@ export async function sendSentryEvent(
  */
 export function createErrorTrackingSink(): ErrorSink {
   return async (report) => {
-    const config = await loadCachedErrorTrackingConfig();
+    const config = await loadErrorTrackingConfig();
     const dsn = parseSentryDsn(resolveErrorTrackingDsn(config) ?? "");
 
     if (!dsn) {
