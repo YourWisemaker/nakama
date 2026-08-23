@@ -77,6 +77,7 @@ export function createMockClient(
     profileIds: [] as string[],
     sendStream: 0,
     setOrgId: 0,
+    streamInputs: [] as unknown[],
   };
   const orgIds: string[] = [];
 
@@ -88,6 +89,7 @@ export function createMockClient(
     streamOptions?: { signal?: AbortSignal }
   ) => {
     calls.sendStream += 1;
+    calls.streamInputs.push(_input);
 
     if (!options.streaming) {
       return "Agent reply";

@@ -3,7 +3,7 @@ title: "WhatsApp"
 description: "Set up Nakama on WhatsApp with linking, commands, and troubleshooting."
 ---
 
-Use WhatsApp when you want the same Nakama agent available from your phone in a direct chat.
+Use WhatsApp when you want the same Nakama agent available from your phone in a direct chat or group.
 
 The WhatsApp bridge talks to the same Nakama server as the web app and CLI. It is a chat channel, not a separate agent system.
 
@@ -20,7 +20,7 @@ WhatsApp works well for:
 
 With WhatsApp enabled, users can:
 
-- chat with a Nakama profile in a private WhatsApp chat
+- chat with a Nakama profile in a private WhatsApp chat or a group
 - switch org with commands
 - start a new conversation or clear history
 - stop an in-progress reply
@@ -85,11 +85,15 @@ After linking succeeds, Nakama shows the linked account and the bridge can recei
 
 ## Chat behavior
 
-WhatsApp currently works as a **private chat** channel.
+WhatsApp works in **private chats** and **groups**.
 
-- direct chats are supported
-- group chats are not handled by the current bridge
-- each linked WhatsApp chat keeps its own Nakama session
+- direct chats send every message to the agent
+- group chats reply only to a mention of the linked number, a reply to a Nakama message, or a `/command`
+- each private chat and each group keeps its own Nakama session
+- `/org` in a group is stored for that group, not your private chat
+- pairing still happens in a private chat first
+
+This keeps group chats usable without making Nakama answer every message.
 
 If you change the reply profile, new messages use that profile. Starting a new conversation with `/new` gives you a fresh session.
 
@@ -135,6 +139,16 @@ If QR linking does not finish:
 1. use **Reconnect with QR** in **Integrations → WhatsApp**
 2. wait for a fresh QR code
 3. scan it again from WhatsApp
+
+### The bot does not reply in a group
+
+In a group, Nakama only answers when someone:
+
+1. mentions the linked WhatsApp number
+2. replies to a Nakama message
+3. sends a `/command`
+
+The sender must already be linked in a private chat. Pairing codes sent in a group are ignored.
 
 ### The wrong bot is answering
 

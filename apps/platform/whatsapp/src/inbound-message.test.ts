@@ -3,8 +3,14 @@ import {
   extractInboundText,
   isPrivateWhatsAppChat,
   isSelfWhatsAppChat,
+  parseInboundWhatsAppMessage,
   shouldHandleInboundMessage,
 } from "./inbound-message";
+
+const ME = {
+  id: "6281379292556@s.whatsapp.net",
+  lid: "236283431522503@lid",
+};
 
 describe("inbound message routing", () => {
   test("accepts private phone and lid chats", () => {
@@ -75,5 +81,98 @@ describe("inbound message routing", () => {
     };
 
     expect(extractInboundText(payload as any)).toBe("hi from toJSON");
+  });
+
+  test("ignores group messages without a mention, reply, or slash command", () => {
+    expect(
+      shouldHandleInboundMessage(
+        {
+          key: {
+            participant: "9999999999@s.whatsapp.net",
+            remoteJid: "120363@g.us",
+          },
+          message: { conversation: "hello everyone" },
+        },
+        ME
+      )
+    ).toBe(false);
+  });
+
+  test("handles group mentions, replies, and slash commands", () => {
+    expect(
+      shouldHandleInboundMessage(
+        {
+          key: {
+            participant: "9999999999@s.whatsapp.net",
+            remoteJid: "120363@g.us",
+          },
+          message: {
+            extendedTextMessage: {
+              contextInfo: { mentionedJid: [ME.id] },
+              text: "@Nakama hello",
+            },
+          },
+        },
+        ME
+      )
+    ).toBe(true);
+
+    expect(
+      shouldHandleInboundMessage(
+        {
+          key: {
+            participant: "9999999999@s.whatsapp.net",
+            remoteJid: "120363@g.us",
+          },
+          message: {
+            extendedTextMessage: {
+              contextInfo: { participant: ME.lid },
+              text: "follow up",
+            },
+          },
+        },
+        ME
+      )
+    ).toBe(true);
+
+    expect(
+      shouldHandleInboundMessage(
+        {
+          key: { fromMe: true, remoteJid: "120363@g.us" },
+          message: { conversation: "/status" },
+        },
+        ME
+      )
+    ).toBe(true);
+  });
+
+  test("parseInboundWhatsAppMessage keeps group sender and chat JIDs separate", () => {
+    const inbound = parseInboundWhatsAppMessage(
+      {
+        key: {
+          participant: "104784384290844@lid",
+          participantPn: "9999999999@s.whatsapp.net",
+          remoteJid: "120363@g.us",
+        },
+        message: {
+          extendedTextMessage: {
+            contextInfo: { mentionedJid: [ME.lid] },
+            text: "@Nakama hello",
+          },
+        },
+      },
+      ME
+    );
+
+    expect(inbound).toEqual({
+      fromMe: false,
+      isGroup: true,
+      jid: "120363@g.us",
+      me: ME,
+      mentionedJids: [ME.lid],
+      quotedParticipant: null,
+      senderJid: "9999999999@s.whatsapp.net",
+      text: "@Nakama hello",
+    });
   });
 });

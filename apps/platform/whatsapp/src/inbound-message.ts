@@ -6,6 +6,28 @@ import {
   isLidUser,
   type proto,
 } from "@whiskeysockets/baileys";
+import {
+  explainGroupMessageHandling,
+  type WhatsAppAccount,
+} from "./group-message";
+
+interface WhatsAppInboundKey {
+  fromMe?: boolean | null;
+  participant?: string | null;
+  participantPn?: string | null;
+  remoteJid?: string | null;
+}
+
+export interface WhatsAppInboundChat {
+  fromMe: boolean;
+  isGroup: boolean;
+  jid: string;
+  me?: WhatsAppAccount;
+  mentionedJids: string[];
+  quotedParticipant: string | null;
+  senderJid: string;
+  text: string;
+}
 
 export function isPrivateWhatsAppChat(jid: string): boolean {
   return isJidUser(jid) || isLidUser(jid);
@@ -13,7 +35,7 @@ export function isPrivateWhatsAppChat(jid: string): boolean {
 
 export function isSelfWhatsAppChat(
   remoteJid: string,
-  me: { id: string; lid?: string | null } | undefined
+  me: WhatsAppAccount | undefined
 ): boolean {
   if (!me) {
     return false;
@@ -44,6 +66,120 @@ export function extractInboundText(
   return readTextContent(materialized);
 }
 
+function extractMentionedJids(
+  message: proto.IMessage | null | undefined
+): string[] {
+  return (
+    extractContextInfo(message)?.mentionedJid?.filter((jid): jid is string =>
+      Boolean(jid)
+    ) ?? []
+  );
+}
+
+function extractQuotedParticipant(
+  message: proto.IMessage | null | undefined
+): string | null {
+  return extractContextInfo(message)?.participant ?? null;
+}
+
+export function shouldHandleInboundMessage(
+  msg: {
+    key: WhatsAppInboundKey;
+    message?: proto.IMessage | null;
+  },
+  me: WhatsAppAccount | undefined
+): boolean {
+  return parseInboundWhatsAppMessage(msg, me) !== null;
+}
+
+export function parseInboundWhatsAppMessage(
+  msg: {
+    key: WhatsAppInboundKey;
+    message?: proto.IMessage | null;
+  },
+  me: WhatsAppAccount | undefined
+): WhatsAppInboundChat | null {
+  const remoteJid = msg.key.remoteJid;
+  const text = extractInboundText(msg.message);
+
+  if (!(remoteJid && text)) {
+    return null;
+  }
+
+  const isGroup = Boolean(isJidGroup(remoteJid));
+  const fromMe = Boolean(msg.key.fromMe);
+  const mentionedJids = extractMentionedJids(msg.message);
+  const quotedParticipant = extractQuotedParticipant(msg.message);
+
+  if (isGroup) {
+    const decision = explainGroupMessageHandling({
+      me,
+      mentionedJids,
+      quotedParticipant,
+      text,
+    });
+
+    if (!decision.shouldHandle) {
+      return null;
+    }
+  } else if (!isPrivateWhatsAppChat(remoteJid)) {
+    return null;
+  } else if (fromMe && !isSelfWhatsAppChat(remoteJid, me)) {
+    return null;
+  }
+
+  const senderJid = resolveSenderJid(msg.key, remoteJid, isGroup, me);
+
+  if (isGroup && !senderJid) {
+    return null;
+  }
+
+  return {
+    fromMe,
+    isGroup,
+    jid: remoteJid,
+    me,
+    mentionedJids,
+    quotedParticipant,
+    senderJid,
+    text,
+  };
+}
+
+function resolveSenderJid(
+  key: WhatsAppInboundKey,
+  remoteJid: string,
+  isGroup: boolean,
+  me: WhatsAppAccount | undefined
+): string {
+  if (!isGroup) {
+    return remoteJid;
+  }
+
+  return (
+    key.participantPn ?? key.participant ?? (key.fromMe && me ? me.id : "")
+  );
+}
+
+function extractContextInfo(
+  message: proto.IMessage | null | undefined
+): proto.IContextInfo | undefined {
+  if (!message) {
+    return;
+  }
+
+  const extracted = extractMessageContent(message) ?? message;
+  const materialized = materializeMessage(extracted) ?? extracted;
+
+  return (
+    materialized.extendedTextMessage?.contextInfo ??
+    materialized.imageMessage?.contextInfo ??
+    materialized.videoMessage?.contextInfo ??
+    materialized.documentMessage?.contextInfo ??
+    undefined
+  );
+}
+
 function readTextContent(
   message: Partial<proto.IMessage> | null | undefined
 ): string {
@@ -68,28 +204,4 @@ function materializeMessage(
   } catch {
     return null;
   }
-}
-
-export function shouldHandleInboundMessage(
-  msg: {
-    key: { fromMe?: boolean | null; remoteJid?: string | null };
-    message?: proto.IMessage | null;
-  },
-  me: { id: string; lid?: string | null } | undefined
-): boolean {
-  const remoteJid = msg.key.remoteJid;
-
-  if (
-    !remoteJid ||
-    isJidGroup(remoteJid) ||
-    !isPrivateWhatsAppChat(remoteJid)
-  ) {
-    return false;
-  }
-
-  if (msg.key.fromMe && !isSelfWhatsAppChat(remoteJid, me)) {
-    return false;
-  }
-
-  return Boolean(extractInboundText(msg.message));
 }
