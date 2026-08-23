@@ -25,11 +25,11 @@ export class SuperBotSessionState {
   }
 
   canCreateProfile(sessionId: string | undefined): boolean {
-    if (!sessionId) {
-      return true;
-    }
+    return this.hasConfirmedTurn(sessionId);
+  }
 
-    return (this.turns.get(sessionId)?.turnIndex ?? 0) >= 2;
+  canUpdateProfile(sessionId: string | undefined): boolean {
+    return this.hasConfirmedTurn(sessionId);
   }
 
   canAssignTool(sessionId: string | undefined, toolId: string): boolean {
@@ -58,6 +58,14 @@ export class SuperBotSessionState {
     this.turns.delete(sessionId);
   }
 
+  private hasConfirmedTurn(sessionId: string | undefined): boolean {
+    if (!sessionId) {
+      return true;
+    }
+
+    return (this.turns.get(sessionId)?.turnIndex ?? 0) >= 2;
+  }
+
   private turnFor(sessionId: string): TurnState {
     let turn = this.turns.get(sessionId);
 
@@ -79,3 +87,6 @@ export const TOOL_ASSIGNMENT_CONFIRMATION_MESSAGE =
 
 export const PROFILE_CREATE_CONFIRMATION_MESSAGE =
   "Wait for the user to confirm the draft in a later message before calling create_profile.";
+
+export const PROFILE_UPDATE_CONFIRMATION_MESSAGE =
+  "Wait for the user to confirm the new system prompt in a later message before calling update_profile.";
