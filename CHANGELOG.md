@@ -9,6 +9,23 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-23
+
+### Added
+
+- WhatsApp group chats, extra allowed numbers, and quoted group context in the agent turn ([#450])
+- Super Bot confirm-first `update_profile` for stored system prompts ([#450])
+- Optional LLM skill curator consolidate ([#437])
+
+### Changed
+
+- GitHub issue forms for bug, enhancement, and new feature ([#446])
+
+### Fixed
+
+- Image-parsing errors link to Vision settings ([#436])
+- WhatsApp phone parsing stays in the web bundle ([#450])
+
 ## [0.4.2] - 2026-08-22
 
 ### Fixed
@@ -519,7 +536,8 @@ First tagged release. The baseline it established:
 - Export and import for data portability
 - Docker image published from GitHub Actions, and a VitePress documentation site
 
-[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.2...main
+[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.3...main
+[0.4.3]: https://github.com/ahmadrosid/nakama/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/ahmadrosid/nakama/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/ahmadrosid/nakama/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ahmadrosid/nakama/compare/v0.3.15...v0.4.0
@@ -669,3 +687,7 @@ First tagged release. The baseline it established:
 [#426]: https://github.com/ahmadrosid/nakama/pull/426
 [#431]: https://github.com/ahmadrosid/nakama/pull/431
 [#432]: https://github.com/ahmadrosid/nakama/pull/432
+[#436]: https://github.com/ahmadrosid/nakama/pull/436
+[#437]: https://github.com/ahmadrosid/nakama/pull/437
+[#446]: https://github.com/ahmadrosid/nakama/pull/446
+[#450]: https://github.com/ahmadrosid/nakama/pull/450
