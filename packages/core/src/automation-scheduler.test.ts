@@ -124,4 +124,29 @@ describe("AutomationScheduler", () => {
     expect(scheduler.getStatus()).toEqual({ running: true, scheduledJobs: 1 });
     scheduler.stop();
   });
+
+  test("run delegate receives the schedule's org id", async () => {
+    const at = new Date(Date.now() + 20).toISOString();
+    const runs: Array<{ id: string; orgId: string }> = [];
+    const delegate = createDelegate({
+      listScheduledAutomations: async () => [
+        schedule({ cron: undefined, id: "a1", orgId: "org_1", runAt: at }),
+      ],
+      runAutomation: async (id, orgId) => {
+        runs.push({ id, orgId });
+        return { ok: true };
+      },
+    });
+
+    const scheduler = new AutomationScheduler(delegate);
+    await scheduler.start();
+
+    const deadline = Date.now() + 2000;
+    while (runs.length === 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(runs).toEqual([{ id: "a1", orgId: "org_1" }]);
+    scheduler.stop();
+  });
 });

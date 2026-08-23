@@ -1,4 +1,8 @@
-import { type AutomationSchedule, isWorkerSchedulable } from "@nakama/core";
+import {
+  type AutomationSchedule,
+  isWorkerSchedulable,
+  type StoredAutomation,
+} from "@nakama/core";
 import type { ServerOptions } from "../context";
 import { errorResponse, json } from "../shared";
 import type { HonoApp } from "../types";
@@ -23,17 +27,20 @@ export function registerInternalAutomationRoutes(
             .map((organization) => organization.id)
         : []
     );
+    // Org-less rows can only be pre-tenant legacy data; the run route 400s a
+    // missing org now, so the worker must never receive an id it cannot run.
     const schedules: AutomationSchedule[] = automations
       .filter(
-        (automation) =>
+        (automation): automation is StoredAutomation & { orgId: string } =>
           isWorkerSchedulable(automation) &&
-          !(automation.orgId && archivedOrgIds.has(automation.orgId))
+          Boolean(automation.orgId) &&
+          !archivedOrgIds.has(automation.orgId)
       )
       .map((automation) => {
         if (automation.trigger.type === "runAt") {
           return {
             id: automation.id,
-            orgId: automation.orgId ?? "",
+            orgId: automation.orgId,
             profileId: automation.profileId,
             runAt: automation.trigger.at,
             timezone: automation.trigger.timezone ?? null,
@@ -44,7 +51,7 @@ export function registerInternalAutomationRoutes(
           return {
             cron: automation.trigger.cron,
             id: automation.id,
-            orgId: automation.orgId ?? "",
+            orgId: automation.orgId,
             profileId: automation.profileId,
             timezone: automation.trigger.timezone ?? null,
           };

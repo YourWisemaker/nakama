@@ -332,6 +332,43 @@ describe("internal automation routes", () => {
     await expect(response.json()).resolves.toEqual([]);
   });
 
+  test("omits automations without an org from the schedule list", async () => {
+    const options = createServerOptions();
+    await seedOrgAndProfile(options.databaseAdapter);
+    await seedLocalClientUser(options.databaseAdapter);
+
+    await options.automationService.create(
+      ORG_ID,
+      {
+        description: "Ping",
+        name: "Hourly",
+        prompt: "Ping",
+        trigger: { cron: "0 * * * *", timezone: "UTC", type: "schedule" },
+      },
+      PROFILE_ID
+    );
+
+    const records = await options.databaseAdapter.listAutomations();
+    await options.databaseAdapter.upsertAutomation({
+      ...records[0]!,
+      id: "automation_orgless",
+      orgId: null,
+    });
+
+    const app = createHonoApp(options);
+    const token = await loadLocalAuthToken();
+    const response = await app.fetch(
+      new Request("http://localhost:4310/v1/internal/automations/schedules", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const schedules = await response.json();
+    expect(schedules).toHaveLength(1);
+    expect(schedules[0]).toMatchObject({ orgId: ORG_ID });
+  });
+
   test("does not run an automation for an archived org", async () => {
     const options = createServerOptions();
     await seedOrgAndProfile(options.databaseAdapter);
