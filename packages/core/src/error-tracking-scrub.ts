@@ -40,8 +40,7 @@ function redactQuotedPayloads(value: string): string {
 
   // Braces and brackets in an error message are a printed data structure, not prose.
   // Looped because the inner-most match has to collapse before the one wrapping it.
-  // ponytail: four passes, so nesting deeper than that collapses only partially.
-  for (let pass = 0; pass < 4; pass += 1) {
+  while (true) {
     const next = out
       .replace(/\{[^{}]*\}/g, "<redacted>")
       .replace(/\[[^[\]]*\]/g, "<redacted>");

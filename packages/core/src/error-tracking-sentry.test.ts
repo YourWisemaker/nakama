@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { hostname } from "node:os";
 import { buildErrorReport, type ErrorReport } from "./error-tracking";
-import { resetErrorTrackingConfigCache } from "./error-tracking-config";
 import {
   createErrorTrackingSink,
   parseSentryDsn,
@@ -13,7 +12,6 @@ let previousDsn: string | undefined;
 
 beforeEach(() => {
   previousDsn = process.env.NAKAMA_ERROR_TRACKING_DSN;
-  resetErrorTrackingConfigCache();
 });
 
 afterEach(() => {
@@ -22,8 +20,6 @@ afterEach(() => {
   } else {
     process.env.NAKAMA_ERROR_TRACKING_DSN = previousDsn;
   }
-
-  resetErrorTrackingConfigCache();
 });
 
 function sampleReport(): ErrorReport {
@@ -153,7 +149,6 @@ async function countSinkHits(env: Record<string, string>): Promise<number> {
       process.env[key] = value;
     }
 
-    resetErrorTrackingConfigCache();
     await createErrorTrackingSink()(sampleReport());
     return hits;
   } finally {
@@ -186,7 +181,6 @@ test("the sink delivers to the configured DSN", async () => {
 
   try {
     process.env.NAKAMA_ERROR_TRACKING_DSN = `http://k@${server.hostname}:${server.port}/1`;
-    resetErrorTrackingConfigCache();
 
     await createErrorTrackingSink()(sampleReport());
 

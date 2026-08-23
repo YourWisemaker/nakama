@@ -218,8 +218,6 @@ export async function reportError(
   return report;
 }
 
-const installedSources = new Set<string>();
-
 /**
  * Drains what the last process could not deliver. Call once at startup, after the sink
  * is installed.
@@ -256,12 +254,6 @@ export async function flushPendingErrorReports(): Promise<number> {
  * default exit(1), so the exit is re-applied by hand below.
  */
 export function installErrorHandlers(source: string): () => void {
-  if (installedSources.has(source)) {
-    return () => {};
-  }
-
-  installedSources.add(source);
-
   const onUncaught = (error: unknown) => {
     void reportError(error, { source });
   };
@@ -278,6 +270,5 @@ export function installErrorHandlers(source: string): () => void {
   return () => {
     process.off("uncaughtExceptionMonitor", onUncaught);
     process.off("unhandledRejection", onRejection);
-    installedSources.delete(source);
   };
 }
