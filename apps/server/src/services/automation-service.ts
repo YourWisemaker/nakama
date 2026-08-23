@@ -118,7 +118,7 @@ export class AutomationService {
 
     const now = new Date().toISOString();
     const automation: StoredAutomation = {
-      description: input.description.trim() || input.prompt.trim(),
+      description: input.description?.trim() || input.prompt.trim(),
       enabled: input.enabled ?? true,
       id: createId("automation"),
       name: input.name.trim(),
