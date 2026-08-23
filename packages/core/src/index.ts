@@ -67,6 +67,10 @@ export {
 } from "./discord-worker";
 export * from "./document-content";
 export * from "./email-config";
+export * from "./error-tracking";
+export * from "./error-tracking-config";
+export * from "./error-tracking-queue";
+export * from "./error-tracking-sentry";
 export * from "./fetch-idle";
 export * from "./fs";
 export * from "./ids";
