@@ -92,6 +92,7 @@ WhatsApp works in **private chats** and **groups**.
 - each private chat and each group keeps its own Nakama session
 - `/org` in a group is stored for that group, not your private chat
 - pairing still happens in a private chat first
+- extra numbers in **Integrations → WhatsApp → Allowed numbers** can also talk to the agent
 
 This keeps group chats usable without making Nakama answer every message.
 
@@ -148,7 +149,7 @@ In a group, Nakama only answers when someone:
 2. replies to a Nakama message
 3. sends a `/command`
 
-The sender must already be linked in a private chat. Pairing codes sent in a group are ignored.
+The sender must be the linked WhatsApp number, or a number listed under **Integrations → WhatsApp → Allowed numbers**. Add country code, like `+62812…`.
 
 ### The wrong bot is answering
 

@@ -2,6 +2,7 @@ import type { UpdateWhatsAppSettingsRequest } from "@nakama/core/contract";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { SETTINGS_CARD_LOADING_SKELETON } from "@/components/integration-settings.shared";
+import { WhatsAppAllowedPhonesDialog } from "@/components/WhatsAppAllowedPhonesDialog";
 import { WhatsAppSettingsCardContent } from "@/components/whatsapp-settings-card-content";
 import { useProfilesQuery } from "@/hooks/use-app-queries";
 import { useSystemStatusQuery } from "@/hooks/use-system-status";
@@ -39,14 +40,23 @@ export function WhatsAppSettingsCard({
   const [formError, setFormError] = useState<string | null>(null);
   const [qrWasVisible, setQrWasVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [allowedPhones, setAllowedPhones] = useState<string[]>([]);
+  const [allowedPhonesOpen, setAllowedPhonesOpen] = useState(false);
 
   const settingsProfileId = settings?.profileId;
+  const settingsAllowedPhones = settings?.allowedPhones;
 
   useEffect(() => {
     if (settingsProfileId !== undefined) {
       setProfileId(settingsProfileId);
     }
   }, [settingsProfileId]);
+
+  useEffect(() => {
+    if (settingsAllowedPhones) {
+      setAllowedPhones(settingsAllowedPhones);
+    }
+  }, [settingsAllowedPhones]);
 
   const configured = settings?.configured === true;
   const worker = status?.whatsappWorker;
@@ -270,9 +280,30 @@ export function WhatsAppSettingsCard({
     return <div className="py-3">{SETTINGS_CARD_LOADING_SKELETON}</div>;
   }
 
+  const allowedPhoneSummary =
+    allowedPhones.length === 0
+      ? "None"
+      : `${allowedPhones.length} number${allowedPhones.length === 1 ? "" : "s"}`;
+
+  const allowedPhonesDialog = (
+    <WhatsAppAllowedPhonesDialog
+      allowedPhones={allowedPhones}
+      onAllowedPhonesChange={setAllowedPhones}
+      onError={setFormError}
+      onOpenChange={setAllowedPhonesOpen}
+      onSaved={() => {
+        setHint("Allowed numbers saved.");
+        setFormError(null);
+      }}
+      open={allowedPhonesOpen}
+      profileId={profileId}
+    />
+  );
+
   const content = (
     <WhatsAppSettingsCardContent
       actionLabel={actionLabel}
+      allowedPhoneSummary={allowedPhoneSummary}
       awaitingQr={awaitingQr}
       bridgeStarting={bridgeStarting}
       canSave={canSave}
@@ -285,6 +316,7 @@ export function WhatsAppSettingsCard({
       linkingAfterScan={linkingAfterScan}
       loadError={loadError}
       onCopyPairingCode={() => void copyPairingCode()}
+      onManageAllowedPhones={() => setAllowedPhonesOpen(true)}
       onProfileChange={handleProfileChange}
       onReconnect={handleReconnect}
       onRegeneratePairingCode={handleRegeneratePairingCode}
@@ -308,12 +340,20 @@ export function WhatsAppSettingsCard({
 
   if (embedded) {
     return (
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-xs">{headerSubtitle}</p>
-        {content}
-      </div>
+      <>
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs">{headerSubtitle}</p>
+          {content}
+        </div>
+        {allowedPhonesDialog}
+      </>
     );
   }
 
-  return content;
+  return (
+    <>
+      {content}
+      {allowedPhonesDialog}
+    </>
+  );
 }

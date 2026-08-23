@@ -263,6 +263,7 @@ export async function writeWhatsAppConfigIni(
     profileId?: string;
     pairingCode?: string | null;
     pairedJid?: string | null;
+    allowedPhones?: string[];
   }
 ): Promise<void> {
   const dir = path.join(homeDir, ".nakama", "whatsapp");
@@ -280,6 +281,10 @@ export async function writeWhatsAppConfigIni(
 
   if (config.pairedJid) {
     lines.push(`paired_jid=${config.pairedJid}`);
+  }
+
+  if (config.allowedPhones?.length) {
+    lines.push(`allowed_phones=${config.allowedPhones.join(",")}`);
   }
 
   lines.push("");

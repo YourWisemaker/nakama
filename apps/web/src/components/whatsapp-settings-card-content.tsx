@@ -5,6 +5,7 @@ import {
   SettingsRow,
 } from "@/components/integration-settings.shared";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,8 @@ export function WhatsAppSettingsCardContent({
   loadError,
   canSave,
   actionLabel,
+  allowedPhoneSummary,
+  onManageAllowedPhones,
   onSave,
 }: {
   embedded: boolean;
@@ -79,6 +82,8 @@ export function WhatsAppSettingsCardContent({
   loadError: unknown;
   canSave: boolean;
   actionLabel: string;
+  allowedPhoneSummary: string;
+  onManageAllowedPhones: () => void;
   onSave: () => void;
 }) {
   const paneItemClass = embedded ? undefined : "px-0 py-0";
@@ -140,6 +145,25 @@ export function WhatsAppSettingsCardContent({
           </SelectContent>
         </Select>
       </SettingsRow>
+
+      {configured ? (
+        <SettingsRow className={paneItemClass} label="Allowed numbers">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="text-muted-foreground text-xs">
+              {allowedPhoneSummary}
+            </span>
+            <Button
+              disabled={savePending}
+              onClick={onManageAllowedPhones}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Manage
+            </Button>
+          </div>
+        </SettingsRow>
+      ) : null}
 
       {configured ? (
         <WhatsAppSettingsLinkingSection

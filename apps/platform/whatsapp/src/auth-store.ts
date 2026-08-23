@@ -2,6 +2,7 @@ import type { WhatsAppConfigFile } from "@nakama/core/whatsapp-config";
 import {
   isWhatsAppUserAuthorized,
   loadWhatsAppConfigFile,
+  rememberWhatsAppPairedIdentities,
   verifyAndPairWhatsAppUser,
 } from "@nakama/core/whatsapp-config";
 
@@ -17,12 +18,17 @@ export class WhatsAppAuthStore {
     return this.config;
   }
 
-  isAuthorized(jid: string): boolean {
+  isAuthorized(jid: string | readonly string[]): boolean {
     if (!this.config) {
       return false;
     }
 
     return isWhatsAppUserAuthorized(jid, this.config);
+  }
+
+  async rememberIdentities(jids: readonly string[]): Promise<void> {
+    await rememberWhatsAppPairedIdentities(jids);
+    await this.reload();
   }
 
   async tryPair(

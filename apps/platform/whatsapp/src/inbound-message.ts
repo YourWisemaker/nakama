@@ -14,8 +14,11 @@ import {
 interface WhatsAppInboundKey {
   fromMe?: boolean | null;
   participant?: string | null;
+  participantLid?: string | null;
   participantPn?: string | null;
   remoteJid?: string | null;
+  senderLid?: string | null;
+  senderPn?: string | null;
 }
 
 export interface WhatsAppInboundChat {
@@ -26,6 +29,7 @@ export interface WhatsAppInboundChat {
   mentionedJids: string[];
   quotedParticipant: string | null;
   senderJid: string;
+  senderJids: string[];
   text: string;
 }
 
@@ -128,7 +132,8 @@ export function parseInboundWhatsAppMessage(
     return null;
   }
 
-  const senderJid = resolveSenderJid(msg.key, remoteJid, isGroup, me);
+  const senderJids = collectSenderJids(msg.key, remoteJid, isGroup, me);
+  const senderJid = senderJids[0] ?? "";
 
   if (isGroup && !senderJid) {
     return null;
@@ -142,23 +147,37 @@ export function parseInboundWhatsAppMessage(
     mentionedJids,
     quotedParticipant,
     senderJid,
+    senderJids,
     text,
   };
 }
 
-function resolveSenderJid(
+function collectSenderJids(
   key: WhatsAppInboundKey,
   remoteJid: string,
   isGroup: boolean,
   me: WhatsAppAccount | undefined
-): string {
-  if (!isGroup) {
-    return remoteJid;
-  }
+): string[] {
+  const candidates = isGroup
+    ? [
+        key.participantPn,
+        key.senderPn,
+        key.participant,
+        key.participantLid,
+        key.senderLid,
+        key.fromMe && me ? me.id : null,
+        key.fromMe && me?.lid ? me.lid : null,
+      ]
+    : [
+        remoteJid,
+        key.senderPn,
+        key.senderLid,
+        key.participant,
+        key.participantPn,
+        key.participantLid,
+      ];
 
-  return (
-    key.participantPn ?? key.participant ?? (key.fromMe && me ? me.id : "")
-  );
+  return [...new Set(candidates.filter((jid): jid is string => Boolean(jid)))];
 }
 
 function extractContextInfo(

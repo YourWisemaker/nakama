@@ -172,6 +172,7 @@ describe("inbound message routing", () => {
       mentionedJids: [ME.lid],
       quotedParticipant: null,
       senderJid: "9999999999@s.whatsapp.net",
+      senderJids: ["9999999999@s.whatsapp.net", "104784384290844@lid"],
       text: "@Nakama hello",
     });
   });

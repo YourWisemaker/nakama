@@ -1359,6 +1359,7 @@ export type AgentBrowserInstallEvent =
     };
 
 export interface WhatsAppSettingsResponse {
+  allowedPhones: string[];
   configured: boolean;
   pairedJid: string | null;
   pairingCode: string | null;
@@ -1367,6 +1368,7 @@ export interface WhatsAppSettingsResponse {
 }
 
 export interface UpdateWhatsAppSettingsRequest {
+  allowedPhones?: string;
   phoneNumber?: string;
   profileId?: string;
 }

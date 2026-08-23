@@ -26,6 +26,7 @@ import {
 } from "./format";
 import {
   explainGroupMessageHandling,
+  isWhatsAppBotAddress,
   resolveChannelOrgKey,
   stripWhatsAppBotMention,
 } from "./group-message";
@@ -40,7 +41,9 @@ const GROUP_MESSAGE_PREFIX =
   "[WhatsApp group — your reply is visible to everyone in this group.]\n";
 
 const LINK_IN_PRIVATE_REPLY =
-  "Link your account in a private chat with Nakama first.";
+  "This WhatsApp number is not linked yet. Open a private chat with this account and send your pairing code from Integrations → WhatsApp.";
+
+const ALREADY_LINKED_REPLY = "This number is already linked.";
 
 const PAIRING_PROMPT =
   "Welcome to Nakama.\n\n" +
@@ -111,11 +114,26 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
     await withChatLock(conversationKey, async () => {
       await authStore.reload();
+      const senderJids = inbound.senderJids;
+      const pairingText = isGroup ? stripWhatsAppBotMention(trimmed) : trimmed;
       const authorized =
-        inbound.fromMe || authStore.isAuthorized(inbound.senderJid);
+        inbound.fromMe ||
+        authStore.isAuthorized(senderJids) ||
+        senderJids.some((senderJid) =>
+          isWhatsAppBotAddress(senderJid, inbound.me)
+        );
+
+      if (authorized) {
+        await authStore.rememberIdentities(senderJids);
+      }
 
       if (!authorized) {
         if (isGroup) {
+          if (looksLikePairingCodeAttempt(pairingText)) {
+            await handlePairing(inbound.senderJid, pairingText);
+            return;
+          }
+
           await sendText(jid, LINK_IN_PRIVATE_REPLY);
           return;
         }
@@ -124,8 +142,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
         return;
       }
 
-      if (isGroup && looksLikePairingCodeAttempt(trimmed)) {
-        await sendText(jid, LINK_IN_PRIVATE_REPLY);
+      if (looksLikePairingCodeAttempt(pairingText)) {
+        await sendText(jid, ALREADY_LINKED_REPLY);
         return;
       }
 
@@ -486,6 +504,7 @@ function normalizeInboundChat(
     mentionedJids: data.mentionedJids ?? [],
     quotedParticipant: data.quotedParticipant ?? null,
     senderJid: data.senderJid ?? data.jid,
+    senderJids: data.senderJids ?? [data.senderJid ?? data.jid],
     text: data.text,
   };
 }
