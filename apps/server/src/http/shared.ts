@@ -1,6 +1,7 @@
 import type { AgentChatSession } from "@nakama/agent";
 import type { OrgRole } from "@nakama/core";
 import {
+  AGENT_CHANNELS,
   type AgentChannel,
   type AgentQuestionnaire,
   type AgentTodo,
@@ -380,24 +381,16 @@ export function errorResponse(
   );
 }
 
+const CHANNEL_LIST = `${AGENT_CHANNELS.slice(0, -1).join(", ")}, or ${
+  AGENT_CHANNELS[AGENT_CHANNELS.length - 1]
+}`;
+
 export function parseChannel(value: string | undefined): AgentChannel {
-  if (
-    value === "cli" ||
-    value === "web" ||
-    value === "telegram" ||
-    value === "whatsapp" ||
-    value === "discord" ||
-    value === "automation" ||
-    value === "task" ||
-    value === "subagent"
-  ) {
-    return value;
+  if (value !== undefined && AGENT_CHANNELS.includes(value as AgentChannel)) {
+    return value as AgentChannel;
   }
 
-  throw new NakamaApiError(
-    "Invalid channel. Expected cli, web, telegram, whatsapp, discord, automation, task, or subagent.",
-    400
-  );
+  throw new NakamaApiError(`Invalid channel. Expected ${CHANNEL_LIST}.`, 400);
 }
 
 const STREAM_TIMEOUT_MS = resolveChatStreamTimeoutMs();
