@@ -100,6 +100,41 @@ describe("createChatHandler", () => {
     });
   });
 
+  test("stays silent when the account is not linked", async () => {
+    await withTempHome(async (homeDir) => {
+      await writeWhatsAppConfigIni(homeDir, {
+        phoneNumber: "1234567890",
+      });
+
+      const authStore = new WhatsAppAuthStore();
+      await authStore.reload();
+      const { client, calls } = createMockClient();
+      const sessionStore = new SessionStore(
+        path.join(homeDir, ".nakama", "whatsapp", "chat-sessions.json")
+      );
+      const orgStore = createTestOrgStore(homeDir);
+      await orgStore.load();
+      const { socket, sent } = createMockSocket();
+
+      const handleMessage = createChatHandler({
+        authStore,
+        client,
+        config: { phoneNumber: "1234567890", profileId: "default" },
+        getSocket: () => socket as any,
+        orgStore,
+        sessionStore,
+      });
+
+      await handleMessage({ jid: "9999999999@s.whatsapp.net", text: "hello" });
+      await handleMessage({ jid: "9999999999@s.whatsapp.net", text: "/start" });
+      await handleMessage({ jid: "9999999999@s.whatsapp.net", text: "/help" });
+
+      expect(sent).toEqual([]);
+      expect(calls.createSession).toBe(0);
+      expect(calls.sendStream).toBe(0);
+    });
+  });
+
   test("rejects invalid pairing codes", async () => {
     await withTempHome(async (homeDir) => {
       await writeWhatsAppConfigIni(homeDir, {

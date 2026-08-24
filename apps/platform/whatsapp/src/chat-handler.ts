@@ -50,11 +50,6 @@ const PAIRING_PROMPT =
   "Paste your pairing code from Integrations \u2192 WhatsApp in the web dashboard. " +
   "You only need to do this once for this number.";
 
-const NO_CODE_PROMPT =
-  "This number is not linked yet.\n\n" +
-  "Open Nakama Integrations \u2192 WhatsApp, generate a pairing code, " +
-  "then send that code here. Or scan the QR code in Integrations.";
-
 export interface ChatHandlerDeps {
   authStore: WhatsAppAuthStore;
   client: NakamaClient;
@@ -128,6 +123,10 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       }
 
       if (!authorized) {
+        if (!authStore.getConfig()?.pairingCode) {
+          return;
+        }
+
         if (isGroup) {
           if (looksLikePairingCodeAttempt(pairingText)) {
             await handlePairing(inbound.senderJid, pairingText);
@@ -176,21 +175,9 @@ export function createChatHandler(deps: ChatHandlerDeps) {
 
   async function handlePairing(jid: string, text: string): Promise<void> {
     const command = parseCommand(text);
-    const fileConfig = authStore.getConfig();
-    const hasPairingCode = Boolean(fileConfig?.pairingCode);
 
     if (command === "/help") {
       await sendText(jid, `${PAIRING_PROMPT}\n\n${HELP_TEXT}`);
-      return;
-    }
-
-    if (command === "/start") {
-      await sendText(jid, hasPairingCode ? PAIRING_PROMPT : NO_CODE_PROMPT);
-      return;
-    }
-
-    if (!hasPairingCode) {
-      await sendText(jid, NO_CODE_PROMPT);
       return;
     }
 
