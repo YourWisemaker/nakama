@@ -18,6 +18,34 @@ export interface SentryDsn {
 }
 
 /**
+ * The slice of the Sentry store payload nakama actually sends. Hand-rolled because no
+ * SDK is in use, and named so the envelope is a checked shape rather than a bag: a
+ * typo in a key here is silently ignored by the ingest and impossible to spot later.
+ */
+export interface SentryEvent {
+  contexts: {
+    os: { name: string };
+    runtime: { name: string; version: string };
+  };
+  event_id: string;
+  exception: { values: { type: string; value: string }[] };
+  extra?: { stack: string };
+  fingerprint: string[];
+  level: "error" | "info";
+  logger: string;
+  platform: string;
+  tags: {
+    api_version: string;
+    arch: string;
+    bun: string;
+    kind: string;
+    os: string;
+    source: string;
+  };
+  timestamp: string;
+}
+
+/**
  * One protocol covers Sentry, GlitchTip, Bugsink and self-hosted Sentry: they all accept
  * the same store endpoint and X-Sentry-Auth header, so the operator picks the platform
  * and nakama does not have to know which one it is talking to.
@@ -53,7 +81,7 @@ export function parseSentryDsn(dsn: string): SentryDsn | null {
   };
 }
 
-export function toSentryEvent(report: ErrorReport): Record<string, unknown> {
+export function toSentryEvent(report: ErrorReport): SentryEvent {
   return {
     contexts: {
       os: { name: report.runtime.platform },
@@ -87,7 +115,7 @@ export function toSentryEvent(report: ErrorReport): Record<string, unknown> {
 
 export async function sendSentryEvent(
   dsn: SentryDsn,
-  event: Record<string, unknown>,
+  event: SentryEvent,
   timeoutMs = SEND_TIMEOUT_MS
 ): Promise<boolean> {
   try {

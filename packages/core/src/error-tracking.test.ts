@@ -124,6 +124,20 @@ test("a non-Error rejection still produces a report", () => {
   expect(report.fingerprint).toHaveLength(16);
 });
 
+test("a circular rejection reports rather than throwing, at a shared fingerprint", () => {
+  const circular: { self?: unknown } = {};
+  circular.self = circular;
+
+  const report = buildErrorReport(circular, { source: "worker:discord" });
+  const other: { self?: unknown; kind?: string } = { kind: "different" };
+  other.self = other;
+
+  expect(report.fingerprint).toHaveLength(16);
+  // Documented, not desired: JSON.stringify throws on a cycle and String() flattens every
+  // one of them to "[object Object]", so two unrelated circular rejections share an issue.
+  expect(buildErrorReport(other).fingerprint).toBe(report.fingerprint);
+});
+
 test("with no sink installed nothing is queued and nothing is sent", async () => {
   setErrorSink(null);
 
@@ -136,6 +150,7 @@ test("the sink receives the report", async () => {
   const delivered: ErrorReport[] = [];
   setErrorSink((report) => {
     delivered.push(report);
+    return true;
   });
 
   await reportError(new Error("boom"), { source: "server" });
@@ -171,6 +186,7 @@ test("the queue is written before the send, which is what survives a hard exit",
   let queuedWhenSinkRan = 0;
   setErrorSink(() => {
     queuedWhenSinkRan = readPendingErrorReports().length;
+    return true;
   });
 
   await reportError(new Error("boom"), { source: "server" });

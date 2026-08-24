@@ -132,6 +132,9 @@ function errorToParts(error: unknown): {
       name: "NonError",
     };
   } catch {
+    // Circular and other unserializable values all land on "[object Object]", so they
+    // share one fingerprint. Accepted: separating them needs a walk of the object, and
+    // a rejection with a circular non-Error is rare enough not to pay for it.
     return { message: String(error), name: "NonError" };
   }
 }
