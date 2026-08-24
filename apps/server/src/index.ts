@@ -9,6 +9,8 @@ import type { Server } from "bun";
 import { ensureProcessPath } from "./lib/ensure-process-path";
 
 ensureProcessPath();
+// Position is cosmetic: ESM evaluates every import above before this line runs, so a throw
+// inside @nakama/db or @nakama/agent module init is already past. Everything after is covered.
 installErrorHandlers("server");
 
 /**
