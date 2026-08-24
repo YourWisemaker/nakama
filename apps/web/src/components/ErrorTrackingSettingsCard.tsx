@@ -1,6 +1,9 @@
 import { Link01Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
 import { useState } from "react";
-import { IntegrationCardShell } from "@/components/integration-settings.shared";
+import {
+  IntegrationCardShell,
+  IntegrationStatusHeader,
+} from "@/components/integration-settings.shared";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -15,27 +18,6 @@ import {
   useSendErrorTrackingTest,
 } from "@/hooks/use-error-tracking";
 import { formatError } from "@/lib/client";
-
-function StatusBadge({ configured }: { configured: boolean }) {
-  if (configured) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-800 text-xs dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-        <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
-        Sending
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-0.5 font-medium text-muted-foreground text-xs">
-      <span
-        aria-hidden
-        className="size-1.5 rounded-full bg-muted-foreground/60"
-      />
-      Off
-    </span>
-  );
-}
 
 export function ErrorTrackingSettingsCard() {
   const {
@@ -90,18 +72,13 @@ export function ErrorTrackingSettingsCard() {
 
   return (
     <IntegrationCardShell>
-      <div className="flex items-start justify-between gap-4 p-5 pb-4">
-        <div className="min-w-0 space-y-1">
-          <h2 className="font-semibold text-base text-foreground leading-tight [text-wrap:balance]">
-            Error tracking
-          </h2>
-          <p className="text-muted-foreground text-sm leading-snug [text-wrap:pretty]">
-            Send this instance's own errors to the error tracker you already
-            run.
-          </p>
-        </div>
-        <StatusBadge configured={configured} />
-      </div>
+      {/* One state, not the channels' three: a saved DSN means it is sending. */}
+      <IntegrationStatusHeader
+        configured={configured}
+        connected={configured}
+        statusBadge={configured ? "Sending" : "Off"}
+        title="Error tracking"
+      />
 
       <div className="border-border border-t" />
 

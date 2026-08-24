@@ -86,6 +86,35 @@ describe("error tracking routes", () => {
     expect(JSON.stringify(body)).not.toContain(DSN);
   });
 
+  test("an empty DSN clears a saved one instead of keeping it", async () => {
+    const { app, databaseAdapter } = await createApp();
+    const { email, password, orgId } = await seedOrgAdmin(databaseAdapter);
+    const session = await loginUserSession(app, email, password, orgId);
+
+    const put = (dsn: string) =>
+      app.fetch(
+        new Request("http://localhost:4310/v1/settings/error-tracking", {
+          body: JSON.stringify({ dsn }),
+          headers: session.headers({
+            "Content-Type": "application/json",
+            "X-CSRF-Token": session.csrfToken,
+          }),
+          method: "PUT",
+        })
+      );
+
+    await put(DSN);
+    const cleared = await put("");
+
+    expect(cleared.status).toBe(200);
+    // Off has to be reachable from the same field that turned it on, or an operator
+    // who wants delivery stopped has to go and edit config.ini by hand.
+    expect(await cleared.json()).toMatchObject({
+      configured: false,
+      dsnMasked: null,
+    });
+  });
+
   test("a malformed DSN is rejected instead of being saved", async () => {
     const { app, databaseAdapter } = await createApp();
     const { email, password, orgId } = await seedOrgAdmin(databaseAdapter);
