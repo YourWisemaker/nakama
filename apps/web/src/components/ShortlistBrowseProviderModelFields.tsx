@@ -41,16 +41,20 @@ export function ShortlistBrowseProviderModelFields({
       footerHint={copy.footerHint}
       modelsError={modelsError}
       onCustomModelsChange={onCustomModelsChange}
-      renderBrowse={(onSelect) =>
+      renderBrowse={({ multiSelect, onAddMany, onSelect }) =>
         provider === "cerebras" ? (
           <CerebrasModelsBrowseList
             className="h-72 rounded-md border border-border"
+            multiSelect={multiSelect}
+            onAddMany={onAddMany}
             onSelect={onSelect}
           />
         ) : (
           <FireworksModelsBrowseList
             apiKey={apiKey}
             className="h-72 rounded-md border border-border"
+            multiSelect={multiSelect}
+            onAddMany={onAddMany}
             onSelect={onSelect}
             providerId={providerId}
           />

@@ -15,12 +15,16 @@ export type OpenRouterBrowseSelectHandler = (row: OpenRouterModelRow) => void;
 
 interface OpenRouterModelsBrowseListProps {
   className?: string;
+  multiSelect?: boolean;
+  onAddMany?: (rows: OpenRouterModelRow[]) => void;
   onSelect: OpenRouterBrowseSelectHandler;
 }
 
 export function OpenRouterModelsBrowseList({
   onSelect,
   className,
+  multiSelect,
+  onAddMany,
 }: OpenRouterModelsBrowseListProps) {
   const { data: rows = [], isLoading, error } = useOpenRouterModels();
   const [costFilter, setCostFilter] = useState<"all" | "free">("all");
@@ -38,6 +42,8 @@ export function OpenRouterModelsBrowseList({
     <CatalogModelsBrowseList<OpenRouterModelRow>
       className={className}
       isDeprecated={(row) => row.deprecated}
+      multiSelect={multiSelect}
+      onAddMany={onAddMany}
       onSelect={onSelect}
       query={{ error, isLoading }}
       rows={catalogRows}

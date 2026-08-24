@@ -1,4 +1,10 @@
-import { type ReactNode, useDeferredValue, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   BrowseModelRowButton,
   type BrowseModelRowDisplay,
@@ -6,6 +12,7 @@ import {
   VirtualModelBrowseList,
 } from "@/components/ModelBrowseShell";
 import { filterRowsBySearch } from "@/components/model-browse-utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export interface CatalogModelsBrowseQuery {
@@ -25,6 +32,8 @@ export interface CatalogModelsBrowseListProps<
   filterRows?: (rows: T[], search: string, hideDeprecated: boolean) => T[];
   idleMessage?: string;
   isDeprecated?: (row: T) => boolean;
+  multiSelect?: boolean;
+  onAddMany?: (rows: T[]) => void;
   onSelect: (row: T) => void;
   query?: CatalogModelsBrowseQuery;
   rows: T[];
@@ -49,6 +58,8 @@ export function CatalogModelsBrowseList<
   filterRows,
   isDeprecated,
   toolbarTrailing,
+  multiSelect = false,
+  onAddMany,
 }: CatalogModelsBrowseListProps<T>) {
   const {
     canFetch = true,
@@ -61,7 +72,20 @@ export function CatalogModelsBrowseList<
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [hideDeprecated, setHideDeprecated] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const showDeprecatedFilter = Boolean(isDeprecated);
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      if (!multiSelect) {
+        return current.size === 0 ? current : new Set<string>();
+      }
+
+      const rowIds = new Set(rows.map((row) => row.id));
+      const next = new Set([...current].filter((id) => rowIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [multiSelect, rows]);
 
   const filtered = useMemo(() => {
     if (filterRows) {
@@ -99,11 +123,47 @@ export function CatalogModelsBrowseList<
 
   const toolbarDisabled = !canFetch;
 
+  const handleRowSelect = (row: T) => {
+    if (!multiSelect) {
+      onSelect(row);
+      return;
+    }
+
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(row.id)) {
+        next.delete(row.id);
+      } else {
+        next.add(row.id);
+      }
+      return next;
+    });
+  };
+
+  const handleAddMany = () => {
+    onAddMany?.(rows.filter((row) => selectedIds.has(row.id)));
+    setSelectedIds(new Set<string>());
+  };
+
   return (
     <ModelBrowseShell
       className={className}
       emptyMessage={resolvedEmptyMessage}
       error={canFetch ? error : null}
+      footer={
+        multiSelect ? (
+          <div className="sticky bottom-0 flex shrink-0 justify-end border-border border-t bg-background px-3 py-2">
+            <Button
+              disabled={selectedIds.size === 0}
+              onClick={handleAddMany}
+              size="sm"
+              type="button"
+            >
+              Add {selectedIds.size} models
+            </Button>
+          </div>
+        ) : undefined
+      }
       isEmpty={!canFetch || filtered.length === 0}
       isLoading={canFetch && (isLoading || (isFetching && rows.length === 0))}
       status={
@@ -152,8 +212,10 @@ export function CatalogModelsBrowseList<
         getKey={(row) => row.id}
         renderRow={(row, style) => (
           <BrowseModelRowButton
-            onSelect={() => onSelect(row)}
+            onSelect={() => handleRowSelect(row)}
             row={toDisplayRow(row)}
+            selectable={multiSelect}
+            selected={selectedIds.has(row.id)}
             style={style}
           />
         )}
