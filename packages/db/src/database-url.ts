@@ -34,6 +34,9 @@ export function ensureDatabaseDirectory(databasePath: string): void {
   if (databasePath === ":memory:") {
     return;
   }
+  if (!isAbsolute(databasePath)) {
+    throw new Error("Database path must be absolute.");
+  }
 
   const directory = dirname(databasePath);
   mkdirSync(directory, { mode: PRIVATE_DIR_MODE, recursive: true });

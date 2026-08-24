@@ -65,7 +65,11 @@ function rebuildSnapshotIndexes(turn: ActiveTurn): void {
 }
 
 function removeEventAt(turn: ActiveTurn, index: number): StreamEvent {
-  const removed = turn.events[index]!;
+  const removed = turn.events[index];
+  if (!removed) {
+    throw new Error("Snapshot index must reference a buffered event.");
+  }
+
   const lastIndex = turn.events.length - 1;
 
   if (index !== lastIndex) {

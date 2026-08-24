@@ -160,6 +160,11 @@ function contentLength(candidate: ConsolidateCandidateSkill): number {
 export function buildConsolidatePlan(
   input: BuildConsolidatePlanInput
 ): ConsolidatePlan {
+  const skillNames = new Set(input.skills.map((skill) => skill.name));
+  if (skillNames.size !== input.skills.length) {
+    throw new Error("Consolidation candidates must have unique names.");
+  }
+
   let skippedCount = 0;
   const eligible: ConsolidateCandidateSkill[] = [];
 

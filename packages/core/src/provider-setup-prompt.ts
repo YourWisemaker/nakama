@@ -195,13 +195,15 @@ function resolveProviderChoice(input: string): UserProviderName | null {
   }
 
   const numeric = Number(input);
-
-  if (
+  const choice =
     Number.isInteger(numeric) &&
     numeric >= 1 &&
     numeric <= PROVIDER_CHOICES.length
-  ) {
-    return PROVIDER_CHOICES[numeric - 1]!.id;
+      ? PROVIDER_CHOICES[numeric - 1]
+      : undefined;
+
+  if (choice) {
+    return choice.id;
   }
 
   return null;
@@ -231,9 +233,13 @@ function resolveModelChoice(
 
   const numeric = Number(input);
   const models = options.getModelsForProvider(provider);
+  const choice =
+    Number.isInteger(numeric) && numeric >= 1 && numeric <= models.length
+      ? models[numeric - 1]
+      : undefined;
 
-  if (Number.isInteger(numeric) && numeric >= 1 && numeric <= models.length) {
-    return models[numeric - 1]!.id;
+  if (choice) {
+    return choice.id;
   }
 
   return options.getDefaultModel(provider);

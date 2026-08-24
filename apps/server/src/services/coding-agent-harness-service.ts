@@ -458,12 +458,13 @@ export async function resolveCodingAgentHarness(
   }
 
   const installed = enabled.filter((harness) => harness.installed);
+  const [firstInstalled, secondInstalled] = installed;
 
-  if (installed.length === 1) {
-    return ensureReady(installed[0]!);
+  if (firstInstalled && !secondInstalled) {
+    return ensureReady(firstInstalled);
   }
 
-  if (installed.length > 1) {
+  if (secondInstalled) {
     throw new Error(
       "Multiple coding agents are installed. Ask the user which one to use, then run that CLI via bash."
     );
