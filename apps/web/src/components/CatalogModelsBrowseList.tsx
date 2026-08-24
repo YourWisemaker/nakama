@@ -1,10 +1,4 @@
-import {
-  type ReactNode,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type ReactNode, useDeferredValue, useMemo, useState } from "react";
 import {
   BrowseModelRowButton,
   type BrowseModelRowDisplay,
@@ -75,17 +69,13 @@ export function CatalogModelsBrowseList<
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const showDeprecatedFilter = Boolean(isDeprecated);
 
-  useEffect(() => {
-    setSelectedIds((current) => {
-      if (!multiSelect) {
-        return current.size === 0 ? current : new Set<string>();
-      }
-
-      const rowIds = new Set(rows.map((row) => row.id));
-      const next = new Set([...current].filter((id) => rowIds.has(id)));
-      return next.size === current.size ? current : next;
-    });
-  }, [multiSelect, rows]);
+  const selectedRowIds = useMemo(() => {
+    if (!multiSelect) {
+      return new Set<string>();
+    }
+    const rowIds = new Set(rows.map((row) => row.id));
+    return new Set([...selectedIds].filter((id) => rowIds.has(id)));
+  }, [multiSelect, rows, selectedIds]);
 
   const filtered = useMemo(() => {
     if (filterRows) {
@@ -141,7 +131,7 @@ export function CatalogModelsBrowseList<
   };
 
   const handleAddMany = () => {
-    onAddMany?.(rows.filter((row) => selectedIds.has(row.id)));
+    onAddMany?.(rows.filter((row) => selectedRowIds.has(row.id)));
     setSelectedIds(new Set<string>());
   };
 
@@ -154,12 +144,12 @@ export function CatalogModelsBrowseList<
         multiSelect ? (
           <div className="sticky bottom-0 flex shrink-0 justify-end border-border border-t bg-background px-3 py-2">
             <Button
-              disabled={selectedIds.size === 0}
+              disabled={selectedRowIds.size === 0}
               onClick={handleAddMany}
               size="sm"
               type="button"
             >
-              Add {selectedIds.size} models
+              Add {selectedRowIds.size} models
             </Button>
           </div>
         ) : undefined
@@ -215,7 +205,7 @@ export function CatalogModelsBrowseList<
             onSelect={() => handleRowSelect(row)}
             row={toDisplayRow(row)}
             selectable={multiSelect}
-            selected={selectedIds.has(row.id)}
+            selected={selectedRowIds.has(row.id)}
             style={style}
           />
         )}

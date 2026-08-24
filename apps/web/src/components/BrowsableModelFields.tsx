@@ -61,14 +61,16 @@ export function BrowsableModelFields<T>({
 
   const handleAddMany = (rows: T[]) => {
     const existingIds = new Set(customModels.map((model) => model.id));
-    const nextModels = rows.map(toModelRow).filter((model) => {
+    const nextModels: ModelListRow[] = [];
+    for (const row of rows) {
+      const model = toModelRow(row);
       if (existingIds.has(model.id)) {
-        return false;
+        continue;
       }
 
       existingIds.add(model.id);
-      return true;
-    });
+      nextModels.push(model);
+    }
 
     if (nextModels.length > 0) {
       onCustomModelsChange([...customModels, ...nextModels]);
