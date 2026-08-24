@@ -74,15 +74,18 @@ export interface AutomationUnreadSummary {
   totalUnread: number;
 }
 
-export type AgentChannel =
-  | "web"
-  | "cli"
-  | "telegram"
-  | "whatsapp"
-  | "discord"
-  | "automation"
-  | "task"
-  | "subagent";
+export const AGENT_CHANNELS = [
+  "web",
+  "cli",
+  "telegram",
+  "whatsapp",
+  "discord",
+  "automation",
+  "task",
+  "subagent",
+] as const;
+
+export type AgentChannel = (typeof AGENT_CHANNELS)[number];
 
 export const NAKAMA_API_VERSION = 1;
 

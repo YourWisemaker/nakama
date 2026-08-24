@@ -1,16 +1,10 @@
-import type { AgentChannel, ToolContext, ToolDefinition } from "@nakama/core";
+import {
+  AGENT_CHANNELS,
+  type AgentChannel,
+  type ToolContext,
+  type ToolDefinition,
+} from "@nakama/core";
 import type { AgentService } from "../services/agent-service";
-
-const AGENT_CHANNELS: AgentChannel[] = [
-  "web",
-  "cli",
-  "telegram",
-  "whatsapp",
-  "discord",
-  "automation",
-  "task",
-  "subagent",
-];
 
 /** Matches `GET /v1/sessions` — optional channel, default web. */
 const DEFAULT_CHANNEL: AgentChannel = "web";
@@ -82,7 +76,7 @@ export function createSessionTools(agent: AgentService): ToolDefinition[] {
           channel: {
             description:
               "Which channel's sessions to list. Defaults to web, the same default the sessions API uses.",
-            enum: AGENT_CHANNELS,
+            enum: [...AGENT_CHANNELS],
             type: "string",
           },
           profileId: {

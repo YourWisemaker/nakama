@@ -12,6 +12,7 @@ import type {
   SessionMessagesResponse,
   SessionStatusResponse,
 } from "@nakama/core";
+import { AGENT_CHANNELS } from "@nakama/core";
 import { resolveRequestClientOrigin } from "../../services/composio-callback-url";
 import { sessionTurnRegistry } from "../../services/session-turn-registry";
 import type { ServerOptions } from "../context";
@@ -37,18 +38,7 @@ export function registerSessionRoutes(
   const errorSchema = z
     .object({ error: z.string() })
     .openapi("ApiErrorResponse");
-  const agentChannelSchema = z
-    .enum([
-      "web",
-      "cli",
-      "telegram",
-      "whatsapp",
-      "discord",
-      "automation",
-      "task",
-      "subagent",
-    ])
-    .openapi("AgentChannel");
+  const agentChannelSchema = z.enum(AGENT_CHANNELS).openapi("AgentChannel");
   const createSessionRequestSchema = z
     .object({
       channel: agentChannelSchema,

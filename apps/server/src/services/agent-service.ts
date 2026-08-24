@@ -96,6 +96,7 @@ import type {
   WhatsAppSettingsResponse,
 } from "@nakama/core";
 import {
+  AGENT_CHANNELS,
   apiKeyEnvVarForProvider,
   appendOrgMemorySection,
   buildThinkingProviderOptions,
@@ -3612,20 +3613,9 @@ export class AgentService {
 }
 
 function parseAgentChannel(value: string): AgentChannel | null {
-  if (
-    value === "cli" ||
-    value === "web" ||
-    value === "telegram" ||
-    value === "whatsapp" ||
-    value === "discord" ||
-    value === "automation" ||
-    value === "task" ||
-    value === "subagent"
-  ) {
-    return value;
-  }
-
-  return null;
+  return AGENT_CHANNELS.includes(value as AgentChannel)
+    ? (value as AgentChannel)
+    : null;
 }
 
 function clampSubAgentTimeout(timeoutMs: number | undefined): number {
