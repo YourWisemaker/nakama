@@ -558,14 +558,16 @@ export class AgentService {
     return this.userConfig;
   }
 
-  async setUserTimezone(timezone: string): Promise<string> {
-    await saveUserTimezone(timezone);
+  // Widened to match saveUserTimezone: the route hands this straight from an
+  // unvalidated request body.
+  async setUserTimezone(timezone: string | undefined): Promise<string> {
+    const saved = await saveUserTimezone(timezone);
 
     if (this.userConfig) {
-      this.userConfig = { ...this.userConfig, timezone };
+      this.userConfig = { ...this.userConfig, timezone: saved };
     }
 
-    return timezone;
+    return saved;
   }
 
   async getThinkingSettings(): Promise<ThinkingSettingsResponse> {

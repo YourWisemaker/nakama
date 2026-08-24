@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ProviderInstance } from "@nakama/core";
+import { NakamaApiError } from "@nakama/core";
 import {
   applyProviderInstanceUpdate,
   buildProviderInstanceFromCreateRequest,
@@ -339,5 +340,25 @@ describe("buildProviderInstanceFromCreateRequest", () => {
     expect(instance.baseUrl).toBe(
       "https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1"
     );
+  });
+
+  // readJson casts the body without validating it, so both fields can arrive
+  // undefined however the contract types them.
+  test("names the missing field and answers 400, not a TypeError at 500", () => {
+    const cases = [
+      [{}, "Provider type is required."],
+      [{ type: "openai" }, "API key is required."],
+    ] as const;
+
+    for (const [request, message] of cases) {
+      try {
+        buildProviderInstanceFromCreateRequest(request, []);
+        throw new Error("expected a rejection");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NakamaApiError);
+        expect((error as NakamaApiError).message).toBe(message);
+        expect((error as NakamaApiError).status).toBe(400);
+      }
+    }
   });
 });

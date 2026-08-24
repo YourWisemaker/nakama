@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
+import { NakamaApiError } from "./api-error";
 import {
   isValidBaseUrl,
   normalizeBaseUrl,
@@ -397,18 +398,26 @@ export function buildThinkingProviderOptions(
   };
 }
 
-export async function saveUserTimezone(timezone: string): Promise<void> {
-  const trimmed = timezone.trim();
+export async function saveUserTimezone(
+  // Undefined, not just empty: request bodies reach this unvalidated, so an
+  // absent field has to name itself here rather than throw a TypeError.
+  timezone: string | undefined
+): Promise<string> {
+  const trimmed = timezone?.trim() ?? "";
 
-  if (!(trimmed && isValidTimezone(trimmed))) {
-    throw new Error(`Invalid timezone: ${timezone}`);
+  if (!trimmed) {
+    throw new NakamaApiError("Timezone is required.", 400);
+  }
+
+  if (!isValidTimezone(trimmed)) {
+    throw new NakamaApiError(`Invalid timezone: ${trimmed}`, 400);
   }
 
   const existing = await loadUserConfig();
 
   if (existing) {
     await saveUserConfig({ ...existing, timezone: trimmed });
-    return;
+    return trimmed;
   }
 
   const raw = await readTextOrNull(getUserConfigPath());
@@ -421,6 +430,8 @@ export async function saveUserTimezone(timezone: string): Promise<void> {
   await writeTextFile(getUserConfigPath(), lines.join("\n"), {
     ensureDir: getUserConfigDir(),
   });
+
+  return trimmed;
 }
 
 function readWebPublicUrl(values: Record<string, string>): string | undefined {
