@@ -147,6 +147,11 @@ export class SkillCuratorService {
       restoreMisses: [],
     };
     const profiles = await this.db.listProfilesForOrg(orgId);
+    for (const profile of profiles) {
+      if (profile.orgId !== orgId) {
+        throw new Error("Curator profile must belong to the requested org.");
+      }
+    }
     const enabledAutomationProfileIds = new Set(
       (await this.db.listAutomationsForOrg(orgId))
         .filter((automation) => automation.enabled)
@@ -363,6 +368,11 @@ export class SkillCuratorService {
     profileId: string;
     winner: ConsolidateCandidateSkill;
   }): Promise<"staged" | "applied" | "skipped"> {
+    const hasLosers = input.losers.length > 0;
+    if ((input.mode === "merge") !== hasLosers) {
+      throw new Error("Merge requires losers; deslopify requires none.");
+    }
+
     const winnerBody: SkillConsolidateBodyInput = {
       body: input.winner.body,
       description: input.winner.description,

@@ -50,15 +50,16 @@ export async function resolveCliOrgId(
   }
 
   const { orgs } = await client.listUserOrgs();
+  const [onlyOrg] = orgs;
 
-  if (orgs.length === 0) {
+  if (!onlyOrg) {
     throw new Error("No organizations found.");
   }
 
   if (orgs.length === 1) {
-    client.setOrgId(orgs[0]!.id);
-    await saveCliOrgId(orgs[0]!.id);
-    return orgs[0]!.id;
+    client.setOrgId(onlyOrg.id);
+    await saveCliOrgId(onlyOrg.id);
+    return onlyOrg.id;
   }
 
   throw new Error(

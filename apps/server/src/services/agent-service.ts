@@ -3378,8 +3378,9 @@ export class AgentService {
       profileModel: profile?.model ?? null,
       userConfig: this.userConfig,
     };
+    const [firstInstalled, secondInstalled] = installed;
 
-    if (installed.length === 0) {
+    if (!firstInstalled) {
       const installLines = [
         "# Coding Agent Harness",
         "No coding agent CLI is installed on this host.",
@@ -3395,7 +3396,7 @@ export class AgentService {
       return installLines.join("\n");
     }
 
-    if (installed.length > 1) {
+    if (secondInstalled) {
       const names = installed
         .map((harness) => `- ${harness.name} (\`${harness.command}\`)`)
         .join("\n");
@@ -3411,9 +3412,8 @@ export class AgentService {
       ].join("\n");
     }
 
-    const harness = installed[0]!;
     return this.formatSingleCodingHarnessContext(
-      harness,
+      firstInstalled,
       workspaceRoot,
       probeContext
     );
