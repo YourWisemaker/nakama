@@ -181,11 +181,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       return;
     }
 
-    if (command === "/start") {
-      await sendText(jid, PAIRING_PROMPT);
-      return;
-    }
-
     if (!looksLikePairingCodeAttempt(text)) {
       await sendText(jid, PAIRING_PROMPT);
       return;
