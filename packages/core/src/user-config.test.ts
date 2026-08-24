@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { NakamaApiError } from "./api-error";
 import { pathExists } from "./fs";
 import {
   createProviderInstanceId,
@@ -11,8 +12,32 @@ import {
   loadUserWebPublicUrl,
   normalizeProviderInstanceLabel,
   saveUserConfig,
+  saveUserTimezone,
   saveUserWebPublicUrl,
 } from "./user-config";
+
+describe("saveUserTimezone", () => {
+  // readJson casts the body without validating it, so timezone can arrive
+  // undefined however the contract types it.
+  test("names the missing field and answers 400, not a TypeError at 500", async () => {
+    const cases = [
+      [undefined, "Timezone is required."],
+      ["  ", "Timezone is required."],
+      ["Not/AZone", "Invalid timezone: Not/AZone"],
+    ] as const;
+
+    for (const [value, message] of cases) {
+      try {
+        await saveUserTimezone(value);
+        throw new Error("expected a rejection");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NakamaApiError);
+        expect((error as NakamaApiError).message).toBe(message);
+        expect((error as NakamaApiError).status).toBe(400);
+      }
+    }
+  });
+});
 
 describe("ensureUserConfigDir", () => {
   let configDir = "";

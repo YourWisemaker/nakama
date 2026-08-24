@@ -155,15 +155,25 @@ export function resolveDefaultModelForInstance(
 }
 
 export function buildProviderInstanceFromCreateRequest(
-  request: CreateProviderRequest,
+  // apiKey and type are widened here on purpose: request bodies reach this
+  // unvalidated, so an absent field has to name itself rather than throw a
+  // TypeError, and the type is what stops the guard being deleted later.
+  request: Omit<CreateProviderRequest, "apiKey" | "type"> & {
+    apiKey?: string;
+    type?: CreateProviderRequest["type"];
+  },
   existing: ProviderInstance[]
 ): ProviderInstance {
   const type = request.type;
-  const trimmedKey = request.apiKey.trim();
-  const apiKey = trimmedKey;
+
+  if (!type) {
+    throw new NakamaApiError("Provider type is required.", 400);
+  }
+
+  const apiKey = request.apiKey?.trim() ?? "";
 
   if (!apiKey && type !== "openai_compatible" && type !== "ollama") {
-    throw new Error("API key is required.");
+    throw new NakamaApiError("API key is required.", 400);
   }
 
   if (type === "ollama") {
@@ -173,11 +183,11 @@ export function buildProviderInstanceFromCreateRequest(
     });
 
     if (ollamaRequiresApiKey(hostMode) && !apiKey) {
-      throw new Error("API key is required for Ollama Cloud.");
+      throw new NakamaApiError("API key is required for Ollama Cloud.", 400);
     }
   }
 
-  const fields = buildProviderFieldsFromRequest(request);
+  const fields = buildProviderFieldsFromRequest({ ...request, apiKey, type });
   const rawLabel = request.label?.trim()
     ? validateProviderInstanceLabel(request.label, type)
     : fields.label;
