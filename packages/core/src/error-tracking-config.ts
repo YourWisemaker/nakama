@@ -68,10 +68,6 @@ export async function saveErrorTrackingDsn(
   return next;
 }
 
-export async function currentErrorTrackingDsn(): Promise<string | null> {
-  return resolveErrorTrackingDsn(await loadErrorTrackingConfig());
-}
-
 export async function isErrorTrackingEnabled(): Promise<boolean> {
-  return (await currentErrorTrackingDsn()) !== null;
+  return resolveErrorTrackingDsn(await loadErrorTrackingConfig()) !== null;
 }

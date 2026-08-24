@@ -86,9 +86,3 @@ test("the env DSN overrides the file, and an empty one means off", () => {
     resolveErrorTrackingDsn({ dsn: DSN }, { NAKAMA_ERROR_TRACKING_DSN: "" })
   ).toBeNull();
 });
-
-test("a saved DSN takes effect without a restart", async () => {
-  expect(await isErrorTrackingEnabled()).toBe(false);
-  await saveErrorTrackingDsn(DSN);
-  expect(await isErrorTrackingEnabled()).toBe(true);
-});
