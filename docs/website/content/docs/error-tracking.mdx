@@ -1,6 +1,6 @@
 ---
 title: "Error tracking"
-description: "Send this instance's own errors to the Sentry, GlitchTip, or Bugsink project you already run."
+description: "Send this instance's own errors to the Sentry, GlitchTip, Bugsink, or self-hosted Sentry project you already run."
 ---
 
 When a self-hosted Nakama crashes, the evidence is one line of stderr on whatever machine it ran on. Nobody reads that until somebody complains.
@@ -51,7 +51,9 @@ Stack traces from your machine quote your machine. Every report is scrubbed firs
 | Home directory paths, on Unix and Windows | `~` |
 | Bearer tokens | `Bearer <redacted>` |
 | API keys shaped like `sk-`, `ghp_`, `xox...`, and AWS access keys | `<redacted-key>` |
-| Anything after a variable whose name contains `TOKEN`, `KEY`, `SECRET`, or `PASSWORD` | `<redacted>` |
+| Anything after a variable whose name contains `TOKEN`, `KEY`, `API_KEY`, `APIKEY`, `SECRET`, `PASSWORD`, `PASSWD`, `AUTHORIZATION`, or `CREDENTIAL` | `<redacted>` |
+| Email addresses | `<email>` |
+| Any remaining run of 32 or more letters, digits, `_` or `-`, the catch-all for opaque credentials the rows above do not name | `<redacted-token>` |
 | Quoted payloads inside an error message, which is where a `JSON.parse` failure prints your data | `<redacted>` |
 
 Long messages are cut at 4000 characters. The host name is deliberately left out, because on a self-hosted install it is often your own machine or cluster name.
