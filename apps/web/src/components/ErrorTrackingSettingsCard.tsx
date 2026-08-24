@@ -96,8 +96,10 @@ export function ErrorTrackingSettingsCard() {
         <div className="flex items-center gap-2">
           <InputGroup className="h-9 min-w-0 flex-1">
             <InputGroupInput
+              aria-label="Sentry-compatible DSN"
               autoComplete="off"
               disabled={saveMutation.isPending}
+              id="error-tracking-dsn"
               onChange={(event) => {
                 setDsn(event.target.value);
                 if (formError) {
