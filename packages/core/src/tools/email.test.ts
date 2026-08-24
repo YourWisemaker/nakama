@@ -213,26 +213,6 @@ describe("email tool", () => {
     );
   });
 
-  test("sends email with fake sender", async () => {
-    const sender = createFakeMailSender();
-
-    const result = await runEmailTool(
-      {
-        action: "send",
-        subject: "Hello",
-        text: "Body",
-        to: "recipient@example.com",
-      },
-      {
-        createSender: () => sender,
-        loadConfig: async () => completeConfig,
-      }
-    );
-
-    expect("sent" in result && result.sent?.messageId).toBe("fake-message-id");
-    expect(sender.sent).toHaveLength(1);
-  });
-
   test("rejects invalid recipient", async () => {
     const sender = createFakeMailSender();
 

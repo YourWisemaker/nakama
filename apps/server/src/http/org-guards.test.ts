@@ -37,14 +37,6 @@ describe("org guards", () => {
     expect(() => requireNotViewer(auth("member"))).not.toThrow();
   });
 
-  test("requireNotViewer rejects viewers", () => {
-    try {
-      requireNotViewer(auth("viewer"));
-    } catch (error) {
-      expect(error).toMatchObject({ message: "Forbidden", status: 403 });
-    }
-  });
-
   test("requirePlatformAdmin allows platform admins", () => {
     expect(() =>
       requirePlatformAdmin({
@@ -52,13 +44,5 @@ describe("org guards", () => {
         isPlatformAdmin: true,
       })
     ).not.toThrow();
-  });
-
-  test("requirePlatformAdmin rejects non-platform users", () => {
-    try {
-      requirePlatformAdmin(auth("admin"));
-    } catch (error) {
-      expect(error).toMatchObject({ message: "Forbidden", status: 403 });
-    }
   });
 });

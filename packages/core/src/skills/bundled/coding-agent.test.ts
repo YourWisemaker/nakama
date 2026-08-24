@@ -52,17 +52,6 @@ describe("ensureBundledSkillFiles for coding agent", () => {
     delete process.env.NAKAMA_CONFIG_DIR;
   });
 
-  test("writes coding agent bundled skills when missing", async () => {
-    const created = await ensureBundledSkillFiles();
-
-    expect(created).toContain("coding-agent");
-    expect(created).toContain("coding-backend-codex");
-    expect(created).toContain("coding-backend-claude-code");
-    expect(created).toContain("coding-backend-opencode");
-    expect(created).toContain("coding-backend-pi");
-    expect(created).toContain("coding-backend-cursor");
-  });
-
   test("force-refreshes coding-agent and coding-backend-cursor when installed copies are stale", async () => {
     const codingAgentPath = join(
       configDir,

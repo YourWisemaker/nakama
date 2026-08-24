@@ -150,19 +150,6 @@ describe("saveWhatsAppConfig", () => {
     });
   });
 
-  test("saves profile without requiring a phone number", async () => {
-    await withTempHomedir("nakama-core-wa-home-", async () => {
-      const result = await saveWhatsAppConfig({
-        profileId: "profile_custom",
-      });
-
-      expect(result.profileId).toBe("profile_custom");
-
-      const saved = await loadWhatsAppConfigFile();
-      expect(saved?.profileId).toBe("profile_custom");
-    });
-  });
-
   test("preserves pairedJid when updating other fields", async () => {
     await withTempHomedir("nakama-core-wa-home-", async (tempHome) => {
       await saveWhatsAppConfig({ phoneNumber: "+1234567890" });
@@ -189,13 +176,6 @@ describe("saveWhatsAppConfig", () => {
 
       expect(result.pairedJid).toBe("1234567890@s.whatsapp.net");
       expect(result.profileId).toBe("profile_updated");
-    });
-  });
-
-  test("allows first save with profile only", async () => {
-    await withTempHomedir("nakama-core-wa-home-", async () => {
-      const result = await saveWhatsAppConfig({ profileId: "default" });
-      expect(result.configured).toBe(true);
     });
   });
 

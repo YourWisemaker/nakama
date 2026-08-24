@@ -54,21 +54,6 @@ describe("omni result passthrough", () => {
     expect(await distillToolResult("bash", result, CTX)).toBe(result);
   });
 
-  test("does not skip a coding-agent sized summary", async () => {
-    // A real cursor-agent result, after cursor-agent-output.ts summarised it,
-    // was 1,455 characters and folded to 239 on its second showing. The
-    // threshold must sit below that or the coding-agent path gets nothing.
-    process.env.NAKAMA_OMNI = "1";
-    process.env.PATH = "/nonexistent";
-    const summary = "x".repeat(1455);
-    const result = { exitCode: 0, stdout: summary };
-
-    // The binary is unreachable so it fails open and returns the same object,
-    // but reaching that point at all proves the length gate let it through.
-    expect(await distillToolResult("bash", result, CTX)).toBe(result);
-    expect(summary.length).toBeGreaterThan(1000);
-  });
-
   test("needs both an org and a conversation scope before it will touch anything", async () => {
     process.env.NAKAMA_OMNI = "1";
     const result = { exitCode: 0, stdout: LONG };

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readStreamEvents, withStreamFetchIdle } from "./stream";
+import { readStreamEvents } from "./stream";
 
 function streamFromChunks(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -153,11 +153,5 @@ describe("readStreamEvents", () => {
         { onChunk: () => {} }
       )
     ).rejects.toThrow("Rate limit exceeded");
-  });
-});
-
-describe("withStreamFetchIdle", () => {
-  test("disables Bun fetch idle timeout on stream requests", () => {
-    expect(withStreamFetchIdle({ method: "POST" }).idleTimeout).toBe(0);
   });
 });

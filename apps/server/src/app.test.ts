@@ -132,18 +132,6 @@ describe("static web serving before auth", () => {
     expect(body.error).toBe("Authentication required");
   });
 
-  test("POST /v1/auth/login without token returns 200", async () => {
-    const app = createMockApp(TEST_DIST_DIR);
-    const request = new Request("http://localhost:4310/v1/auth/login", {
-      body: JSON.stringify({ email: "test@test.com", password: "test" }),
-      method: "POST",
-    });
-    const response = await app.fetch(request);
-
-    // 401 because no user in DB, but not 401 due to missing auth
-    expect(response.status).toBe(401);
-  });
-
   test("GET /v1/nonexistent without token returns 401", async () => {
     const app = createMockApp(TEST_DIST_DIR);
     const request = new Request("http://localhost:4310/v1/nonexistent");

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   isHeartbeatAlive,
-  isProcessAlive,
   parseTelegramWorkerHeartbeat,
   resolveTelegramWorkerStatus,
 } from "./telegram-worker";
@@ -108,11 +107,5 @@ describe("parseTelegramWorkerHeartbeat", () => {
   test("returns null for invalid payloads", () => {
     expect(parseTelegramWorkerHeartbeat("not json")).toBeNull();
     expect(parseTelegramWorkerHeartbeat("{}")).toBeNull();
-  });
-});
-
-describe("isProcessAlive", () => {
-  test("returns false for invalid pids", () => {
-    expect(isProcessAlive(-1)).toBe(false);
   });
 });

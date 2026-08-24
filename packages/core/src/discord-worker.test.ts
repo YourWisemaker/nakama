@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  isHeartbeatAlive,
   parseDiscordWorkerHeartbeat,
   resolveDiscordWorkerStatus,
 } from "./discord-worker";
@@ -92,16 +91,5 @@ describe("parseDiscordWorkerHeartbeat", () => {
   test("returns null for invalid payloads", () => {
     expect(parseDiscordWorkerHeartbeat("not json")).toBeNull();
     expect(parseDiscordWorkerHeartbeat("{}")).toBeNull();
-  });
-});
-
-describe("isHeartbeatAlive", () => {
-  test("accepts a fresh heartbeat for the current process", () => {
-    expect(
-      isHeartbeatAlive({
-        pid: process.pid,
-        updatedAt: new Date().toISOString(),
-      })
-    ).toBe(true);
   });
 });

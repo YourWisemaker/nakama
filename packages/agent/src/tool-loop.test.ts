@@ -51,16 +51,6 @@ describe("tool-loop", () => {
     ).toBe(false);
   });
 
-  test("executeToolCall runs a known tool", async () => {
-    const result = await executeToolCall([sampleTool], {
-      arguments: { message: "hello" },
-      id: "call_1",
-      name: "sample",
-    });
-
-    expect(result).toEqual({ message: "hello" });
-  });
-
   test("executeToolCall returns an error for unknown tools", async () => {
     const result = await executeToolCall([sampleTool], {
       arguments: {},

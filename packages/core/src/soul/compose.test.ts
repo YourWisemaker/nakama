@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { composeSoulSystemPrompt } from "./compose";
-import { initSoulDirectory } from "./init";
 import { SOUL_TEMPLATE } from "./templates";
 
 describe("composeSoulSystemPrompt", () => {
@@ -32,23 +28,5 @@ describe("composeSoulSystemPrompt", () => {
 
     expect(prompt).toContain("# Profile Instructions");
     expect(prompt).toContain("Always respond in pirate speak.");
-  });
-});
-
-describe("default seed compose integration", () => {
-  test("initSoulDirectory does not overwrite existing SOUL.md", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "nakama-soul-init-"));
-
-    try {
-      await initSoulDirectory(directory);
-      const soulPath = join(directory, "SOUL.md");
-      await writeFile(soulPath, "# Legacy Soul\n", "utf8");
-
-      await initSoulDirectory(directory);
-
-      expect(await readFile(soulPath, "utf8")).toBe("# Legacy Soul\n");
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
   });
 });

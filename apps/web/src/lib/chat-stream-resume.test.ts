@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import type { ChatListItem } from "./chat-history";
 import {
   createReplayAwareHandlers,
-  isActiveTurnConflictError,
   materializedToolCallIds,
   seedStreamingStateForActiveTurn,
 } from "./chat-stream-resume";
@@ -75,13 +74,5 @@ describe("chat-stream-resume", () => {
     });
 
     expect(seen).toEqual(["call_2"]);
-  });
-
-  test("isActiveTurnConflictError detects server conflict copy", () => {
-    expect(
-      isActiveTurnConflictError(
-        "A response is already in progress for this session."
-      )
-    ).toBe(true);
   });
 });

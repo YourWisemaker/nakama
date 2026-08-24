@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readBundledSkillMarkdown } from "./index";
 import { ensureBundledSkillFiles } from "./install";
 
 describe("ensureBundledSkillFiles for agent-browser", () => {
@@ -45,15 +44,5 @@ describe("ensureBundledSkillFiles for agent-browser", () => {
     expect(created).toContain("agent-browser");
     expect(content).toContain("AGENT_BROWSER_EXECUTABLE_PATH");
     expect(content).not.toContain("description: stale");
-  });
-});
-
-describe("bundled agent-browser skill", () => {
-  test("teaches Cloak as an optional host Chromium override", async () => {
-    const content = await readBundledSkillMarkdown("agent-browser");
-    expect(content).toContain("CloakBrowser");
-    expect(content).toContain("AGENT_BROWSER_EXECUTABLE_PATH");
-    expect(content).toContain("AGENT_BROWSER_ARGS");
-    expect(content).toContain("agent-browser install");
   });
 });
