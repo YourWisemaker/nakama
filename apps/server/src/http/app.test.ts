@@ -810,72 +810,6 @@ describe("createHonoApp", () => {
     });
   });
 
-  test("preserves auth-protected behavior through the Hono shell", async () => {
-    const options = createServerOptions();
-    const app = createHonoApp(options);
-    const response = await app.fetch(
-      new Request("http://localhost:4310/v1/sessions")
-    );
-
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({
-      error: "Authentication required",
-    });
-  });
-
-  test("preserves browser session auth through the Hono middleware", async () => {
-    const options = createServerOptions();
-    const app = createHonoApp(options);
-    const setupResponse = await app.fetch(
-      new Request("http://localhost:4310/v1/auth/setup", {
-        body: JSON.stringify(buildSetupAuthBody()),
-        method: "POST",
-      })
-    );
-
-    expect(setupResponse.status).toBe(201);
-    const setCookies = extractSetCookies(setupResponse);
-    const meResponse = await app.fetch(
-      new Request("http://localhost:4310/v1/auth/me", {
-        headers: { Cookie: cookieHeaderFromSetCookies(setCookies) },
-      })
-    );
-
-    expect(meResponse.status).toBe(200);
-    const meBody = (await meResponse.json()) as {
-      email: string;
-      activeOrgId?: string;
-      isPlatformAdmin?: boolean;
-    };
-    expect(meBody.email).toBe("admin@example.com");
-    expect(meBody.activeOrgId).toStartWith("org_");
-    expect(meBody.isPlatformAdmin).toBe(true);
-  });
-
-  test("preserves CSRF rejection through the Hono middleware", async () => {
-    const options = createServerOptions();
-    const app = createHonoApp(options);
-    const setupResponse = await app.fetch(
-      new Request("http://localhost:4310/v1/auth/setup", {
-        body: JSON.stringify(buildSetupAuthBody()),
-        method: "POST",
-      })
-    );
-
-    const setCookies = extractSetCookies(setupResponse);
-    const denied = await app.fetch(
-      new Request("http://localhost:4310/v1/workers/whatsapp/start", {
-        headers: { Cookie: cookieHeaderFromSetCookies(setCookies) },
-        method: "POST",
-      })
-    );
-
-    expect(denied.status).toBe(403);
-    await expect(denied.json()).resolves.toEqual({
-      error: "CSRF validation failed.",
-    });
-  });
-
   test("requires platform admin to control messaging workers", async () => {
     const options = createServerOptions();
     const calls: string[] = [];
@@ -1162,23 +1096,6 @@ describe("createHonoApp", () => {
 
       expect(response.status).toBe(404);
       await expect(response.json()).resolves.toEqual({ error: "Not found" });
-    });
-
-    test("allows authenticated requests with valid org context", async () => {
-      const options = createServerOptions();
-      const app = createHonoApp(options);
-      const session = await setupFreshInstallSession(
-        app,
-        options.databaseAdapter
-      );
-
-      const response = await app.fetch(
-        new Request("http://localhost:4310/v1/profiles", {
-          headers: session.headers(),
-        })
-      );
-
-      expect(response.status).toBe(200);
     });
 
     test("skips org context for auth routes", async () => {

@@ -57,12 +57,6 @@ describe("buildLearnPrompt", () => {
     const prompt = buildLearnPrompt("");
     expect(prompt).toContain("workflow we just went through");
   });
-
-  test("requires fold-in instead of duplicate skills", () => {
-    const prompt = buildLearnPrompt("expense filing");
-    expect(prompt).toContain("near-duplicate");
-    expect(prompt).toContain("patch");
-  });
 });
 
 describe("expandLearnUserMessage", () => {

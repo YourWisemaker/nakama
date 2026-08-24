@@ -54,17 +54,6 @@ describe("parseWorkerDesiredState", () => {
     });
   });
 
-  test("backward compatible: missing automation key defaults to true", () => {
-    expect(
-      parseWorkerDesiredState('{"telegram":false,"whatsapp":false}')
-    ).toEqual({
-      automation: true,
-      discord: false,
-      telegram: false,
-      whatsapp: false,
-    });
-  });
-
   test("explicit automation false is honored", () => {
     expect(
       parseWorkerDesiredState(

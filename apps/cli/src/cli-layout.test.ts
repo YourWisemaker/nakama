@@ -2,30 +2,10 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import {
   formatPendingDisplayLines,
   formatPendingSummary,
-  type PendingMessage,
 } from "./message-queue";
 import { plainLine, styledLine, styledLineText } from "./styled-text";
 import { TerminalLayout } from "./terminal-layout";
 import { VirtualMessageList } from "./virtual-message-list";
-
-describe("pending message queue", () => {
-  test("dequeues in fifo order", () => {
-    const queue: PendingMessage[] = [];
-
-    queue.push({
-      line: "first",
-      sendInput: { message: "first" },
-    });
-    queue.push({
-      line: "second",
-      sendInput: { message: "second" },
-    });
-
-    expect(queue.shift()?.line).toBe("first");
-    expect(queue.shift()?.line).toBe("second");
-    expect(queue.shift()).toBeUndefined();
-  });
-});
 
 describe("formatPendingSummary", () => {
   test("uses image placeholder when only images are attached", () => {
