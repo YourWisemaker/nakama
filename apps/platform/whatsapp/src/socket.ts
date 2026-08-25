@@ -5,9 +5,9 @@ import {
   fetchLatestBaileysVersion,
   getContentType,
   makeWASocket,
-  useMultiFileAuthState,
   type WASocket,
 } from "@whiskeysockets/baileys";
+import { usePrivateMultiFileAuthState } from "./auth-state";
 import {
   extractInboundText,
   isPrivateWhatsAppChat,
@@ -32,7 +32,7 @@ export async function createWhatsAppSocket(
   deps: WhatsAppSocketDeps
 ): Promise<WhatsAppSocketHandle> {
   const authDir = getWhatsAppConfigDir() + "/auth";
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  const { state, saveCreds } = await usePrivateMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion();
 
   let socket: WASocket | null = null;
