@@ -1,7 +1,3 @@
-import {
-  isOpenRouterModelSlug,
-  OPENROUTER_MODEL_SLUG_PATTERN,
-} from "@nakama/core";
 import type {
   ConfigureProviderRequest,
   CreateProviderRequest,
@@ -13,6 +9,10 @@ import {
   OLLAMA_LOCAL_DEFAULT_BASE_URL,
   ollamaRequiresApiKey,
 } from "@nakama/core/ollama-provider-config";
+import {
+  isOpenRouterModelSlug,
+  OPENROUTER_MODEL_SLUG_PATTERN,
+} from "@nakama/core/openrouter-model-slug";
 import { formatConfiguredProviderLabel } from "@nakama/core/provider-label";
 import type { UserProviderName } from "@nakama/core/provider-resolution";
 
