@@ -2,6 +2,12 @@ import type { NakamaClient, RemoteChatSession } from "@nakama/client";
 import { isAttachOnlyCommand } from "@nakama/core";
 import { hasActiveAgentQuestionnaire } from "@nakama/core/agent-questionnaire";
 import {
+  clearActiveStream,
+  isAbortError,
+  registerActiveStream,
+  stopActiveStream,
+} from "@nakama/core/channel-active-stream";
+import {
   type ChannelOrgStore,
   findOrgBySelectionInput,
   formatOrgSelectionPrompt,
@@ -26,12 +32,6 @@ import type {
   TextBasedChannel,
   ThreadChannel,
 } from "discord.js";
-import {
-  clearActiveStream,
-  isAbortError,
-  registerActiveStream,
-  stopActiveStream,
-} from "./active-stream";
 import type { DiscordAuthStore } from "./auth-store";
 import {
   deliverDiscordTurnArtifactShares,

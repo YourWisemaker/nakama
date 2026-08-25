@@ -1,6 +1,6 @@
-import type { FileUIPart } from "ai";
 import type { RefObject } from "react";
 import { createContext, useContext } from "react";
+import type { FileUIPart } from "@/lib/ai-ui-types";
 
 export interface AttachmentsContext {
   add: (files: File[] | FileList) => void;

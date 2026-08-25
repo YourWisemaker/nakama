@@ -1,3 +1,7 @@
+import {
+  isOpenRouterModelSlug,
+  OPENROUTER_MODEL_SLUG_PATTERN,
+} from "@nakama/core";
 import type {
   ConfigureProviderRequest,
   CreateProviderRequest,
@@ -14,11 +18,7 @@ import type { UserProviderName } from "@nakama/core/provider-resolution";
 
 export type SelectedProvider = UserProviderName;
 
-export const OPENROUTER_MODEL_SLUG_PATTERN = /^[\w.-]+\/[\w.:-]+$/;
-
-export function isOpenRouterModelSlug(model: string): boolean {
-  return OPENROUTER_MODEL_SLUG_PATTERN.test(model.trim());
-}
+export { isOpenRouterModelSlug, OPENROUTER_MODEL_SLUG_PATTERN };
 
 export function filterModelsByProvider(
   models: ProviderModelOption[],

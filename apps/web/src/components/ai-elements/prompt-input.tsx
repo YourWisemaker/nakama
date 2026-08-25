@@ -1,8 +1,6 @@
 "use client";
 
-import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import { ArrowTurnDownIcon, Cancel01Icon, SquareIcon } from "hugeicons-react";
-import { nanoid } from "nanoid";
 import type {
   ChangeEvent,
   ClipboardEventHandler,
@@ -44,6 +42,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import type {
+  ChatStatus,
+  FileUIPart,
+  SourceDocumentUIPart,
+} from "@/lib/ai-ui-types";
+import { createClientId } from "@/lib/client-id";
 import {
   countWords,
   createPastedTextFile,
@@ -93,7 +97,7 @@ export const PromptInputProvider = ({
       const nextAttachments = await Promise.all(
         incoming.map(async (file) => ({
           filename: file.name,
-          id: nanoid(),
+          id: createClientId(),
           mediaType: file.type,
           type: "file" as const,
           url: await readFileAsDataUrl(file),
@@ -264,7 +268,7 @@ export const PromptInput = ({
         const array = Array.isArray(incoming) ? incoming : [incoming];
         setReferencedSources((prev) => [
           ...prev,
-          ...array.map((s) => ({ ...s, id: nanoid() })),
+          ...array.map((s) => ({ ...s, id: createClientId() })),
         ]);
       },
       clear: clearReferencedSources,

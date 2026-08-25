@@ -1,26 +1,28 @@
-import { createClient } from "@nakama/client";
+import { join } from "node:path";
+import { NakamaClient } from "@nakama/client";
 import { installErrorHandlers, installErrorTrackingSink } from "@nakama/core";
+import { hasActiveStreams } from "@nakama/core/channel-active-stream";
 import {
   ChannelOrgStore,
   getChannelOrgSelectionPath,
 } from "@nakama/core/channel-org";
+import { ChannelSessionStore } from "@nakama/core/channel-session-store";
 import {
   ensureServerRunning,
   stopSpawnedServer,
 } from "@nakama/core/ensure-server";
 import { loadLocalAuthToken } from "@nakama/core/local-auth";
 import { resolveWebPublicUrl } from "@nakama/core/runtime";
+import { getTelegramConfigDir } from "@nakama/core/telegram-config";
 import {
   clearTelegramWorkerHeartbeat,
   isHeartbeatAlive,
   readTelegramWorkerHeartbeat,
   writeTelegramWorkerHeartbeat,
 } from "@nakama/core/telegram-worker";
-import { hasActiveStreams } from "./active-stream";
 import { TelegramAuthStore } from "./auth-store";
 import { createBot } from "./bot";
 import { loadConfig } from "./config";
-import { SessionStore } from "./session-store";
 
 installErrorHandlers("worker:telegram");
 void installErrorTrackingSink();
@@ -63,7 +65,7 @@ try {
   const { serverUrl, spawnedChild: child } = await ensureServerRunning();
   spawnedChild = child;
 
-  const client = createClient({
+  const client = new NakamaClient({
     authToken:
       (await loadLocalAuthToken("telegram@nakama.internal")) ?? undefined,
     baseUrl: serverUrl,
@@ -89,7 +91,9 @@ try {
     process.exit(1);
   }
 
-  const sessionStore = new SessionStore();
+  const sessionStore = new ChannelSessionStore(
+    join(getTelegramConfigDir(), "chat-sessions.json")
+  );
   await sessionStore.load();
 
   const orgStore = new ChannelOrgStore(getChannelOrgSelectionPath("telegram"));

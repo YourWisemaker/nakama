@@ -1,15 +1,7 @@
 import type { AutomationDefinition, StoredAutomation } from "@nakama/core";
 import type { DatabaseAdapter, StoredAutomationRecord } from "./types";
 
-export interface AutomationStore {
-  delete(id: string): Promise<boolean>;
-  get(id: string): Promise<StoredAutomation | null>;
-  list(): Promise<StoredAutomation[]>;
-  listForOrg(orgId: string): Promise<StoredAutomation[]>;
-  save(definition: StoredAutomation): Promise<void>;
-}
-
-export class DatabaseAutomationStore implements AutomationStore {
+export class DatabaseAutomationStore {
   constructor(private readonly db: DatabaseAdapter) {}
 
   async list(): Promise<StoredAutomation[]> {

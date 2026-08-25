@@ -1,4 +1,4 @@
-import { createClient } from "@nakama/client";
+import { NakamaClient } from "@nakama/client";
 import {
   clearAutomationWorkerHeartbeat,
   writeAutomationWorkerHeartbeat,
@@ -29,7 +29,7 @@ try {
   const { serverUrl, spawnedChild: child } = await ensureServerRunning();
   spawnedChild = child;
 
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: await loadLocalAuthToken(),
     baseUrl: serverUrl,
   });

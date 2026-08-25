@@ -1,10 +1,6 @@
 import { lookup as dnsLookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import rehypeParse from "rehype-parse";
-import rehypeRemark from "rehype-remark";
-import remarkGfm from "remark-gfm";
-import remarkStringify from "remark-stringify";
-import { unified } from "unified";
+import { NodeHtmlMarkdown } from "node-html-markdown";
 import { z } from "zod";
 import type { JsonSchema, ToolDefinition } from "../contract";
 import { withDisabledFetchIdle } from "../fetch-idle";
@@ -334,16 +330,10 @@ export async function convertHtmlToMarkdown(html: string): Promise<string> {
   // Strip whole comments before parsing: Word's conditional comments
   // (`<!--[if gte mso 9]>…<![endif]-->`) otherwise survive as visible text.
   const cleanedHtml = html.replace(/<!--[\s\S]*?-->/g, "");
-  const markdown = String(
-    await unified()
-      .use(rehypeParse, { fragment: true })
-      .use(rehypeRemark)
-      // Without GFM, remark-stringify throws on `table` nodes ("Cannot handle unknown
-      // node `table`"), so any page or document containing a table fails to convert.
-      .use(remarkGfm)
-      .use(remarkStringify, { bullet: "-", fences: true })
-      .process(cleanedHtml)
-  );
+  const markdown = NodeHtmlMarkdown.translate(cleanedHtml, {
+    bulletMarker: "-",
+    codeBlockStyle: "fenced",
+  });
   return removeCommentNoise(markdown)
     .replace(/\n{3,}/g, "\n\n")
     .trim();

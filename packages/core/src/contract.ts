@@ -702,7 +702,6 @@ export interface SkillProposalResponse {
 
 export type SkillSuggestionStatus = "pending" | "applied";
 export type SkillSuggestionAction = "create" | "patch";
-export type SkillSuggestionSource = "post_turn_review";
 
 export interface SkillSuggestion {
   action: SkillSuggestionAction;
@@ -717,7 +716,7 @@ export interface SkillSuggestion {
   proposedByUserId: string | null;
   sessionId: string | null;
   skillName: string;
-  source: SkillSuggestionSource;
+  source: "post_turn_review";
   status: SkillSuggestionStatus;
   warnings?: string[];
 }

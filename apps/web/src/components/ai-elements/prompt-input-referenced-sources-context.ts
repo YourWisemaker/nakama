@@ -1,5 +1,5 @@
-import type { SourceDocumentUIPart } from "ai";
 import { createContext } from "react";
+import type { SourceDocumentUIPart } from "@/lib/ai-ui-types";
 
 export interface ReferencedSourcesContext {
   add: (sources: SourceDocumentUIPart[] | SourceDocumentUIPart) => void;

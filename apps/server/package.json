@@ -19,8 +19,6 @@
     "@nakama/core": "workspace:*",
     "@nakama/db": "workspace:*",
     "@openrouter/sdk": "^0.12.79",
-    "bcryptjs": "^3.0.3",
-    "croner": "^10.0.1",
     "fflate": "^0.8.3",
     "fix-path": "^5.0.0",
     "hono": "^4.12.25",

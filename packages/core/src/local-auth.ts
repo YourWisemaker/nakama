@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { nanoid } from "nanoid";
 import { readTextOrNull, writeTextFile } from "./fs";
+import { nanoid } from "./ids";
 import {
   getUserConfigDir,
   loadUserConfig,

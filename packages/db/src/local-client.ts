@@ -2,11 +2,17 @@ import {
   LOCAL_CLIENT_EMAIL,
   LOCAL_CLIENT_USER_ID,
 } from "@nakama/core/local-auth";
-import bcrypt from "bcryptjs";
 import type { DatabaseAdapter } from "./types";
 
 const SALT_ROUNDS = 10;
 const PLACEHOLDER_HASH = "unused";
+
+async function hashPassword(password: string): Promise<string> {
+  return Bun.password.hash(password, {
+    algorithm: "bcrypt",
+    cost: SALT_ROUNDS,
+  });
+}
 
 export async function ensureLocalClientAccess(
   db: DatabaseAdapter
@@ -23,14 +29,14 @@ export async function ensureLocalClientAccess(
       createdAt: now,
       email: LOCAL_CLIENT_EMAIL,
       id: LOCAL_CLIENT_USER_ID,
-      passwordHash: await bcrypt.hash(generateRandomPassword(), SALT_ROUNDS),
+      passwordHash: await hashPassword(generateRandomPassword()),
       updatedAt: now,
     });
     user = await db.getUserByEmail(LOCAL_CLIENT_EMAIL);
   } else if (user.passwordHash === PLACEHOLDER_HASH) {
     await db.updateUserPassword(
       user.id,
-      await bcrypt.hash(generateRandomPassword(), SALT_ROUNDS),
+      await hashPassword(generateRandomPassword()),
       now
     );
   }

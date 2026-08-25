@@ -3,6 +3,7 @@ import {
   type CustomModelEntry,
   findCustomModel,
   isDiscoveryModelProvider,
+  isOpenRouterModelSlug,
   validateCustomModels,
 } from "@nakama/core";
 import type { ProviderModelOption as ContractProviderModelOption } from "@nakama/core/contract";
@@ -13,6 +14,8 @@ import {
   resolveOllamaDefaultModel,
   resolveOpenRouterDefaultModel,
 } from "./compatible-models";
+
+export { isOpenRouterModelSlug } from "@nakama/core";
 
 export type ProviderModelOption = ContractProviderModelOption & {
   contextWindow: number;
@@ -425,12 +428,6 @@ export const AVAILABLE_MODELS: ProviderModelOption[] = withVisionDefaults([
     supportsVision: false,
   },
 ]);
-
-const OPENROUTER_MODEL_SLUG_PATTERN = /^[\w.-]+\/[\w.:-]+$/;
-
-export function isOpenRouterModelSlug(model: string): boolean {
-  return OPENROUTER_MODEL_SLUG_PATTERN.test(model.trim());
-}
 
 export function validateOpenRouterCustomModels(
   entries: unknown

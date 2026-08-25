@@ -1,7 +1,7 @@
 import type { StreamHandlers } from "@nakama/client";
-import { nanoid } from "nanoid";
 import type { ChatListItem } from "@/lib/chat-history";
 import { client } from "@/lib/client";
+import { createClientId } from "@/lib/client-id";
 
 export function materializedToolCallIds(messages: ChatListItem[]): Set<string> {
   const ids = new Set<string>();
@@ -42,7 +42,7 @@ export function seedStreamingStateForActiveTurn(
     ...messages,
     {
       content: "",
-      id: nanoid(),
+      id: createClientId(),
       role: "assistant",
       streaming: true,
     },
