@@ -124,11 +124,3 @@ export function columnIndexToLetter(index: number): string {
 
   return result;
 }
-
-export function isSpreadsheetNumericCell(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return false;
-  }
-  return /^-?\d[\d,]*(\.\d+)?%?$/.test(trimmed);
-}

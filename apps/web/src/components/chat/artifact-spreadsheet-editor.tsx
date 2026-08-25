@@ -4,17 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
   columnIndexToLetter,
-  isSpreadsheetNumericCell,
   normalizeSpreadsheetShape,
   parseSpreadsheetText,
   type SpreadsheetRows,
   serializeSpreadsheetText,
 } from "@/lib/artifact-spreadsheet";
 import { cn } from "@/lib/utils";
+import { isSpreadsheetNumericCell } from "./spreadsheet-numeric";
 
 const GRID_LINE = "border-[#e0e0e0] dark:border-[#3c4043]";
 const GUTTER_BG = "bg-[#f8f9fa] dark:bg-[#2d2e30]";
-const HEADER_ROW_BG = "bg-[#f8f9fa] dark:bg-[#292a2d]";
+const GUTTER_ACTIVE =
+  "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#394457] dark:text-[#8ab4f8]";
 const SELECTION_RING =
   "ring-2 ring-inset ring-[#1a73e8] dark:ring-[#8ab4f8] z-[1]";
 
@@ -51,8 +52,7 @@ export function SpreadsheetGrid({
                   "sticky top-0 z-20 h-6 min-w-[6.5rem] border-r border-b px-1 text-center font-normal text-[#5f6368] text-[11px] dark:text-[#9aa0a6]",
                   GRID_LINE,
                   GUTTER_BG,
-                  selected?.col === columnIndex &&
-                    "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#394457] dark:text-[#8ab4f8]"
+                  selected?.col === columnIndex && GUTTER_ACTIVE
                 )}
                 key={`col-${columnIndex}`}
                 scope="col"
@@ -75,8 +75,7 @@ export function SpreadsheetGrid({
                     "sticky left-0 z-20 h-7 w-10 min-w-10 border-r border-b p-0 text-center font-normal text-[#5f6368] text-[11px] tabular-nums dark:text-[#9aa0a6]",
                     GRID_LINE,
                     GUTTER_BG,
-                    rowSelected &&
-                      "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#394457] dark:text-[#8ab4f8]"
+                    rowSelected && GUTTER_ACTIVE
                   )}
                   scope="row"
                 >
@@ -96,13 +95,18 @@ export function SpreadsheetGrid({
                     selected?.row === rowIndex && selected.col === columnIndex;
                   const numeric =
                     !isHeaderRow && isSpreadsheetNumericCell(cell);
+                  const alignClass = isHeaderRow
+                    ? "justify-center text-center font-semibold"
+                    : numeric
+                      ? "justify-end text-right tabular-nums"
+                      : "justify-start text-left";
 
                   return (
                     <td
                       className={cn(
                         "relative h-7 min-w-[6.5rem] border-r border-b p-0 align-middle",
                         GRID_LINE,
-                        isHeaderRow && HEADER_ROW_BG,
+                        isHeaderRow && GUTTER_BG,
                         isSelected && SELECTION_RING
                       )}
                       key={`cell-${rowIndex}-${columnIndex}`}
@@ -112,11 +116,7 @@ export function SpreadsheetGrid({
                           aria-label={cellLabel}
                           className={cn(
                             "h-7 w-full min-w-[6.5rem] bg-transparent px-1.5 text-foreground outline-none",
-                            isHeaderRow
-                              ? "text-center font-semibold"
-                              : numeric
-                                ? "text-right tabular-nums"
-                                : "text-left"
+                            alignClass
                           )}
                           onChange={(event) =>
                             onChangeCell?.(
@@ -134,12 +134,8 @@ export function SpreadsheetGrid({
                         <button
                           aria-label={cellLabel}
                           className={cn(
-                            "flex h-7 w-full min-w-[6.5rem] items-center overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-1.5 text-left text-foreground outline-none",
-                            isHeaderRow
-                              ? "justify-center font-semibold"
-                              : numeric
-                                ? "justify-end tabular-nums"
-                                : "justify-start"
+                            "flex h-7 w-full min-w-[6.5rem] items-center overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-1.5 text-foreground outline-none",
+                            alignClass
                           )}
                           onClick={() =>
                             setSelected({ col: columnIndex, row: rowIndex })

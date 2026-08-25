@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   columnIndexToLetter,
-  isSpreadsheetNumericCell,
   parseSpreadsheetText,
   serializeSpreadsheetText,
 } from "./artifact-spreadsheet";
@@ -44,15 +43,5 @@ describe("artifact spreadsheet", () => {
     expect(columnIndexToLetter(25)).toBe("Z");
     expect(columnIndexToLetter(26)).toBe("AA");
     expect(columnIndexToLetter(27)).toBe("AB");
-  });
-
-  test("detects numeric spreadsheet cells", () => {
-    expect(isSpreadsheetNumericCell("14")).toBe(true);
-    expect(isSpreadsheetNumericCell("-3.5")).toBe(true);
-    expect(isSpreadsheetNumericCell("1,234.5")).toBe(true);
-    expect(isSpreadsheetNumericCell("12%")).toBe(true);
-    expect(isSpreadsheetNumericCell("20-08-2026")).toBe(false);
-    expect(isSpreadsheetNumericCell("optimasi")).toBe(false);
-    expect(isSpreadsheetNumericCell("")).toBe(false);
   });
 });
