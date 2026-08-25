@@ -42,13 +42,15 @@ export function OllamaProviderModelFields({
       }
       modelsError={modelsError}
       onCustomModelsChange={onCustomModelsChange}
-      renderBrowse={(onSelect) => (
+      renderBrowse={({ multiSelect, onAddMany, onSelect }) => (
         <RemoteModelsBrowseList
           apiKey={apiKey}
           baseUrl={baseUrl}
           browseLabel="Ollama"
           className="h-72 rounded-md border border-border"
           hostMode={hostMode}
+          multiSelect={multiSelect}
+          onAddMany={onAddMany}
           onSelect={onSelect}
           provider="ollama"
         />

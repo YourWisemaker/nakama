@@ -121,7 +121,7 @@ export function CustomProviderFields({
           fieldId="provider-models"
           modelsError={modelsError}
           onCustomModelsChange={onCustomModelsChange}
-          renderBrowse={(onSelect) =>
+          renderBrowse={({ multiSelect, onAddMany, onSelect }) =>
             browseSource === "remote" ? (
               <RemoteModelsBrowseList
                 apiKey={apiKey}
@@ -129,6 +129,8 @@ export function CustomProviderFields({
                 browseLabel={resolvedBrowseLabel}
                 className="h-72 rounded-md border border-border"
                 hostMode={hostMode}
+                multiSelect={multiSelect}
+                onAddMany={onAddMany}
                 onSelect={onSelect}
                 provider={remoteProvider}
                 providerId={providerInstanceId}

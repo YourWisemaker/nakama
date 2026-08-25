@@ -16,7 +16,11 @@ interface BrowsableModelFieldsProps<T> {
   footerHint?: ReactNode;
   modelsError?: string | null;
   onCustomModelsChange: (models: ModelListRow[]) => void;
-  renderBrowse: (onSelect: (row: T) => void) => ReactNode;
+  renderBrowse: (context: {
+    multiSelect: boolean;
+    onAddMany: (rows: T[]) => void;
+    onSelect: (row: T) => void;
+  }) => ReactNode;
   showPricing?: boolean;
   showThinking?: boolean;
   showVision?: boolean;
@@ -55,6 +59,24 @@ export function BrowsableModelFields<T>({
     setIsBrowsing(false);
   };
 
+  const handleAddMany = (rows: T[]) => {
+    const existingIds = new Set(customModels.map((model) => model.id));
+    const nextModels: ModelListRow[] = [];
+    for (const row of rows) {
+      const model = toModelRow(row);
+      if (existingIds.has(model.id)) {
+        continue;
+      }
+
+      existingIds.add(model.id);
+      nextModels.push(model);
+    }
+
+    if (nextModels.length > 0) {
+      onCustomModelsChange([...customModels, ...nextModels]);
+    }
+  };
+
   return (
     <FormField
       density={density}
@@ -72,7 +94,11 @@ export function BrowsableModelFields<T>({
     >
       {showBrowse ? (
         <div className="space-y-2">
-          {renderBrowse(handleBrowseSelect)}
+          {renderBrowse({
+            multiSelect: true,
+            onAddMany: handleAddMany,
+            onSelect: handleBrowseSelect,
+          })}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button
               disabled={disabled}

@@ -19,6 +19,8 @@ interface RemoteModelsBrowseListProps {
   browseLabel?: string;
   className?: string;
   hostMode?: "local" | "cloud";
+  multiSelect?: boolean;
+  onAddMany?: (rows: RemoteModelRow[]) => void;
   onSelect: RemoteBrowseSelectHandler;
   provider?: "ollama" | "openai_compatible";
   providerId?: string;
@@ -33,6 +35,8 @@ export function RemoteModelsBrowseList({
   provider,
   hostMode,
   browseLabel = "endpoint",
+  multiSelect,
+  onAddMany,
 }: RemoteModelsBrowseListProps) {
   const trimmedBaseUrl = baseUrl?.trim() ?? "";
   const canFetch = Boolean(providerId?.trim() || trimmedBaseUrl);
@@ -82,6 +86,8 @@ export function RemoteModelsBrowseList({
       className={className}
       emptyMessage={`No models found on this ${browseLabel}.`}
       idleMessage="Enter a base URL before browsing models."
+      multiSelect={multiSelect}
+      onAddMany={onAddMany}
       onSelect={onSelect}
       query={{
         canFetch,

@@ -32,6 +32,7 @@ export function ModelBrowseShell({
   error,
   isEmpty,
   emptyMessage = "No models found",
+  footer,
   children,
 }: {
   className?: string;
@@ -41,6 +42,7 @@ export function ModelBrowseShell({
   error: unknown;
   isEmpty: boolean;
   emptyMessage?: string;
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -70,6 +72,7 @@ export function ModelBrowseShell({
           children
         )}
       </div>
+      {footer}
     </div>
   );
 }
@@ -155,19 +158,35 @@ const BADGE_TONES: Record<BrowseModelBadgeTone, string> = {
 export function BrowseModelRowButton({
   row,
   onSelect,
+  selectable = false,
+  selected = false,
   style,
 }: {
   row: BrowseModelRowDisplay;
   onSelect: () => void;
+  selectable?: boolean;
+  selected?: boolean;
   style: CSSProperties;
 }) {
   return (
     <button
+      aria-pressed={selectable ? selected : undefined}
       className="absolute top-0 left-0 flex w-full cursor-pointer items-start gap-2.5 border-border border-b px-3 py-2 text-left transition-colors hover:bg-muted"
       onClick={onSelect}
       style={style}
       type="button"
     >
+      {selectable ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border border-input font-bold text-2xs",
+            selected && "border-emerald-500 bg-emerald-500 text-white"
+          )}
+        >
+          {selected ? "✓" : null}
+        </span>
+      ) : null}
       <div className="min-w-0 flex-1">
         <div className="truncate font-medium text-foreground text-sm leading-tight">
           {row.name}
