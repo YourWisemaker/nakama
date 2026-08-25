@@ -460,6 +460,59 @@ describe("profile service createProfile", () => {
   });
 });
 
+describe("profile service updateProfile", () => {
+  let tempConfigDir = "";
+
+  afterEach(async () => {
+    process.env.NAKAMA_CONFIG_DIR = originalConfigDir;
+
+    if (tempConfigDir) {
+      await rm(tempConfigDir, { force: true, recursive: true });
+      tempConfigDir = "";
+    }
+  });
+
+  test("updates provided soul files without clearing omitted ones", async () => {
+    tempConfigDir = await mkdtemp(
+      path.join(os.tmpdir(), "nakama-profile-update-soul-")
+    );
+    process.env.NAKAMA_CONFIG_DIR = tempConfigDir;
+
+    const service = new ProfileService(createInMemoryDatabaseAdapter());
+    const created = await service.createProfile(ORG_ID, {
+      name: "Support Bot",
+      soulFiles: {
+        "INSTRUCTIONS.md": "# Instructions\n\nEscalate billing risks.",
+        "SOUL.md": "# Support Bot\n\nHelps customers.",
+        "STYLE.md": "# Style\n\nClear and kind.",
+      },
+    });
+    const soulDir = path.join(
+      tempConfigDir,
+      "orgs",
+      ORG_ID,
+      "profiles",
+      created.profile.id
+    );
+
+    await service.updateProfile(ORG_ID, created.profile.id, {
+      soulFiles: {
+        "SOUL.md": "# Support Bot\n\nHelps customers with refunds.",
+      },
+    });
+
+    await expect(
+      readFile(path.join(soulDir, "SOUL.md"), "utf8")
+    ).resolves.toContain("Helps customers with refunds");
+    await expect(
+      readFile(path.join(soulDir, "STYLE.md"), "utf8")
+    ).resolves.toContain("Clear and kind");
+    await expect(
+      readFile(path.join(soulDir, "INSTRUCTIONS.md"), "utf8")
+    ).resolves.toContain("Escalate billing risks");
+  });
+});
+
 describe("profile service assignSkill", () => {
   let tempConfigDir = "";
   const originalPath = process.env.PATH ?? "";

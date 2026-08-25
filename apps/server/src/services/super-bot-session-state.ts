@@ -81,4 +81,4 @@ export const PROFILE_CREATE_CONFIRMATION_MESSAGE =
   "Wait for the user to confirm the draft in a later message before calling create_profile.";
 
 export const PROFILE_UPDATE_CONFIRMATION_MESSAGE =
-  "Wait for the user to confirm the new system prompt in a later message before calling update_profile.";
+  "Wait for the user to confirm the draft in a later message before calling update_profile.";

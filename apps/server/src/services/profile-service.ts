@@ -328,6 +328,8 @@ export class ProfileService {
     const profile = await this.requireProfile(orgId, profileId);
     const now = new Date().toISOString();
 
+    validateGeneratedSoulFiles(request.soulFiles);
+
     await this.db.upsertProfile({
       ...profile,
       model: request.model === undefined ? profile.model : request.model,
@@ -347,6 +349,11 @@ export class ProfileService {
       systemPrompt: request.systemPrompt?.trim() ?? profile.systemPrompt,
       updatedAt: now,
     });
+
+    await writeUpdatedSoulFiles(
+      getProfileSoulDir(orgId, profileId),
+      request.soulFiles
+    );
 
     return this.getProfile(orgId, profileId);
   }
@@ -903,7 +910,27 @@ async function writeGeneratedSoulFiles(
     "MEMORY.md": soulFiles["MEMORY.md"] ?? "",
   };
 
-  for (const [fileName, content] of Object.entries(files)) {
+  await writeSoulFileEntries(soulDir, files);
+}
+
+async function writeUpdatedSoulFiles(
+  soulDir: string,
+  soulFiles: UpdateProfileRequest["soulFiles"] | undefined
+): Promise<void> {
+  if (soulFiles === undefined) {
+    return;
+  }
+
+  await writeSoulFileEntries(soulDir, soulFiles);
+}
+
+async function writeSoulFileEntries(
+  soulDir: string,
+  soulFiles: NonNullable<
+    CreateProfileRequest["soulFiles"] | UpdateProfileRequest["soulFiles"]
+  >
+): Promise<void> {
+  for (const [fileName, content] of Object.entries(soulFiles)) {
     if (content === undefined) {
       continue;
     }
@@ -921,7 +948,10 @@ async function writeGeneratedSoulFiles(
 }
 
 function validateGeneratedSoulFiles(
-  soulFiles: CreateProfileRequest["soulFiles"] | undefined
+  soulFiles:
+    | CreateProfileRequest["soulFiles"]
+    | UpdateProfileRequest["soulFiles"]
+    | undefined
 ): void {
   if (soulFiles === undefined) {
     return;

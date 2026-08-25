@@ -695,6 +695,75 @@ describe("super bot update_profile", () => {
     expect(captured[0]?.systemPrompt).toBe("");
   });
 
+  test("updates soul files after confirmation", async () => {
+    const captured: UpdateProfileRequest[] = [];
+    const updateProfile = getUpdateProfileTool({
+      async updateProfile(
+        _orgId: string,
+        _profileId: string,
+        request: UpdateProfileRequest
+      ): Promise<ProfileResponse> {
+        captured.push(request);
+        return {
+          profile: {
+            createdAt: "2026-01-01T00:00:00.000Z",
+            hasAvatar: false,
+            id: "support-bot",
+            isSuper: false,
+            mcpServerCount: 0,
+            mcpServers: [],
+            model: null,
+            name: "Support Bot",
+            skills: [],
+            soulActive: true,
+            systemPrompt: "You are support.",
+            toolCount: 0,
+            tools: [],
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        };
+      },
+    });
+
+    await updateProfile.run(
+      {
+        profileId: "support-bot",
+        soulFiles: {
+          "SOUL.md": "# Support Bot\n\nCalm and clear.",
+          "STYLE.md": "# Style\n\nBrief.",
+        },
+      },
+      { orgId: ORG_ID, sessionId: SESSION_ID }
+    );
+
+    expect(captured[0]).toEqual({
+      soulFiles: {
+        "SOUL.md": "# Support Bot\n\nCalm and clear.",
+        "STYLE.md": "# Style\n\nBrief.",
+      },
+    });
+  });
+
+  test("rejects update_profile with neither systemPrompt nor soulFiles", async () => {
+    let updateProfileCalled = false;
+    const updateProfile = getUpdateProfileTool({
+      async updateProfile(): Promise<ProfileResponse> {
+        updateProfileCalled = true;
+        throw new Error("should not be called");
+      },
+    });
+
+    const error = await captureError(
+      updateProfile.run(
+        { profileId: "support-bot" },
+        { orgId: ORG_ID, sessionId: SESSION_ID }
+      )
+    );
+
+    expect(error?.message).toBe("Provide systemPrompt and/or soulFiles.");
+    expect(updateProfileCalled).toBe(false);
+  });
+
   test("rejects a missing profileId", async () => {
     let updateProfileCalled = false;
     const updateProfile = getUpdateProfileTool({

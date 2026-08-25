@@ -1,8 +1,11 @@
 import {
   type CreateProfileRequest,
   emptyObjectSchema,
+  getProfileSoulDir,
+  loadSoulStack,
   type ToolContext,
   type ToolDefinition,
+  type UpdateProfileRequest,
 } from "@nakama/core";
 import {
   CUSTOM_TOOL_HANDLERS,
@@ -24,6 +27,26 @@ const SUPPORTED_SOUL_FILE_NAMES = [
   "MEMORY.md",
 ] as const;
 type SupportedSoulFileName = (typeof SUPPORTED_SOUL_FILE_NAMES)[number];
+
+const SOUL_STACK_KEY_TO_FILE_NAME = {
+  instructions: "INSTRUCTIONS.md",
+  memory: "MEMORY.md",
+  soul: "SOUL.md",
+  style: "STYLE.md",
+} as const;
+
+const soulFilesParameterSchema = {
+  additionalProperties: false,
+  description:
+    "Soul file contents. Supported keys: SOUL.md, STYLE.md, INSTRUCTIONS.md, MEMORY.md. Only provided keys are written.",
+  properties: {
+    "INSTRUCTIONS.md": { type: "string" },
+    "MEMORY.md": { type: "string" },
+    "SOUL.md": { type: "string" },
+    "STYLE.md": { type: "string" },
+  },
+  type: "object",
+} as const;
 
 function requireOrgId(context: ToolContext): string {
   const orgId = context.orgId?.trim();
@@ -50,7 +73,8 @@ export function createSuperBotTools(
       },
     },
     {
-      description: "Get a bot profile by id, including assigned tools.",
+      description:
+        "Get a bot profile by id, including assigned tools and current soul file contents.",
       name: "get_profile",
       parameters: {
         additionalProperties: false,
@@ -61,13 +85,27 @@ export function createSuperBotTools(
         type: "object",
       },
       async run(input, context: ToolContext) {
+        const orgId = requireOrgId(context);
         const profileId = readString(input, "profileId");
 
         if (!profileId) {
           throw new Error("profileId is required.");
         }
 
-        return profileService.getProfile(requireOrgId(context), profileId);
+        const response = await profileService.getProfile(orgId, profileId);
+        const stack = await loadSoulStack(getProfileSoulDir(orgId, profileId));
+        const soulFiles: Partial<Record<SupportedSoulFileName, string>> = {};
+
+        for (const [key, fileName] of Object.entries(
+          SOUL_STACK_KEY_TO_FILE_NAME
+        )) {
+          const content = stack.files[key as keyof typeof stack.files];
+          if (typeof content === "string") {
+            soulFiles[fileName as SupportedSoulFileName] = content;
+          }
+        }
+
+        return { ...response, soulFiles };
       },
     },
     {
@@ -89,16 +127,9 @@ export function createSuperBotTools(
             type: "string",
           },
           soulFiles: {
-            additionalProperties: false,
+            ...soulFilesParameterSchema,
             description:
               "Optional generated soul file contents for the new profile. Supported keys: SOUL.md, STYLE.md, INSTRUCTIONS.md, MEMORY.md.",
-            properties: {
-              "INSTRUCTIONS.md": { type: "string" },
-              "MEMORY.md": { type: "string" },
-              "SOUL.md": { type: "string" },
-              "STYLE.md": { type: "string" },
-            },
-            type: "object",
           },
           systemPrompt: {
             description: "System prompt for the bot.",
@@ -130,7 +161,7 @@ export function createSuperBotTools(
     },
     {
       description:
-        "Update a profile's stored system prompt. Draft the new prompt in chat, wait for explicit user confirmation, then call this. Use get_profile first when you need the current prompt.",
+        "Update a profile's stored system prompt and/or soul files. Draft changes in chat, wait for explicit user confirmation, then call this. Use get_profile first when you need the current prompt or soul files.",
       name: "update_profile",
       parameters: {
         additionalProperties: false,
@@ -139,34 +170,46 @@ export function createSuperBotTools(
             description: "Profile id to update.",
             type: "string",
           },
+          soulFiles: soulFilesParameterSchema,
           systemPrompt: {
             description:
-              "Replacement system prompt stored on the profile. Pass an empty string to clear it.",
+              "Replacement system prompt stored on the profile. Pass an empty string to clear it. Omit to leave unchanged.",
             type: "string",
           },
         },
-        required: ["profileId", "systemPrompt"],
+        required: ["profileId"],
         type: "object",
       },
       async run(input, context: ToolContext) {
         const profileId = readString(input, "profileId");
         const systemPrompt = readStringAllowEmpty(input, "systemPrompt");
+        const soulFiles = readSoulFiles(input);
 
         if (!profileId) {
           throw new Error("profileId is required.");
         }
 
-        if (systemPrompt === null) {
-          throw new Error("systemPrompt is required.");
+        if (systemPrompt === null && soulFiles === undefined) {
+          throw new Error("Provide systemPrompt and/or soulFiles.");
         }
 
         if (!sessionState.canCreateProfile(context.sessionId)) {
           throw new Error(PROFILE_UPDATE_CONFIRMATION_MESSAGE);
         }
 
-        return profileService.updateProfile(requireOrgId(context), profileId, {
-          systemPrompt,
-        });
+        const request: UpdateProfileRequest = {};
+        if (systemPrompt !== null) {
+          request.systemPrompt = systemPrompt;
+        }
+        if (soulFiles !== undefined) {
+          request.soulFiles = soulFiles;
+        }
+
+        return profileService.updateProfile(
+          requireOrgId(context),
+          profileId,
+          request
+        );
       },
     },
     {
@@ -330,7 +373,10 @@ function readObject(input: unknown, key: string): unknown {
 
 function readSoulFiles(
   input: unknown
-): CreateProfileRequest["soulFiles"] | undefined {
+):
+  | CreateProfileRequest["soulFiles"]
+  | UpdateProfileRequest["soulFiles"]
+  | undefined {
   const raw = readObject(input, "soulFiles");
 
   if (raw === undefined) {
