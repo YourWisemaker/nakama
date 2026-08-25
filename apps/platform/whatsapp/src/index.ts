@@ -1,4 +1,5 @@
 import { createClient } from "@nakama/client";
+import { installErrorHandlers, installErrorTrackingSink } from "@nakama/core";
 import {
   ChannelOrgStore,
   getChannelOrgSelectionPath,
@@ -23,6 +24,9 @@ import { loadConfig } from "./config";
 import { startWhatsAppOutboundServer } from "./outbound-server";
 import { SessionStore } from "./session-store";
 import { createWhatsAppSocket } from "./socket";
+
+installErrorHandlers("worker:whatsapp");
+void installErrorTrackingSink();
 
 let spawnedChild: Bun.Subprocess | null = null;
 let socketHandle: {

@@ -1,9 +1,26 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  flushPendingErrorReports,
+  installErrorHandlers,
+  installErrorTrackingSink,
+} from "@nakama/core";
 import type { Server } from "bun";
 import { ensureProcessPath } from "./lib/ensure-process-path";
 
 ensureProcessPath();
+// Position is cosmetic: ESM evaluates every import above before this line runs, so a throw
+// inside @nakama/db or @nakama/agent module init is already past. Everything after is covered.
+installErrorHandlers("server");
+
+/**
+ * Only the server drains the queue. Four processes share one config dir, and the
+ * queue is a read-modify-write on a single file, so draining from all of them would
+ * race. The workers are spawned by the server, so it is the one that is always up.
+ * ponytail: single drainer, give the queue per-process files if a worker ever runs
+ * without a server.
+ */
+void installErrorTrackingSink().then(() => flushPendingErrorReports());
 
 import { generateSkillConsolidateMarkdown } from "@nakama/agent";
 import {
