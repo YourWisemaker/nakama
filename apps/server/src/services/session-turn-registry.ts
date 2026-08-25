@@ -205,6 +205,19 @@ export class SessionTurnRegistry {
     return this.turns.has(sessionId);
   }
 
+  cancelTurn(sessionId: string): void {
+    const turn = this.turns.get(sessionId);
+    if (!turn) {
+      return;
+    }
+
+    for (const subscriber of turn.subscribers) {
+      subscriber.close();
+    }
+
+    this.turns.delete(sessionId);
+  }
+
   publish(sessionId: string, event: StreamEvent): void {
     const turn = this.turns.get(sessionId);
     if (!turn) {

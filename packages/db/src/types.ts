@@ -76,6 +76,7 @@ export interface StoredSessionRecord {
   channel: string;
   createdAt: string;
   id: string;
+  model: string | null;
   orgId?: string | null;
   profileId: string;
   title: string | null;
@@ -892,6 +893,7 @@ export interface DatabaseAdapter {
       pinned?: boolean;
     }
   ): Promise<boolean>;
+  updateSessionModel(sessionId: string, model: string | null): Promise<boolean>;
   updateSessionQuestionnaire(
     sessionId: string,
     questionnaire: AgentQuestionnaire | null

@@ -6,6 +6,7 @@ import type {
   ImageAttachment,
   SoulStackFiles,
   UpdateProfileRequest,
+  UpdateSessionRequest,
   UserContextStatusResponse,
 } from "@nakama/core/contract";
 import {
@@ -90,6 +91,30 @@ export function useUpdateProfileMutation() {
           queryKey: queryKeys.profiles.detail(variables.profileId),
         }),
       ]);
+    },
+  });
+}
+
+export function useUpdateSessionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      input,
+    }: {
+      profileId: string;
+      sessionId: string;
+      input: UpdateSessionRequest;
+      channel?: AgentChannel;
+    }) => client.updateSession(sessionId, input),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.sessions(
+          variables.profileId,
+          variables.channel ?? "web"
+        ),
+      });
     },
   });
 }

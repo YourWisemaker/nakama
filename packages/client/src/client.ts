@@ -38,6 +38,7 @@ import type {
   CreateProfileRequest,
   CreateProviderRequest,
   CreateProviderResponse,
+  CreateSessionRequest,
   CreateSessionResponse,
   CreateSkillRequest,
   CreateTaskRequest,
@@ -171,6 +172,7 @@ import type {
   UpdateProfileRequest,
   UpdateProviderRequest,
   UpdateProviderResponse,
+  UpdateSessionRequest,
   UpdateSoulFileRequest,
   UpdateTaskRequest,
   UpdateTelegramSettingsRequest,
@@ -494,10 +496,14 @@ export class NakamaClient {
 
   async createSession(
     channel: AgentChannel,
-    options: { profileId?: string } = {}
+    options: Omit<CreateSessionRequest, "channel"> = {}
   ): Promise<RemoteChatSession> {
     const response = await this.request<CreateSessionResponse>("/v1/sessions", {
-      body: JSON.stringify({ channel, profileId: options.profileId }),
+      body: JSON.stringify({
+        channel,
+        model: options.model,
+        profileId: options.profileId,
+      }),
       method: "POST",
     });
 
@@ -516,6 +522,16 @@ export class NakamaClient {
     return this.request<SessionStatusResponse>(
       `/v1/sessions/${encodeURIComponent(sessionId)}/status`
     );
+  }
+
+  async updateSession(
+    sessionId: string,
+    request: UpdateSessionRequest
+  ): Promise<void> {
+    await this.request<void>(`/v1/sessions/${encodeURIComponent(sessionId)}`, {
+      body: JSON.stringify(request),
+      method: "PATCH",
+    });
   }
 
   async subscribeSessionStream(

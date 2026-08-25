@@ -787,11 +787,16 @@ export interface ListChannelOrgMappingsResponse {
 
 export interface CreateSessionRequest {
   channel: AgentChannel;
+  model?: string;
   profileId?: string;
 }
 
 export interface CreateSessionResponse {
   sessionId: string;
+}
+
+export interface UpdateSessionRequest {
+  model: string | null;
 }
 
 export interface BranchSessionRequest {
@@ -870,6 +875,7 @@ export interface SessionMessagesResponse {
   contextUsage?: ChatContextUsage | null;
   messageMeta: SessionMessageMeta[];
   messages: ChatMessage[];
+  model: string | null;
   questionnaire: AgentQuestionnaire | null;
   todos: AgentTodo[];
 }

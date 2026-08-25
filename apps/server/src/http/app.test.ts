@@ -66,6 +66,7 @@ function createServerOptions() {
       assignTool: async (_profileId: string, _body: unknown) => ({
         id: "default",
       }),
+      beginSessionTurn: async (_sessionId: string, _orgId: string) => true,
       branchSession: async (_sessionId: string, messageIndex: number) => ({
         sessionId: `branched-${messageIndex}`,
       }),

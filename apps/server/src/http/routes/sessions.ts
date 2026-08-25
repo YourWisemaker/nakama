@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import type { AgentChatSession } from "@nakama/agent";
 import type {
   BranchSessionRequest,
   BranchSessionResponse,
@@ -11,6 +12,7 @@ import type {
   SendMessageResponse,
   SessionMessagesResponse,
   SessionStatusResponse,
+  UpdateSessionRequest,
 } from "@nakama/core";
 import { AGENT_CHANNELS } from "@nakama/core";
 import { resolveRequestClientOrigin } from "../../services/composio-callback-url";
@@ -42,6 +44,7 @@ export function registerSessionRoutes(
   const createSessionRequestSchema = z
     .object({
       channel: agentChannelSchema,
+      model: z.string().trim().min(1).optional(),
       profileId: z.string().optional(),
     })
     .openapi("CreateSessionRequest");
@@ -118,6 +121,7 @@ export function registerSessionRoutes(
       channel: agentChannelSchema,
       messageMeta: z.array(sessionMessageMetaSchema),
       messages: z.array(z.object({}).passthrough()),
+      model: z.string().nullable(),
       questionnaire: agentQuestionnaireSchema.nullable(),
       todos: z.array(agentTodoSchema),
     })
@@ -128,6 +132,9 @@ export function registerSessionRoutes(
   const branchSessionResponseSchema = z
     .object({ sessionId: z.string() })
     .openapi("BranchSessionResponse");
+  const updateSessionRequestSchema = z
+    .object({ model: z.string().trim().min(1).nullable() })
+    .openapi("UpdateSessionRequest");
   const sendMessageRequestSchema = z
     .object({
       clientOrigin: z.string().optional(),
@@ -195,6 +202,39 @@ export function registerSessionRoutes(
         },
       },
       summary: "List chat sessions",
+      tags: ["Chat"],
+    })
+  );
+  app.openAPIRegistry.registerPath(
+    createRoute({
+      method: "patch",
+      operationId: "updateSession",
+      path: "/v1/sessions/{sessionId}",
+      request: {
+        body: {
+          content: {
+            "application/json": { schema: updateSessionRequestSchema },
+          },
+          required: true,
+        },
+        params: sessionIdParamSchema,
+      },
+      responses: {
+        204: { description: "Session updated" },
+        400: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Invalid model",
+        },
+        404: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Error",
+        },
+        409: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Response in progress",
+        },
+      },
+      summary: "Update a chat session",
       tags: ["Chat"],
     })
   );
@@ -332,7 +372,13 @@ export function registerSessionRoutes(
   app.post("/v1/sessions", async (c) => {
     const auth = requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
-    const body = await readJson<CreateSessionRequest>(c.req.raw);
+    const parsedBody = createSessionRequestSchema.safeParse(
+      await readJson<unknown>(c.req.raw)
+    );
+    if (!parsedBody.success) {
+      return errorResponse("Invalid session request.", 400);
+    }
+    const body: CreateSessionRequest = parsedBody.data;
     const channel = parseChannel(body.channel);
     const sessionId = await agent.createSession(
       orgId,
@@ -342,6 +388,7 @@ export function registerSessionRoutes(
       {
         excludeSuperBot: auth.mode === "local-token" && channel !== "cli",
         isPlatformAdmin: auth.isPlatformAdmin,
+        model: body.model,
         orgRole: auth.orgRole,
       }
     );
@@ -372,6 +419,30 @@ export function registerSessionRoutes(
       : await agent.clearSession(sessionId, orgId);
 
     if (!cleared) {
+      return errorResponse("Session not found", 404);
+    }
+
+    return new Response(null, { status: 204 });
+  });
+
+  app.patch("/v1/sessions/:sessionId", async (c) => {
+    requireNotViewerFromContext(c);
+    const orgId = requireActiveOrgIdFromContext(c);
+    const sessionId = decodeURIComponent(c.req.param("sessionId"));
+    const parsedBody = updateSessionRequestSchema.safeParse(
+      await readJson<unknown>(c.req.raw)
+    );
+    if (!parsedBody.success) {
+      return errorResponse("Invalid session model.", 400);
+    }
+    const body: UpdateSessionRequest = parsedBody.data;
+    const updated = await agent.updateSessionModel(
+      sessionId,
+      orgId,
+      body.model
+    );
+
+    if (!updated) {
       return errorResponse("Session not found", 404);
     }
 
@@ -417,6 +488,7 @@ export function registerSessionRoutes(
       contextUsage: result.contextUsage,
       messageMeta: result.messageMeta,
       messages: result.messages,
+      model: result.model,
       questionnaire,
       todos,
     });
@@ -483,13 +555,33 @@ export function registerSessionRoutes(
     requireNotViewerFromContext(c);
     const orgId = requireActiveOrgIdFromContext(c);
     const sessionId = decodeURIComponent(c.req.param("sessionId"));
-    const session = await agent.resolveSession(sessionId, orgId);
 
-    if (!session) {
+    const turnStarted = await agent.beginSessionTurn(sessionId, orgId);
+    if (turnStarted === null) {
       return errorResponse("Session not found", 404);
     }
+    if (!turnStarted) {
+      return errorResponse(
+        "A response is already in progress for this session.",
+        409
+      );
+    }
 
-    const body = await readJson<SendMessageRequest>(c.req.raw);
+    let session: AgentChatSession;
+    let body: SendMessageRequest;
+    try {
+      const resolvedSession = await agent.resolveSession(sessionId, orgId);
+      if (!resolvedSession) {
+        sessionTurnRegistry.cancelTurn(sessionId);
+        return errorResponse("Session not found", 404);
+      }
+      session = resolvedSession;
+      body = await readJson<SendMessageRequest>(c.req.raw);
+    } catch (error) {
+      sessionTurnRegistry.cancelTurn(sessionId);
+      throw error;
+    }
+
     const clientOrigin = resolveRequestClientOrigin(
       c.req.raw,
       body.clientOrigin
@@ -504,15 +596,6 @@ export function registerSessionRoutes(
       body.stream === true ||
       c.req.query("stream") === "true" ||
       c.req.header("Accept")?.includes("text/event-stream");
-
-    const turn = sessionTurnRegistry.beginTurn(sessionId);
-
-    if (!turn.started) {
-      return errorResponse(
-        "A response is already in progress for this session.",
-        409
-      );
-    }
 
     if (wantsStream) {
       return streamMessage(

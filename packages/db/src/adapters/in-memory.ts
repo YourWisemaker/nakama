@@ -1314,6 +1314,17 @@ export function createInMemoryDatabaseAdapter(): DatabaseAdapter {
       return true;
     },
 
+    async updateSessionModel(sessionId, model) {
+      const session = sessions.get(sessionId);
+
+      if (!session) {
+        return false;
+      }
+
+      sessions.set(sessionId, { ...session, model });
+      return true;
+    },
+
     async updateSessionQuestionnaire(sessionId, questionnaire) {
       const session = sessions.get(sessionId);
 
