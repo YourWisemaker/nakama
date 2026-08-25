@@ -198,4 +198,51 @@ if __name__ == "__main__":
       await rm(configDir, { force: true, recursive: true });
     }
   });
+
+  test("javascript handler failures are actually retried through the seam", async () => {
+    const configDir = await mkdtemp(path.join(os.tmpdir(), "nakama-config-"));
+    process.env.NAKAMA_CONFIG_DIR = configDir;
+    const toolsDir = path.join(configDir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+
+    // In-process module counter — JS retries share the cached module.
+    await writeFile(
+      path.join(toolsDir, "flaky.js"),
+      `let attempts = 0;
+export async function run() {
+  attempts += 1;
+  if (attempts < 3) throw new Error("flaky");
+  return { ok: true, attempts };
+}
+`,
+      "utf8"
+    );
+
+    try {
+      const handler = getCustomToolHandler("javascript");
+      expect(handler).not.toBeNull();
+      const tool = await handler!.load(
+        makeRecord({
+          handlerConfig: { modulePath: "flaky.js" },
+          handlerType: "javascript",
+        })
+      );
+      expect(tool).not.toBeNull();
+
+      const result = (await tool!.run({}, {})) as {
+        ok: boolean;
+        attempts: number;
+      };
+
+      expect(result.ok).toBe(true);
+      expect(result.attempts).toBe(3);
+    } finally {
+      if (originalConfigDir === undefined) {
+        delete process.env.NAKAMA_CONFIG_DIR;
+      } else {
+        process.env.NAKAMA_CONFIG_DIR = originalConfigDir;
+      }
+      await rm(configDir, { force: true, recursive: true });
+    }
+  });
 });
