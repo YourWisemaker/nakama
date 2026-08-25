@@ -471,6 +471,32 @@ describe("schema path resolution", () => {
   });
 });
 
+describe("chat session schema", () => {
+  test("adds a model override to legacy sessions", () => {
+    const db = new Database(":memory:");
+
+    try {
+      db.exec(`
+        CREATE TABLE sessions (
+          id TEXT PRIMARY KEY NOT NULL,
+          profile_id TEXT NOT NULL,
+          channel TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+      `);
+
+      migrateDatabase(db);
+
+      const columns = db.prepare("PRAGMA table_info(sessions)").all() as Array<{
+        name: string;
+      }>;
+      expect(columns.some((column) => column.name === "model")).toBe(true);
+    } finally {
+      db.close();
+    }
+  });
+});
+
 describe("browser session schema", () => {
   test("creates browser session storage with the expected columns", () => {
     const db = new Database(":memory:");

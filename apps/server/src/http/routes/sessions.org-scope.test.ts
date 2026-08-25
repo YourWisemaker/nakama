@@ -13,7 +13,24 @@ const VICTIM_ORG = "org_victim";
 
 async function createScenario() {
   const databaseAdapter = createInMemoryDatabaseAdapter();
-  const agent = new AgentService(null, null, databaseAdapter);
+  const agent = new AgentService(
+    {
+      defaultProviderId: "provider-1",
+      providers: [
+        {
+          apiKey: "",
+          baseUrl: "https://api.example.com/v1",
+          createdAt: new Date().toISOString(),
+          customModels: [{ default: true, id: "chat-model" }],
+          id: "provider-1",
+          label: "Test provider",
+          type: "openai_compatible",
+        },
+      ],
+    },
+    null,
+    databaseAdapter
+  );
   const { app } = createMinimalHonoApp({
     agent,
     databaseAdapter,
@@ -66,6 +83,11 @@ const CROSS_ORG_ROUTES: Array<{
     method: "POST",
     path: (id) => `/v1/sessions/${id}/messages`,
   },
+  {
+    body: { model: "attacker-provider::attacker-model" },
+    method: "PATCH",
+    path: (id) => `/v1/sessions/${id}`,
+  },
   { method: "DELETE", path: (id) => `/v1/sessions/${id}?purge=true` },
   { method: "DELETE", path: (id) => `/v1/sessions/${id}` },
   { method: "POST", path: (id) => `/v1/sessions/${id}/compact` },
@@ -97,7 +119,9 @@ describe("session routes are scoped to the caller's active org", () => {
 
       expect(response.status).toBe(404);
       // The victim session must survive a cross-org delete or branch attempt.
-      expect(await databaseAdapter.getSession(victimSessionId)).not.toBeNull();
+      expect((await databaseAdapter.getSession(victimSessionId))?.model).toBe(
+        null
+      );
       expect(
         await databaseAdapter.listMessagesForSession(victimSessionId)
       ).toHaveLength(1);
@@ -125,5 +149,59 @@ describe("session routes are scoped to the caller's active org", () => {
       messages: Array<{ content: string }>;
     };
     expect(body.messages[0]?.content).toBe("victim org secret");
+  });
+
+  test("the owning org can set a chat-only model", async () => {
+    const { app, databaseAdapter, victimSessionId } = await createScenario();
+    const profileModel = (await databaseAdapter.getProfile("profile_victim"))
+      ?.model;
+    const victim = await loginUserSession(
+      app,
+      "victim@example.com",
+      PASSWORD,
+      VICTIM_ORG
+    );
+
+    const response = await app.fetch(
+      new Request(`http://localhost:4310/v1/sessions/${victimSessionId}`, {
+        body: JSON.stringify({ model: "provider-1::chat-model" }),
+        headers: victim.headers({ "X-CSRF-Token": victim.csrfToken }),
+        method: "PATCH",
+      })
+    );
+
+    expect(response.status).toBe(204);
+    expect((await databaseAdapter.getSession(victimSessionId))?.model).toBe(
+      "provider-1::chat-model"
+    );
+    expect((await databaseAdapter.getProfile("profile_victim"))?.model).toBe(
+      profileModel
+    );
+  });
+
+  test("rejects malformed and unknown chat models", async () => {
+    const { app, databaseAdapter, victimSessionId } = await createScenario();
+    const victim = await loginUserSession(
+      app,
+      "victim@example.com",
+      PASSWORD,
+      VICTIM_ORG
+    );
+
+    for (const model of [42, "provider-1::unknown-model"]) {
+      const response = await app.fetch(
+        new Request(`http://localhost:4310/v1/sessions/${victimSessionId}`, {
+          body: JSON.stringify({ model }),
+          headers: victim.headers({ "X-CSRF-Token": victim.csrfToken }),
+          method: "PATCH",
+        })
+      );
+
+      expect(response.status).toBe(400);
+    }
+
+    expect(
+      (await databaseAdapter.getSession(victimSessionId))?.model
+    ).toBeNull();
   });
 });

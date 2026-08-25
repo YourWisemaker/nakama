@@ -519,6 +519,8 @@ function ChatComposerFullFooter({
           <div className="min-w-[4.5rem] shrink overflow-hidden">
             <PromptInputSelect
               disabled={
+                busy ||
+                disabled ||
                 !props.providerModelGroups.some(
                   (group) => group.models.length > 0
                 )

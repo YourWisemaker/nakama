@@ -70,6 +70,16 @@ describe("SessionTurnRegistry", () => {
     expect(registry.getStatus("session_1")).toEqual({ active: false });
   });
 
+  test("cancelTurn releases a reservation without a terminal event", () => {
+    const registry = new SessionTurnRegistry();
+    registry.beginTurn("session_1");
+
+    registry.cancelTurn("session_1");
+
+    expect(registry.subscribe("session_1", () => {})).toBeNull();
+    expect(registry.beginTurn("session_1")).toEqual({ started: true });
+  });
+
   test("retains latest accumulatedArguments per toolCallId under buffer pressure", () => {
     const registry = new SessionTurnRegistry();
     registry.beginTurn("session_1");

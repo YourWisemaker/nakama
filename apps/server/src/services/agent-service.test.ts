@@ -10,6 +10,7 @@ import {
   WORKSPACE_SETTINGS_ID,
 } from "@nakama/db";
 import { AgentService } from "./agent-service";
+import { sessionTurnRegistry } from "./session-turn-registry";
 import { SkillsService } from "./skills-service";
 
 const ORG_ID = "org_test";
@@ -30,6 +31,104 @@ function createDefaultProfile(): StoredProfileRecord {
 }
 
 describe("AgentService branching", () => {
+  test("keeps model selection scoped to the chat session", async () => {
+    const db = createInMemoryDatabaseAdapter();
+    await db.upsertProfile({
+      ...createDefaultProfile(),
+      model: "provider-1::profile-default",
+    });
+    const service = new AgentService(
+      {
+        defaultProviderId: "provider-1",
+        providers: [
+          {
+            apiKey: "",
+            baseUrl: "https://api.example.com/v1",
+            createdAt: new Date().toISOString(),
+            customModels: [
+              { default: true, id: "profile-default" },
+              { id: "chat-model" },
+              { id: "next-chat-model" },
+            ],
+            id: "provider-1",
+            label: "Test provider",
+            type: "openai_compatible",
+          },
+        ],
+      },
+      null,
+      db
+    );
+
+    const sessionId = await service.createSession(
+      ORG_ID,
+      "web",
+      "profile_default",
+      null,
+      { model: "provider-1::chat-model" }
+    );
+
+    expect((await db.getProfile("profile_default"))?.model).toBe(
+      "provider-1::profile-default"
+    );
+    expect((await db.getSession(sessionId))?.model).toBe(
+      "provider-1::chat-model"
+    );
+    expect((await service.getSessionMessages(sessionId, ORG_ID))?.model).toBe(
+      "provider-1::chat-model"
+    );
+
+    sessionTurnRegistry.beginTurn(sessionId);
+    await expect(
+      service.updateSessionModel(
+        sessionId,
+        ORG_ID,
+        "provider-1::next-chat-model"
+      )
+    ).rejects.toThrow("Wait for the current response");
+    sessionTurnRegistry.cancelTurn(sessionId);
+    expect((await db.getSession(sessionId))?.model).toBe(
+      "provider-1::chat-model"
+    );
+
+    expect(
+      await service.updateSessionModel(
+        sessionId,
+        ORG_ID,
+        "provider-1::next-chat-model"
+      )
+    ).toBe(true);
+    expect((await db.getSession(sessionId))?.model).toBe(
+      "provider-1::next-chat-model"
+    );
+    await expect(
+      service.updateSessionModel(sessionId, ORG_ID, "provider-1::unknown")
+    ).rejects.toThrow("Select a configured model");
+    expect((await db.getSession(sessionId))?.model).toBe(
+      "provider-1::next-chat-model"
+    );
+    await db.replaceMessagesForSession(sessionId, [
+      {
+        createdAt: "2026-08-25T00:00:00.000Z",
+        id: "msg_session_model",
+        payload: { content: "Keep the chat model", role: "user" },
+        seq: 0,
+        sessionId,
+      },
+    ]);
+
+    const branch = await service.branchSession(sessionId, 0, ORG_ID);
+    expect(branch).not.toBeNull();
+    expect((await db.getSession(branch!.sessionId))?.model).toBe(
+      "provider-1::next-chat-model"
+    );
+
+    expect(await service.updateSessionModel(sessionId, ORG_ID, null)).toBe(
+      true
+    );
+    expect((await db.getSession(sessionId))?.model).toBeNull();
+  });
+
   test("branches a new session from the selected message index", async () => {
     const db = createInMemoryDatabaseAdapter();
     await db.upsertProfile(createDefaultProfile());

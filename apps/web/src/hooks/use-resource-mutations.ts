@@ -6,6 +6,7 @@ import type {
   ImageAttachment,
   SoulStackFiles,
   UpdateProfileRequest,
+  UpdateSessionRequest,
   UserContextStatusResponse,
 } from "@nakama/core/contract";
 import {
@@ -91,6 +92,18 @@ export function useUpdateProfileMutation() {
         }),
       ]);
     },
+  });
+}
+
+export function useUpdateSessionMutation() {
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      input,
+    }: {
+      sessionId: string;
+      input: UpdateSessionRequest;
+    }) => client.updateSession(sessionId, input),
   });
 }
 

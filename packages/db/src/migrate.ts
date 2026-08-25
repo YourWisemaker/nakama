@@ -1107,6 +1107,12 @@ function migrateSessionsTable(db: Database): void {
     `);
   }
 
+  if (!columnNames.has("model")) {
+    db.exec(`
+      ALTER TABLE sessions ADD COLUMN model TEXT;
+    `);
+  }
+
   if (!columnNames.has("agent_todos")) {
     db.exec(`
       ALTER TABLE sessions ADD COLUMN agent_todos TEXT DEFAULT '[]' NOT NULL;

@@ -110,7 +110,7 @@ export function ChatPageContent(state: ChatPageState) {
         }}
         onThinkingEffortChange={handleThinkingEffortChange}
         primarySupportsVision={activeModelSupportsVision}
-        profileModelId={extractModelId(activeProfile?.model)}
+        profileModelId={extractModelId(currentModelSelection)}
         providerConfigured={health?.providerConfigured}
         providerModelGroups={providerModelGroups}
         questionnaire={agentQuestionnaire}

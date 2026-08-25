@@ -263,6 +263,8 @@ import {
   buildProviderInstanceFromCreateRequest,
   countModelsForInstance,
   mergeModelsForConfig,
+  modelExistsOnInstance,
+  resolveConfiguredModelInstance,
   resolveDefaultModelForInstance,
   resolveInitialModel,
   resolveProfileProviderSelection,
@@ -291,9 +293,10 @@ interface StoredSession {
 
 export type { SubAgentRunInput, SubAgentRunResult };
 
-export interface SessionAccessOptions {
+export interface CreateSessionOptions {
   excludeSuperBot?: boolean;
   isPlatformAdmin?: boolean;
+  model?: string | null;
   orgRole?: OrgRole | null;
 }
 
@@ -1526,7 +1529,7 @@ export class AgentService {
     channel: AgentChannel,
     profileId?: string,
     userId?: string | null,
-    access?: SessionAccessOptions
+    options?: CreateSessionOptions
   ): Promise<string> {
     const resolvedProfileId = await this.resolveSessionProfile(
       orgId,
@@ -1536,10 +1539,10 @@ export class AgentService {
 
     if (
       profile.isSuper &&
-      (access?.excludeSuperBot ||
+      (options?.excludeSuperBot ||
         !canAccessSuperBotProfile({
-          isPlatformAdmin: access?.isPlatformAdmin,
-          orgRole: access?.orgRole,
+          isPlatformAdmin: options?.isPlatformAdmin,
+          orgRole: options?.orgRole,
         }))
     ) {
       throw new NakamaApiError(
@@ -1549,6 +1552,7 @@ export class AgentService {
     }
 
     const sessionId = nanoid();
+    const modelOverride = this.normalizeSessionModelOverride(options?.model);
 
     await this.db.upsertSession({
       agentQuestionnaire: null,
@@ -1556,6 +1560,7 @@ export class AgentService {
       channel,
       createdAt: new Date().toISOString(),
       id: sessionId,
+      model: modelOverride,
       profileId: resolvedProfileId,
       title: null,
       userId: userId ?? null,
@@ -1566,8 +1571,9 @@ export class AgentService {
       orgId,
       resolvedProfileId,
       sessionId,
+      modelOverride,
       userId ?? null,
-      access?.orgRole
+      options?.orgRole
     );
 
     this.sessions.set(sessionId, {
@@ -1614,6 +1620,7 @@ export class AgentService {
     messages: ChatMessage[];
     messageMeta: Array<{ id: string; seq: number; createdAt: string }>;
     contextUsage: ChatContextUsage | null;
+    model: string | null;
     profileId: string;
   } | null> {
     const record = await this.getSessionRecordForOrg(sessionId, orgId);
@@ -1646,6 +1653,7 @@ export class AgentService {
             seq: index,
           })),
           messages: [...history],
+          model: record.model,
           profileId: record.profileId,
         };
       }
@@ -1669,6 +1677,7 @@ export class AgentService {
         seq: message.seq,
       })),
       messages: storedMessages.map((message) => message.payload as ChatMessage),
+      model: record.model,
       profileId: record.profileId,
     };
   }
@@ -1706,6 +1715,7 @@ export class AgentService {
       channel: record.channel,
       createdAt: new Date().toISOString(),
       id: nextSessionId,
+      model: record.model,
       profileId: record.profileId,
       title: null,
       userId: record.userId ?? null,
@@ -1737,6 +1747,7 @@ export class AgentService {
       profileOrgId,
       record.profileId,
       nextSessionId,
+      record.model,
       record.userId ?? null,
       branchOrgRole
     );
@@ -1834,6 +1845,7 @@ export class AgentService {
       profileOrgId,
       record.profileId,
       sessionId,
+      record.model,
       record.userId ?? null,
       resumeOrgRole
     );
@@ -1845,6 +1857,58 @@ export class AgentService {
     });
 
     return session;
+  }
+
+  async updateSessionModel(
+    sessionId: string,
+    orgId: string,
+    model: string | null
+  ): Promise<boolean> {
+    const record = await this.getSessionRecordForOrg(sessionId, orgId);
+
+    if (!record) {
+      return false;
+    }
+
+    const turn = sessionTurnRegistry.beginTurn(sessionId);
+    if (!turn.started) {
+      throw new NakamaApiError(
+        "Wait for the current response before changing models.",
+        409
+      );
+    }
+
+    try {
+      const normalizedModel = this.normalizeSessionModelOverride(model);
+      if (record.model === normalizedModel) {
+        return true;
+      }
+
+      const updated = await this.db.updateSessionModel(
+        sessionId,
+        normalizedModel
+      );
+
+      if (updated) {
+        this.sessions.delete(sessionId);
+      }
+
+      return updated;
+    } finally {
+      sessionTurnRegistry.cancelTurn(sessionId);
+    }
+  }
+
+  async beginSessionTurn(
+    sessionId: string,
+    orgId: string
+  ): Promise<boolean | null> {
+    const record = await this.getSessionRecordForOrg(sessionId, orgId);
+    if (!record) {
+      return null;
+    }
+
+    return sessionTurnRegistry.beginTurn(sessionId).started;
   }
 
   async clearSession(sessionId: string, orgId: string): Promise<boolean> {
@@ -3148,6 +3212,7 @@ export class AgentService {
     orgId: string,
     profileId: string,
     sessionId: string,
+    modelOverride: string | null,
     userId?: string | null,
     orgRole?: OrgRole | null
   ): Promise<AgentChatSession> {
@@ -3183,8 +3248,11 @@ export class AgentService {
     const initialHistory = await loadSessionHistory(this.db, sessionId);
     const userTimezone = await this.getUserTimezone();
     const userContext = await this.loadUserContextForUser(orgId, userId);
-    const compaction = this.resolveCompactionConfig(profile);
-    const harness = this.createHarnessForProfile(profile);
+    const selectedModel = modelOverride
+      ? this.normalizeSessionModelOverride(modelOverride)
+      : profile.model;
+    const compaction = this.resolveCompactionConfig(profile, selectedModel);
+    const harness = this.createHarnessForProfile(profile, selectedModel);
     const saveAttachment = createAttachmentSaver(this.db, {
       channel,
       orgId,
@@ -3219,7 +3287,7 @@ export class AgentService {
 
         const primarySupportsVision = resolvePrimaryModelVisionSupport(
           this.userConfig,
-          profile.model
+          selectedModel
         );
 
         if (primarySupportsVision !== false) {
@@ -3519,10 +3587,13 @@ export class AgentService {
     return this.skillsService;
   }
 
-  private createHarnessForProfile(profile: StoredProfileRecord): AgentHarness {
+  private createHarnessForProfile(
+    profile: StoredProfileRecord,
+    selectedModel: string | null = profile.model
+  ): AgentHarness {
     const resolved = resolveProfileProviderSelection({
       defaultProviderId: this.userConfig?.defaultProviderId,
-      profileModel: profile.model,
+      profileModel: selectedModel,
       providers: this.userConfig?.providers ?? [],
     });
 
@@ -3541,7 +3612,7 @@ export class AgentService {
     );
     const primarySupportsVision = resolvePrimaryModelVisionSupport(
       this.userConfig,
-      profile.model
+      selectedModel
     );
     const resolvedProvider =
       primarySupportsVision === false
@@ -3554,6 +3625,32 @@ export class AgentService {
       providerInstance: resolved.instance,
       thinking: this.resolveWorkspaceThinkingDefaults(),
     });
+  }
+
+  private normalizeSessionModelOverride(
+    model: string | null | undefined
+  ): string | null {
+    const normalizedModel = model?.trim();
+    if (!normalizedModel) {
+      return null;
+    }
+
+    const resolved = resolveConfiguredModelInstance(
+      this.userConfig,
+      normalizedModel,
+      {
+        invalid: "Select a configured model.",
+        missingProvider: "The selected model provider is no longer available.",
+      }
+    );
+
+    if (
+      !(resolved && modelExistsOnInstance(resolved.instance, resolved.modelId))
+    ) {
+      throw new NakamaApiError("Select a configured model.", 400);
+    }
+
+    return `${resolved.instance.id}::${resolved.modelId}`;
   }
 
   private async resolvePlaygroundProfileId(
@@ -3584,11 +3681,12 @@ export class AgentService {
   }
 
   private resolveCompactionConfig(
-    profile: StoredProfileRecord
+    profile: StoredProfileRecord,
+    selectedModel: string | null = profile.model
   ): CompactionConfig | undefined {
     const resolved = resolveProfileProviderSelection({
       defaultProviderId: this.userConfig?.defaultProviderId,
-      profileModel: profile.model,
+      profileModel: selectedModel,
       providers: this.userConfig?.providers ?? [],
     });
 

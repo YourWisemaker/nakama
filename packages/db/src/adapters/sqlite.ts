@@ -104,6 +104,7 @@ interface SessionRow {
   channel: string;
   created_at: string;
   id: string;
+  model: string | null;
   profile_id: string;
   title: string | null;
   user_id?: string | null;
@@ -611,14 +612,18 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
   const listSessionsStmt = db.prepare("SELECT * FROM sessions");
   const getSessionStmt = db.prepare("SELECT * FROM sessions WHERE id = ?");
   const upsertSessionStmt = db.prepare(`
-    INSERT INTO sessions (id, profile_id, channel, created_at, user_id)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, profile_id, channel, created_at, user_id, model)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       profile_id = excluded.profile_id,
       channel = excluded.channel,
-      user_id = COALESCE(excluded.user_id, sessions.user_id)
+      user_id = COALESCE(excluded.user_id, sessions.user_id),
+      model = excluded.model
   `);
   const deleteSessionStmt = db.prepare("DELETE FROM sessions WHERE id = ?");
+  const updateSessionModelStmt = db.prepare(
+    "UPDATE sessions SET model = ? WHERE id = ?"
+  );
   const updateSessionTitleStmt = db.prepare(`
     UPDATE sessions SET title = ? WHERE id = ? AND title IS NULL
   `);
@@ -2698,6 +2703,11 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
       return result.changes > 0;
     },
 
+    async updateSessionModel(sessionId, model) {
+      const result = updateSessionModelStmt.run(model, sessionId);
+      return result.changes > 0;
+    },
+
     async updateSessionQuestionnaire(sessionId, questionnaire) {
       updateSessionQuestionnaireStmt.run(
         questionnaire ? JSON.stringify(questionnaire) : null,
@@ -2907,7 +2917,8 @@ function createSqliteDatabaseAdapter(db: Database): DatabaseAdapter {
         record.profileId,
         record.channel,
         record.createdAt,
-        record.userId ?? null
+        record.userId ?? null,
+        record.model
       );
     },
 
@@ -3200,6 +3211,7 @@ function toSessionRecord(row: SessionRow): StoredSessionRecord {
     channel: row.channel,
     createdAt: row.created_at,
     id: row.id,
+    model: row.model ?? null,
     profileId: row.profile_id,
     title: row.title ?? null,
     userId: row.user_id ?? null,
