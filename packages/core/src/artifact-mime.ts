@@ -116,6 +116,23 @@ export function isMarkdownArtifactMimeType(mimeType: string): boolean {
   return normalizeMimeType(mimeType) === "text/markdown";
 }
 
+/** CSV / TSV artifacts render as a spreadsheet table in the preview panel. */
+export function isDelimitedSpreadsheetFile(
+  filename: string,
+  mediaType = ""
+): boolean {
+  const extension = fileExtension(filename);
+  const normalized = normalizeMimeType(mediaType);
+
+  return (
+    extension === "csv" ||
+    extension === "tsv" ||
+    normalized === "text/csv" ||
+    normalized === "text/tab-separated-values" ||
+    normalized === "application/csv"
+  );
+}
+
 export function isTextArtifactMimeType(mimeType: string): boolean {
   const normalized = normalizeMimeType(mimeType);
 

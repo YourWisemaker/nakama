@@ -8,12 +8,19 @@ import {
 } from "./artifact-attachment-panel-body.shared";
 
 describe("artifact preview source toggle", () => {
-  test("allows html and markdown only", () => {
+  test("allows html, markdown, and spreadsheet", () => {
     expect(
       artifactCanTogglePreviewSource({ isHtml: true, isMarkdown: false })
     ).toBe(true);
     expect(
       artifactCanTogglePreviewSource({ isHtml: false, isMarkdown: true })
+    ).toBe(true);
+    expect(
+      artifactCanTogglePreviewSource({
+        isHtml: false,
+        isMarkdown: false,
+        isSpreadsheet: true,
+      })
     ).toBe(true);
     expect(
       artifactCanTogglePreviewSource({ isHtml: false, isMarkdown: false })
@@ -28,7 +35,7 @@ describe("artifact panel header", () => {
     expect(artifactPanelHeadingName("README")).toBe("README");
   });
 
-  test("labels html and markdown files", () => {
+  test("labels html, markdown, and csv files", () => {
     expect(
       artifactPanelTypeLabel({
         filename: "deck.html",
@@ -41,6 +48,12 @@ describe("artifact panel header", () => {
         mimeType: "text/markdown",
       })
     ).toBe("Markdown");
+    expect(
+      artifactPanelTypeLabel({
+        filename: "sample_customers.csv",
+        mimeType: "text/csv",
+      })
+    ).toBe("CSV");
   });
 
   test("replaces mime size subtitle with type when toggle is shown", () => {
@@ -75,6 +88,15 @@ describe("artifact panel body class", () => {
         isImage: false,
         isMarkdown: true,
         previewMode: "source",
+      })
+    ).toBe("flex flex-col overflow-hidden p-0");
+    expect(
+      artifactPanelBodyClassName({
+        isHtml: false,
+        isImage: false,
+        isMarkdown: false,
+        isSpreadsheet: true,
+        previewMode: "preview",
       })
     ).toBe("flex flex-col overflow-hidden p-0");
   });

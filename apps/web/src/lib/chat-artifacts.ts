@@ -4,6 +4,7 @@ import type { ChatListItem } from "@/lib/chat-history";
 export {
   artifactCodeLanguage,
   inferArtifactMimeType,
+  isDelimitedSpreadsheetFile,
   isDocxFile,
   isHtmlArtifactMimeType,
   isImageArtifactMimeType,

@@ -15,6 +15,7 @@ import {
   artifactCodeLanguage,
   type ChatArtifactRef,
   inferArtifactMimeType,
+  isDelimitedSpreadsheetFile,
   isDocxFile,
   isHtmlArtifactMimeType,
   isLegacyDocFile,
@@ -57,17 +58,20 @@ function streamingPreviewFlags(artifact: ChatArtifactRef) {
     isLegacyDocFile(artifact.filename, mimeType);
   const isHtml = isHtmlArtifactMimeType(mimeType);
   const isMarkdown = isMarkdownArtifactMimeType(mimeType) || isWordDocument;
-  return { isHtml, isMarkdown, isWordDocument, mimeType };
+  const isSpreadsheet = isDelimitedSpreadsheetFile(artifact.filename, mimeType);
+  return { isHtml, isMarkdown, isSpreadsheet, isWordDocument, mimeType };
 }
 
 function buildStreamingArtifactHeader(
   artifact: ChatArtifactRef,
   options: { sizeBytes?: number; streaming?: boolean } = {}
 ) {
-  const { isHtml, isMarkdown, mimeType } = streamingPreviewFlags(artifact);
+  const { isHtml, isMarkdown, isSpreadsheet, mimeType } =
+    streamingPreviewFlags(artifact);
   const showPreviewToggle = artifactCanTogglePreviewSource({
     isHtml,
     isMarkdown,
+    isSpreadsheet,
   });
   return {
     ...artifactPanelHeaderMeta({
@@ -90,8 +94,22 @@ function buildStreamingPanelBody({
   content: string;
   previewMode: ArtifactPreviewMode;
 }) {
-  const { isHtml, isMarkdown } = streamingPreviewFlags(artifact);
+  const { isHtml, isMarkdown, isSpreadsheet } = streamingPreviewFlags(artifact);
   const language = artifactCodeLanguage(artifact.filename);
+
+  if (isSpreadsheet && !isHtml) {
+    return (
+      <ArtifactAttachmentPanelBody
+        artifact={artifact}
+        canPreview
+        content={content || null}
+        error={null}
+        kind="spreadsheet"
+        loading={false}
+        previewMode={previewMode}
+      />
+    );
+  }
 
   return (
     <ArtifactAttachmentPanelBody
@@ -118,7 +136,7 @@ function buildStablePanelBody({
   content: string;
   previewMode: ArtifactPreviewMode;
 }) {
-  const { isHtml, isMarkdown } = streamingPreviewFlags(artifact);
+  const { isHtml, isMarkdown, isSpreadsheet } = streamingPreviewFlags(artifact);
 
   if (isHtml) {
     return (
@@ -128,6 +146,20 @@ function buildStablePanelBody({
         content={content}
         error={null}
         kind="html"
+        loading={false}
+        previewMode={previewMode}
+      />
+    );
+  }
+
+  if (isSpreadsheet) {
+    return (
+      <ArtifactAttachmentPanelBody
+        artifact={artifact}
+        canPreview
+        content={content}
+        error={null}
+        kind="spreadsheet"
         loading={false}
         previewMode={previewMode}
       />
@@ -242,11 +274,13 @@ export function ArtifactStreamingPanelBridge({
       artifact.mimeType
     );
     const header = buildStreamingArtifactHeader(artifact, { streaming: true });
-    const { isHtml, isMarkdown } = streamingPreviewFlags(artifact);
+    const { isHtml, isMarkdown, isSpreadsheet } =
+      streamingPreviewFlags(artifact);
     const bodyClassName = artifactPanelBodyClassName({
       isHtml,
       isImage: false,
       isMarkdown,
+      isSpreadsheet,
       previewMode,
     });
     const leading = header.showPreviewToggle ? (
@@ -294,6 +328,7 @@ export function ArtifactStreamingPanelBridge({
         isHtml,
         isImage: false,
         isMarkdown,
+        isSpreadsheet,
         previewMode: "preview",
       }),
       content: buildStreamingPanelBody({
@@ -410,7 +445,7 @@ export function ArtifactStreamingPanelBridge({
     const header = buildStreamingArtifactHeader(stableContent.artifact, {
       sizeBytes: new TextEncoder().encode(stableContent.content).byteLength,
     });
-    const { isHtml, isMarkdown } = streamingPreviewFlags(
+    const { isHtml, isMarkdown, isSpreadsheet } = streamingPreviewFlags(
       stableContent.artifact
     );
 
@@ -419,6 +454,7 @@ export function ArtifactStreamingPanelBridge({
         isHtml,
         isImage: false,
         isMarkdown,
+        isSpreadsheet,
         previewMode,
       }),
       content: buildStablePanelBody({
