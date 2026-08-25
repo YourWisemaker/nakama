@@ -3,12 +3,13 @@ import { CodeBlock } from "@/components/ai-elements/code-block";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { ArtifactMarkdownToc } from "@/components/chat/artifact-markdown-toc";
 import type { ArtifactPreviewMode } from "@/components/chat/artifact-preview-mode-toggle";
-import { ArtifactSpreadsheetPreview } from "@/components/chat/artifact-spreadsheet-editor";
+import { SpreadsheetGrid } from "@/components/chat/artifact-spreadsheet-editor";
 import { Spinner } from "@/components/ui/spinner";
 import {
   ARTIFACT_HTML_IFRAME_SANDBOX,
   htmlForArtifactPreview,
 } from "@/lib/artifact-html-preview";
+import { parseSpreadsheetText } from "@/lib/artifact-spreadsheet";
 import type { ChatArtifactRef } from "@/lib/chat-artifacts";
 import { extractMarkdownHeadings } from "@/lib/markdown-toc";
 import { cn } from "@/lib/utils";
@@ -286,10 +287,12 @@ function ArtifactAttachmentSpreadsheetBody({
           })
         : null}
       {!(loading || error || showSource) && content ? (
-        <ArtifactSpreadsheetPreview
-          content={content}
-          filename={artifact.filename}
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SpreadsheetGrid
+            editable={false}
+            rows={parseSpreadsheetText(artifact.filename, content)}
+          />
+        </div>
       ) : null}
       {loading || error || content || canPreview ? null : (
         <UnavailablePreview padded />

@@ -1,17 +1,10 @@
 export type SpreadsheetRows = string[][];
 
-function fileExtension(filename: string): string {
-  const clean =
-    filename.toLowerCase().split(/[?#]/)[0] ?? filename.toLowerCase();
-  const index = clean.lastIndexOf(".");
-  return index >= 0 ? clean.slice(index + 1) : "";
+function delimiterForFilename(filename: string): string {
+  return filename.toLowerCase().endsWith(".tsv") ? "\t" : ",";
 }
 
-export function delimiterForSpreadsheetFilename(filename: string): string {
-  return fileExtension(filename) === "tsv" ? "\t" : ",";
-}
-
-export function parseDelimitedSpreadsheet(
+function parseDelimitedSpreadsheet(
   content: string,
   delimiter: string
 ): SpreadsheetRows {
@@ -70,7 +63,7 @@ export function parseDelimitedSpreadsheet(
   return rows.length > 0 ? rows : [[""]];
 }
 
-export function serializeDelimitedSpreadsheet(
+function serializeDelimitedSpreadsheet(
   rows: SpreadsheetRows,
   delimiter: string
 ): string {
@@ -94,10 +87,7 @@ export function parseSpreadsheetText(
   content: string
 ): SpreadsheetRows {
   return normalizeSpreadsheetShape(
-    parseDelimitedSpreadsheet(
-      content,
-      delimiterForSpreadsheetFilename(filename)
-    )
+    parseDelimitedSpreadsheet(content, delimiterForFilename(filename))
   );
 }
 
@@ -107,7 +97,7 @@ export function serializeSpreadsheetText(
 ): string {
   return serializeDelimitedSpreadsheet(
     normalizeSpreadsheetShape(rows),
-    delimiterForSpreadsheetFilename(filename)
+    delimiterForFilename(filename)
   );
 }
 
@@ -119,8 +109,4 @@ export function normalizeSpreadsheetShape(
     Array.from({ length: width }, (_, index) => row[index] ?? "")
   );
   return normalized.length > 0 ? normalized : [[""]];
-}
-
-export function cloneSpreadsheetRows(rows: SpreadsheetRows): SpreadsheetRows {
-  return rows.map((row) => [...row]);
 }

@@ -1,9 +1,8 @@
 import { Add01Icon } from "hugeicons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  cloneSpreadsheetRows,
   normalizeSpreadsheetShape,
   parseSpreadsheetText,
   type SpreadsheetRows,
@@ -11,7 +10,7 @@ import {
 } from "@/lib/artifact-spreadsheet";
 import { cn } from "@/lib/utils";
 
-function SpreadsheetGrid({
+export function SpreadsheetGrid({
   rows,
   editable,
   onChangeCell,
@@ -77,25 +76,6 @@ function SpreadsheetGrid({
   );
 }
 
-export function ArtifactSpreadsheetPreview({
-  content,
-  filename,
-}: {
-  content: string;
-  filename: string;
-}) {
-  const rows = useMemo(
-    () => parseSpreadsheetText(filename, content),
-    [content, filename]
-  );
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <SpreadsheetGrid editable={false} rows={rows} />
-    </div>
-  );
-}
-
 export function ArtifactSpreadsheetEditor({
   busy,
   content,
@@ -115,19 +95,16 @@ export function ArtifactSpreadsheetEditor({
     parseSpreadsheetText(filename, content)
   );
   const [baseRows, setBaseRows] = useState<SpreadsheetRows>(() =>
-    cloneSpreadsheetRows(parseSpreadsheetText(filename, content))
+    structuredClone(parseSpreadsheetText(filename, content))
   );
 
   useEffect(() => {
     const next = parseSpreadsheetText(filename, content);
     setRows(next);
-    setBaseRows(cloneSpreadsheetRows(next));
+    setBaseRows(structuredClone(next));
   }, [content, filename]);
 
-  const isDirty = useMemo(
-    () => JSON.stringify(rows) !== JSON.stringify(baseRows),
-    [baseRows, rows]
-  );
+  const isDirty = JSON.stringify(rows) !== JSON.stringify(baseRows);
 
   function updateCell(rowIndex: number, columnIndex: number, value: string) {
     setRows((current) =>
@@ -164,7 +141,7 @@ export function ArtifactSpreadsheetEditor({
   }
 
   function discard() {
-    setRows(cloneSpreadsheetRows(baseRows));
+    setRows(structuredClone(baseRows));
   }
 
   return (
