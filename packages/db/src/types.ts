@@ -474,7 +474,6 @@ export interface StoredSkillProposal {
 
 export type SkillSuggestionStatus = "pending" | "applied";
 export type SkillSuggestionAction = "create" | "patch";
-export type SkillSuggestionSource = "post_turn_review";
 
 export interface StoredSkillSuggestion {
   action: SkillSuggestionAction;
@@ -489,7 +488,7 @@ export interface StoredSkillSuggestion {
   proposedByUserId: string | null;
   sessionId: string | null;
   skillName: string;
-  source: SkillSuggestionSource;
+  source: "post_turn_review";
   status: SkillSuggestionStatus;
   warnings: string[] | null;
 }

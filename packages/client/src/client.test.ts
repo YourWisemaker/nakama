@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getUserConfigDir, saveUserConfig } from "@nakama/core";
-import { createClient } from "./index";
+import { NakamaClient } from "./index";
 
 test("chat stream request includes cookie CSRF protection", async () => {
   const originalDocument = (
@@ -18,7 +18,7 @@ test("chat stream request includes cookie CSRF protection", async () => {
 
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
       fetchCalls.push({ init, input });
@@ -53,7 +53,7 @@ test("chat stream request includes cookie CSRF protection", async () => {
 test("automation run requests disable Bun fetch idle timeout", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -75,7 +75,7 @@ test("automation run requests disable Bun fetch idle timeout", async () => {
 test("clients send org context on authenticated requests", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -95,7 +95,7 @@ test("clients send org context on authenticated requests", async () => {
 test("non-browser clients send local auth as a bearer token", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -113,7 +113,7 @@ test("non-browser clients send local auth as a bearer token", async () => {
 test("data export downloads zip bytes with filename metadata", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -143,7 +143,7 @@ test("data export downloads zip bytes with filename metadata", async () => {
 test("readProfileArtifactContent fetches artifact bytes with inline query", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -179,7 +179,7 @@ test("readProfileArtifactContent fetches artifact bytes with inline query", asyn
 test("data import helpers upload base64 archive data", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -247,7 +247,7 @@ test("non-browser clients reload the local auth token once after a 401", async (
     );
 
     let attempts = 0;
-    const client = createClient({
+    const client = new NakamaClient({
       authToken: "tc_local_stale",
       baseUrl: "http://localhost:4310",
       fetch: async () => {
@@ -277,7 +277,7 @@ test("non-browser clients reload the local auth token once after a 401", async (
 test("notification destination client methods hit the expected routes", async () => {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://localhost:4310",
     fetch: async (input, init) => {
@@ -346,7 +346,7 @@ function createPublishShareClient(options: {
 }) {
   const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> =
     [];
-  const client = createClient({
+  const client = new NakamaClient({
     authToken: "local-auth-token",
     baseUrl: "http://127.0.0.1:4310",
     ...(options.clientOrigin === undefined

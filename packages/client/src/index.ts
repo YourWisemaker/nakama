@@ -13,12 +13,6 @@ export type {
 } from "./types";
 
 import type { ProfileSummary } from "@nakama/core/contract";
-import { NakamaClient } from "./client";
-import type { NakamaClientOptions } from "./types";
-
-export function createClient(options?: NakamaClientOptions): NakamaClient {
-  return new NakamaClient(options);
-}
 
 export function getProfileAvatarUrl(
   profile: Pick<ProfileSummary, "id" | "hasAvatar" | "updatedAt">

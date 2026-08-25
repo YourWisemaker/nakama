@@ -1,5 +1,11 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
 import {
+  clearActiveStream,
+  isAbortError,
+  registerActiveStream,
+  stopActiveStream,
+} from "@nakama/core/channel-active-stream";
+import {
   type ChannelOrgStore,
   findOrgBySelectionInput,
   formatOrgSelectionPrompt,
@@ -19,12 +25,6 @@ import {
 } from "@nakama/core/profiles";
 import { normalizeHandshakeInput } from "@nakama/core/telegram-config";
 import type { Context } from "grammy";
-import {
-  clearActiveStream,
-  isAbortError,
-  registerActiveStream,
-  stopActiveStream,
-} from "./active-stream";
 import {
   buildTelegramDocumentInput,
   DOWNLOAD_FAILED_REPLY,

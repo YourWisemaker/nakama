@@ -1,5 +1,11 @@
 import type { NakamaClient, RemoteChatSession } from "@nakama/client";
 import {
+  clearActiveStream,
+  isAbortError,
+  registerActiveStream,
+  stopActiveStream,
+} from "@nakama/core/channel-active-stream";
+import {
   type ChannelOrgStore,
   findOrgBySelectionInput,
   formatOrgSelectionPrompt,
@@ -10,12 +16,6 @@ import type { SendMessageInput } from "@nakama/core/contract";
 import { pickProfileForOrg } from "@nakama/core/profiles";
 import { normalizePairingCode } from "@nakama/core/whatsapp-config";
 import type { WASocket } from "@whiskeysockets/baileys";
-import {
-  clearActiveStream,
-  isAbortError,
-  registerActiveStream,
-  stopActiveStream,
-} from "./active-stream";
 import type { WhatsAppAuthStore } from "./auth-store";
 import type { WhatsAppBridgeConfig } from "./config";
 import {

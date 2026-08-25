@@ -1,5 +1,3 @@
-import type { FileUIPart } from "ai";
-import { nanoid } from "nanoid";
 import type { ChangeEventHandler, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -7,6 +5,8 @@ import type {
   PromptInputControllerProps,
 } from "@/components/ai-elements/prompt-input-context";
 import { useOptionalPromptInputController } from "@/components/ai-elements/prompt-input-context";
+import type { FileUIPart } from "@/lib/ai-ui-types";
+import { createClientId } from "@/lib/client-id";
 
 type FileErrorCode = "max_files" | "max_file_size" | "accept";
 
@@ -156,7 +156,7 @@ export function usePromptInputFileState({
           for (const file of capped) {
             next.push({
               filename: file.name,
-              id: nanoid(),
+              id: createClientId(),
               mediaType: file.type,
               type: "file",
               url: URL.createObjectURL(file),

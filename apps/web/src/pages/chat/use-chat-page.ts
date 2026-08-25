@@ -8,8 +8,6 @@ import type {
   ProfileSummary,
   ThinkingEffort,
 } from "@nakama/core/contract";
-import type { FileUIPart } from "ai";
-import { nanoid } from "nanoid";
 import {
   useCallback,
   useEffect,
@@ -37,6 +35,7 @@ import {
   useSaveThinkingSettings,
   useThinkingSettings,
 } from "@/hooks/use-thinking-settings";
+import type { FileUIPart } from "@/lib/ai-ui-types";
 import {
   buildChatBasePath,
   buildChatPath,
@@ -72,6 +71,7 @@ import {
   seedStreamingStateForActiveTurn,
 } from "@/lib/chat-stream-resume";
 import { client, formatError } from "@/lib/client";
+import { createClientId } from "@/lib/client-id";
 import {
   decodeModelSelection,
   effectiveProfileModelSelection,
@@ -880,7 +880,7 @@ export function useChatPage() {
       if (isSendingRef.current) {
         const queuedItem: QueuedSend = {
           files,
-          id: nanoid(),
+          id: createClientId(),
           options,
           text,
         };

@@ -10,7 +10,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@nakama/core": "workspace:*",
-    "bcryptjs": "^3.0.3"
+    "@nakama/core": "workspace:*"
   }
 }

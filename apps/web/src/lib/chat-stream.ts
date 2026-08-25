@@ -5,11 +5,11 @@ import type {
   AgentTodo,
   ChatContextUsage,
 } from "@nakama/core/contract";
-import type { ChatStatus } from "ai";
-import { nanoid } from "nanoid";
 import type { Dispatch, SetStateAction } from "react";
+import type { ChatStatus } from "@/lib/ai-ui-types";
 import type { ChatListItem } from "@/lib/chat-history";
 import { upsertStreamingToolMessage } from "@/lib/chat-stream-artifact";
+import { createClientId } from "@/lib/client-id";
 import { cn } from "@/lib/utils";
 
 export function formatBashToolResult(result: unknown): string | null {
@@ -562,7 +562,7 @@ export function buildStreamHandlers(
 
         next.push({
           content: delta,
-          id: nanoid(),
+          id: createClientId(),
           role: "assistant",
           streaming: true,
         });
@@ -602,7 +602,7 @@ export function buildStreamHandlers(
         // message so post-tool thinking is not dropped.
         next.push({
           content: "",
-          id: nanoid(),
+          id: createClientId(),
           role: "assistant",
           streaming: true,
           thinking: delta,
@@ -697,7 +697,7 @@ function buildOutgoingUserMessage(
   return {
     content: text,
     documents: documents.length > 0 ? documents : undefined,
-    id: nanoid(),
+    id: createClientId(),
     imageAttachments:
       options.imageAttachments && options.imageAttachments.length > 0
         ? options.imageAttachments
@@ -714,7 +714,7 @@ function buildOutgoingUserMessage(
 function buildStreamingAssistantMessage(thinkingEnabled = false): ChatListItem {
   return {
     content: "",
-    id: nanoid(),
+    id: createClientId(),
     role: "assistant",
     streaming: true,
     ...(thinkingEnabled ? { thinking: "", thinkingStreaming: true } : {}),

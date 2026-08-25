@@ -12,7 +12,7 @@ import {
   parseDataUrl,
   parseDocumentDataUrl,
 } from "@nakama/core/message-content";
-import type { FileUIPart } from "ai";
+import type { FileUIPart } from "@/lib/ai-ui-types";
 import {
   type DisplayDocument,
   documentDisplayFromContentPart,

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import path from "node:path";
-import { resetActiveStreamsForTests } from "./active-stream";
+import { resetActiveStreamsForTests } from "@nakama/core/channel-active-stream";
 import { WhatsAppAuthStore } from "./auth-store";
 import { createChatHandler, resetChatLocksForTests } from "./chat-handler";
 import { SessionStore } from "./session-store";

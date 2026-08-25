@@ -5,7 +5,6 @@ import type {
   ThinkingEffort,
 } from "@nakama/core/contract";
 import { useQueryClient } from "@tanstack/react-query";
-import type { FileUIPart } from "ai";
 import { Cancel01Icon } from "hugeicons-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +22,7 @@ import {
   useSaveThinkingSettings,
   useThinkingSettings,
 } from "@/hooks/use-thinking-settings";
+import type { FileUIPart } from "@/lib/ai-ui-types";
 import { type ChatListItem, chatMessagesToListItems } from "@/lib/chat-history";
 import {
   filePartsToDisplayDocuments,

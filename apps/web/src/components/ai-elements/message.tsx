@@ -3,7 +3,6 @@
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
-import type { UIMessage } from "ai";
 import { type ComponentProps, type HTMLAttributes, memo } from "react";
 import {
   type Components,
@@ -14,6 +13,7 @@ import { ExternalLinkSafetyModal } from "@/components/ai-elements/external-link-
 import { createLazyMermaidPlugin } from "@/components/ai-elements/lazy-mermaid-plugin";
 import { MarkdownA } from "@/components/ai-elements/markdown-a";
 import { useTheme } from "@/context/use-theme";
+import type { UIMessage } from "@/lib/ai-ui-types";
 import { cn } from "@/lib/utils";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {

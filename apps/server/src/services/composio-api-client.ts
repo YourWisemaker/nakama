@@ -359,13 +359,3 @@ export class SdkComposioApiClient implements ComposioApiClient {
     };
   }
 }
-
-export function createComposioApiClient(
-  apiKey: string | undefined
-): ComposioApiClient | null {
-  if (!apiKey?.trim()) {
-    return null;
-  }
-
-  return new SdkComposioApiClient(apiKey.trim());
-}

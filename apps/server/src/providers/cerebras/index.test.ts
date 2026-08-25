@@ -30,10 +30,10 @@ describe("Cerebras provider", () => {
         );
         const body = JSON.parse(String(init?.body ?? "{}")) as {
           reasoning_effort?: string;
-          reasoning?: unknown;
+          reasoning?: { effort?: string };
         };
         expect(body.reasoning_effort).toBe("high");
-        expect(body.reasoning).toBeUndefined();
+        expect(body.reasoning).toEqual({ effort: "high" });
         return Response.json({
           choices: [{ message: { content: "Answer", reasoning: "Plan" } }],
         });

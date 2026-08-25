@@ -11,15 +11,8 @@
     // Not in package.json#workspaces; Knip would skip it otherwise.
     "docs/website": {}
   },
-  // Leftover unused deps: root listings used by workspaces, Biome via Ultracite, unused jose/croner.
-  "ignoreDependencies": [
-    "croner",
-    "bcryptjs",
-    "hugeicons-react",
-    "jose",
-    "@biomejs/biome",
-    "@types/bcryptjs"
-  ],
+  // Leftover unused deps: Biome via Ultracite.
+  "ignoreDependencies": ["@biomejs/biome"],
   // Type-only import Knip cannot resolve.
   "ignoreUnresolved": ["../../services/auth-service"],
   // Leftover unused exports/types/duplicates on the current tree. New files still fail.
@@ -28,7 +21,6 @@
     "apps/cli/src/styled-text.ts": ["exports", "types"],
     "apps/platform/automation/src/config.ts": ["exports"],
     "apps/platform/telegram/src/test-helpers.ts": ["exports", "types"],
-    "apps/platform/telegram/src/active-stream.ts": ["exports"],
     "apps/platform/whatsapp/src/test-helpers.ts": ["exports"],
     "apps/platform/discord/src/test-helpers.ts": ["exports"],
     "apps/platform/discord/src/format.ts": ["exports"],

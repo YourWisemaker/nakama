@@ -1,28 +1,32 @@
-import { createClient } from "@nakama/client";
+import { join } from "node:path";
+import { NakamaClient } from "@nakama/client";
 import { installErrorHandlers, installErrorTrackingSink } from "@nakama/core";
+import { hasActiveStreams } from "@nakama/core/channel-active-stream";
 import {
   ChannelOrgStore,
   getChannelOrgSelectionPath,
 } from "@nakama/core/channel-org";
+import { ChannelSessionStore } from "@nakama/core/channel-session-store";
 import {
   ensureServerRunning,
   stopSpawnedServer,
 } from "@nakama/core/ensure-server";
 import { loadLocalAuthToken } from "@nakama/core/local-auth";
 import { resolveWebPublicUrl } from "@nakama/core/runtime";
-import { syncWhatsAppOwnerPairing } from "@nakama/core/whatsapp-config";
+import {
+  getWhatsAppConfigDir,
+  syncWhatsAppOwnerPairing,
+} from "@nakama/core/whatsapp-config";
 import {
   clearWhatsAppQrCode,
   clearWhatsAppWorkerHeartbeat,
   writeWhatsAppQrCode,
   writeWhatsAppWorkerHeartbeat,
 } from "@nakama/core/whatsapp-worker";
-import { hasActiveStreams } from "./active-stream";
 import { WhatsAppAuthStore } from "./auth-store";
 import { createChatHandler } from "./chat-handler";
 import { loadConfig } from "./config";
 import { startWhatsAppOutboundServer } from "./outbound-server";
-import { SessionStore } from "./session-store";
 import { createWhatsAppSocket } from "./socket";
 
 installErrorHandlers("worker:whatsapp");
@@ -70,7 +74,7 @@ try {
   const { serverUrl, spawnedChild: child } = await ensureServerRunning();
   spawnedChild = child;
 
-  const client = createClient({
+  const client = new NakamaClient({
     authToken:
       (await loadLocalAuthToken("whatsapp@nakama.internal")) ?? undefined,
     baseUrl: serverUrl,
@@ -84,7 +88,9 @@ try {
     );
   }
 
-  const sessionStore = new SessionStore();
+  const sessionStore = new ChannelSessionStore(
+    join(getWhatsAppConfigDir(), "chat-sessions.json")
+  );
   await sessionStore.load();
 
   const orgStore = new ChannelOrgStore(getChannelOrgSelectionPath("whatsapp"));
