@@ -408,7 +408,7 @@ interface ArtifactShareRow {
  * the same 0600 the rest of ~/.nakama already uses. bun:sqlite takes no mode, and
  * an existing loose file keeps its own, so chmod after open rather than at create.
  */
-function openPrivateDatabase(databasePath: string): Database {
+export function openPrivateDatabase(databasePath: string): Database {
   ensureDatabaseDirectory(databasePath);
   const db = new Database(databasePath, { create: true });
 

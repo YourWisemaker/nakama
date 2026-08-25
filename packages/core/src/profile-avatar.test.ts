@@ -20,7 +20,11 @@ describe("profile avatar", () => {
   let tempConfigDir = "";
 
   afterEach(async () => {
-    process.env.NAKAMA_CONFIG_DIR = originalConfigDir;
+    if (originalConfigDir === undefined) {
+      delete process.env.NAKAMA_CONFIG_DIR;
+    } else {
+      process.env.NAKAMA_CONFIG_DIR = originalConfigDir;
+    }
 
     if (tempConfigDir) {
       await rm(tempConfigDir, { force: true, recursive: true });

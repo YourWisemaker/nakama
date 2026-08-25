@@ -19,7 +19,7 @@ const TEST_CONFIG_DIR = path.join(
 
 describe("artifact shares", () => {
   afterEach(async () => {
-    process.env.NAKAMA_CONFIG_DIR = undefined;
+    delete process.env.NAKAMA_CONFIG_DIR;
     await rm(TEST_CONFIG_DIR, { force: true, recursive: true });
   });
 

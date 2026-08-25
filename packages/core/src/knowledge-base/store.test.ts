@@ -21,7 +21,11 @@ describe("knowledge base store", () => {
   const previousConfigDir = process.env.NAKAMA_CONFIG_DIR;
 
   afterEach(async () => {
-    process.env.NAKAMA_CONFIG_DIR = previousConfigDir;
+    if (previousConfigDir === undefined) {
+      delete process.env.NAKAMA_CONFIG_DIR;
+    } else {
+      process.env.NAKAMA_CONFIG_DIR = previousConfigDir;
+    }
 
     if (tempConfigDir) {
       await rm(tempConfigDir, { force: true, recursive: true });

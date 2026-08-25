@@ -8,7 +8,6 @@ const LONG =
 const original = process.env.NAKAMA_OMNI;
 afterEach(() => {
   if (original === undefined) {
-    process.env.NAKAMA_OMNI = undefined;
     delete process.env.NAKAMA_OMNI;
   } else {
     process.env.NAKAMA_OMNI = original;
