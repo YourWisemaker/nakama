@@ -32,30 +32,43 @@ function SpreadsheetGrid({
               )}
               key={`row-${rowIndex}`}
             >
-              {row.map((cell, columnIndex) => (
-                <td
-                  className="border-border border-b not-first:border-l p-0 align-top"
-                  key={`cell-${rowIndex}-${columnIndex}`}
-                >
-                  {editable ? (
-                    <input
-                      className="h-8 w-full min-w-[7.5rem] bg-transparent px-2 text-foreground outline-none focus:bg-muted/50"
-                      onChange={(event) =>
-                        onChangeCell?.(
-                          rowIndex,
-                          columnIndex,
-                          event.target.value
-                        )
-                      }
-                      value={cell}
-                    />
-                  ) : (
-                    <div className="min-w-[7.5rem] whitespace-pre-wrap break-words px-2 py-2 text-foreground">
-                      {cell}
-                    </div>
-                  )}
-                </td>
-              ))}
+              {row.map((cell, columnIndex) => {
+                const header = rows[0]?.[columnIndex]?.trim();
+                const columnLabel =
+                  header && header.length > 0
+                    ? header
+                    : `Column ${columnIndex + 1}`;
+                const cellLabel =
+                  rowIndex === 0
+                    ? `Header ${columnLabel}`
+                    : `${columnLabel}, row ${rowIndex}`;
+
+                return (
+                  <td
+                    className="border-border border-b not-first:border-l p-0 align-top"
+                    key={`cell-${rowIndex}-${columnIndex}`}
+                  >
+                    {editable ? (
+                      <input
+                        aria-label={cellLabel}
+                        className="h-8 w-full min-w-[7.5rem] bg-transparent px-2 text-foreground outline-none focus:bg-muted/50"
+                        onChange={(event) =>
+                          onChangeCell?.(
+                            rowIndex,
+                            columnIndex,
+                            event.target.value
+                          )
+                        }
+                        value={cell}
+                      />
+                    ) : (
+                      <div className="min-w-[7.5rem] whitespace-pre-wrap break-words px-2 py-2 text-foreground">
+                        {cell}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -117,12 +130,22 @@ export function ArtifactSpreadsheetEditor({
   );
 
   function updateCell(rowIndex: number, columnIndex: number, value: string) {
-    setRows((current) => {
-      const next = cloneSpreadsheetRows(current);
-      next[rowIndex] = [...(next[rowIndex] ?? [])];
-      next[rowIndex]![columnIndex] = value;
-      return normalizeSpreadsheetShape(next);
-    });
+    setRows((current) =>
+      normalizeSpreadsheetShape(
+        current.map((row, currentRowIndex) => {
+          if (currentRowIndex !== rowIndex) {
+            return row;
+          }
+
+          const length = Math.max(row.length, columnIndex + 1);
+          return Array.from({ length }, (_, currentColumnIndex) =>
+            currentColumnIndex === columnIndex
+              ? value
+              : (row[currentColumnIndex] ?? "")
+          );
+        })
+      )
+    );
   }
 
   function addRow() {
