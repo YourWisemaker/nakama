@@ -291,7 +291,9 @@ export function useChatPage() {
       const updatedSessionId = session.id;
       void updateSessionMutation
         .mutateAsync({
+          channel: sessionChannel,
           input: { model: selection },
+          profileId,
           sessionId: updatedSessionId,
         })
         .catch((err) => {
@@ -307,6 +309,7 @@ export function useChatPage() {
       profileId,
       readOnlySession,
       session,
+      sessionChannel,
       sessionModel,
       updateSessionMutation,
     ]
