@@ -50,6 +50,10 @@ export function resolveErrorTrackingDsn(
   return file.dsn;
 }
 
+/**
+ * Callers must follow this with refreshErrorTrackingEnabled(): reportError reads a
+ * cached flag so it can decide synchronously, and the file alone does not move it.
+ */
 export async function saveErrorTrackingDsn(
   dsn: string | null
 ): Promise<ErrorTrackingConfig> {
@@ -68,10 +72,6 @@ export async function saveErrorTrackingDsn(
   return next;
 }
 
-export async function currentErrorTrackingDsn(): Promise<string | null> {
-  return resolveErrorTrackingDsn(await loadErrorTrackingConfig());
-}
-
 export async function isErrorTrackingEnabled(): Promise<boolean> {
-  return (await currentErrorTrackingDsn()) !== null;
+  return resolveErrorTrackingDsn(await loadErrorTrackingConfig()) !== null;
 }

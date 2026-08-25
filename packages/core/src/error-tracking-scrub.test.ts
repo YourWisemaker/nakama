@@ -8,39 +8,42 @@ import { scrubText } from "./error-tracking-scrub";
  * data, so a regression here is a third-party data incident, not a telemetry bug.
  */
 describe("scrubText removes credentials", () => {
-  const cases: Array<[string, string]> = [
+  // The secret is carried per case. Asserting all eight in every case reads as
+  // thorough and is not: seven of them were never in that input, so those
+  // assertions pass whatever scrubText does.
+  const cases: Array<[name: string, secret: string, message: string]> = [
     [
       "anthropic key",
-      "failed with sk-ant-api03-abcdefghijklmnopqrstuvwxyz012345",
+      "sk-ant-api03-abcdefghijklmnopqrstuvwxyz012345",
+      "failed with SECRET",
     ],
-    ["openai key", "Authorization header sk-proj-AAAABBBBCCCCDDDDEEEEFFFF"],
-    ["github token", "clone failed ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"],
-    ["slack token", "post failed xoxb-1234567890-ABCDEFGHIJKL"],
-    ["aws key id", "denied for AKIAIOSFODNN7EXAMPLE"],
+    [
+      "openai key",
+      "sk-proj-AAAABBBBCCCCDDDDEEEEFFFF",
+      "Authorization header SECRET",
+    ],
+    [
+      "github token",
+      "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+      "clone failed SECRET",
+    ],
+    ["slack token", "xoxb-1234567890-ABCDEFGHIJKL", "post failed SECRET"],
+    ["aws key id", "AKIAIOSFODNN7EXAMPLE", "denied for SECRET"],
     [
       "bearer header",
-      "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      "Authorization: Bearer SECRET",
     ],
-    ["assignment", 'connect({ apiKey: "hunter2secretvalue" })'],
-    ["env style", "ANTHROPIC_TOKEN=abcd1234efgh5678"],
+    ["assignment", "hunter2secretvalue", 'connect({ apiKey: "SECRET" })'],
+    ["env style", "abcd1234efgh5678", "ANTHROPIC_TOKEN=SECRET"],
   ];
 
-  for (const [name, input] of cases) {
+  for (const [name, secret, message] of cases) {
     test(name, () => {
-      const scrubbed = scrubText(input);
+      const input = message.replace("SECRET", secret);
 
-      expect(scrubbed).not.toContain(
-        "sk-ant-api03-abcdefghijklmnopqrstuvwxyz012345"
-      );
-      expect(scrubbed).not.toContain("sk-proj-AAAABBBBCCCCDDDDEEEEFFFF");
-      expect(scrubbed).not.toContain(
-        "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-      );
-      expect(scrubbed).not.toContain("xoxb-1234567890-ABCDEFGHIJKL");
-      expect(scrubbed).not.toContain("AKIAIOSFODNN7EXAMPLE");
-      expect(scrubbed).not.toContain("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
-      expect(scrubbed).not.toContain("hunter2secretvalue");
-      expect(scrubbed).not.toContain("abcd1234efgh5678");
+      expect(input).toContain(secret);
+      expect(scrubText(input)).not.toContain(secret);
     });
   }
 });

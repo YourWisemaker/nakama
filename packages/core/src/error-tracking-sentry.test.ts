@@ -59,7 +59,7 @@ test("no user identity is sent", () => {
 
   // Reports go to the operator's own project, so there is nobody to count installs
   // for and nothing that needs a stable id attached to the event.
-  expect(event.user).toBeUndefined();
+  expect(event).not.toHaveProperty("user");
 });
 
 test("the event id is the report id, so a retry collapses into one event", () => {
@@ -128,7 +128,9 @@ test("sendSentryEvent posts the event with the auth header the ingest expects", 
 test("sendSentryEvent reports failure instead of throwing when the ingest is down", async () => {
   const dsn = parseSentryDsn("http://k@127.0.0.1:1/9");
 
-  expect(await sendSentryEvent(dsn!, {}, 200)).toBe(false);
+  expect(await sendSentryEvent(dsn!, toSentryEvent(sampleReport()), 200)).toBe(
+    false
+  );
 });
 
 async function countSinkHits(env: Record<string, string>): Promise<number> {

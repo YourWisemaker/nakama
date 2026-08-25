@@ -47,8 +47,10 @@ export function appendPendingErrorReport(report: ErrorReport): void {
     write(
       [...readPendingErrorReports(), report].slice(-MAX_PENDING_ERROR_REPORTS)
     );
-  } catch {
-    // A full or read-only config dir must not turn one crash into two.
+  } catch (error) {
+    // A full or read-only config dir must not turn one crash into two, but swallowing it
+    // outright leaves an operator with tracking on and no reports and no reason why.
+    console.error("[nakama:error-tracking] cannot queue report", error);
   }
 }
 
