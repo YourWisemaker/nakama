@@ -75,7 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
       ),
       navItem(
         "automations",
-        "Agent work",
+        "Automations",
         "Manage automations and agent tasks",
         SharedWifiIcon
       ),
