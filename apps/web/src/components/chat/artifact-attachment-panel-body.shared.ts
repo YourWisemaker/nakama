@@ -2,6 +2,7 @@ import type { ArtifactPreviewMode } from "@/components/chat/artifact-preview-mod
 import { clampAttachmentPanelWidth } from "@/components/chat/attachment-panel-width";
 import {
   artifactCodeLanguage,
+  isDelimitedSpreadsheetFile,
   isDocxFile,
   isHtmlArtifactMimeType,
   isImageArtifactMimeType,
@@ -26,11 +27,12 @@ export function artifactPanelDefaultWidth(
   const isWordDocument =
     isDocxFile(filename, mimeType) || isLegacyDocFile(filename, mimeType);
   const isMarkdown = isMarkdownArtifactMimeType(mimeType) || isWordDocument;
+  const isSpreadsheet = isDelimitedSpreadsheetFile(filename, mimeType);
   const language = artifactCodeLanguage(filename);
 
   const baseWidth = isVideo
     ? VIDEO_ARTIFACT_PANEL_WIDTH
-    : isHtml || isImage || isMarkdown || language
+    : isHtml || isImage || isMarkdown || isSpreadsheet || language
       ? WIDE_ARTIFACT_PANEL_WIDTH
       : NARROW_ARTIFACT_PANEL_WIDTH;
 
@@ -40,11 +42,13 @@ export function artifactPanelDefaultWidth(
 export function artifactCanTogglePreviewSource({
   isHtml,
   isMarkdown,
+  isSpreadsheet = false,
 }: {
   isHtml: boolean;
   isMarkdown: boolean;
+  isSpreadsheet?: boolean;
 }): boolean {
-  return isHtml || isMarkdown;
+  return isHtml || isMarkdown || isSpreadsheet;
 }
 
 export function artifactPanelHeadingName(filename: string): string {
@@ -74,6 +78,10 @@ export function artifactPanelTypeLabel({
     isLegacyDocFile(filename, mimeType)
   ) {
     return "Markdown";
+  }
+
+  if (isDelimitedSpreadsheetFile(filename, mimeType)) {
+    return filename.toLowerCase().endsWith(".tsv") ? "TSV" : "CSV";
   }
 
   const language = artifactCodeLanguage(filename);
@@ -122,15 +130,17 @@ export function artifactPanelBodyClassName({
   isImage,
   isVideo = false,
   isMarkdown,
+  isSpreadsheet = false,
   previewMode = "preview",
 }: {
   isHtml: boolean;
   isImage: boolean;
   isVideo?: boolean;
   isMarkdown: boolean;
+  isSpreadsheet?: boolean;
   previewMode?: ArtifactPreviewMode;
 }): string | undefined {
-  if (isHtml || isImage || isVideo) {
+  if (isHtml || isImage || isVideo || isSpreadsheet) {
     return "flex flex-col overflow-hidden p-0";
   }
 
@@ -170,6 +180,16 @@ export function downloadActionLabel(mimeType: string): string {
 
   if (isMarkdownArtifactMimeType(mimeType)) {
     return "Download as Markdown";
+  }
+
+  if (
+    mimeType === "text/csv" ||
+    mimeType === "application/csv" ||
+    mimeType === "text/tab-separated-values"
+  ) {
+    return mimeType === "text/tab-separated-values"
+      ? "Download as TSV"
+      : "Download as CSV";
   }
 
   if (isImageArtifactMimeType(mimeType)) {

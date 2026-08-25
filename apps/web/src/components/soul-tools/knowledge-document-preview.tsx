@@ -25,6 +25,7 @@ import { useChatAttachmentPanel } from "@/context/use-chat-attachment-panel";
 import {
   artifactCodeLanguage,
   type ChatArtifactRef,
+  isDelimitedSpreadsheetFile,
   isMarkdownArtifactMimeType,
 } from "@/lib/chat-artifacts";
 import { client } from "@/lib/client";
@@ -75,9 +76,14 @@ export function KnowledgeDocumentPreview({
   const canPreview = document.status === "ready";
   const downloadUrl = `${client.baseUrl}${buildKnowledgeDocumentContentUrl(profileId, document.id)}`;
   const isMarkdown = isMarkdownArtifactMimeType(document.mediaType);
+  const isSpreadsheet = isDelimitedSpreadsheetFile(
+    document.filename,
+    document.mediaType
+  );
   const showPreviewToggle = artifactCanTogglePreviewSource({
     isHtml: false,
     isMarkdown,
+    isSpreadsheet,
   });
   const header = artifactPanelHeaderMeta({
     filename: document.filename,
@@ -109,6 +115,20 @@ export function KnowledgeDocumentPreview({
     loadingOverride?: boolean,
     mode: ArtifactPreviewMode = previewMode
   ) {
+    if (isSpreadsheet) {
+      return (
+        <ArtifactAttachmentPanelBody
+          artifact={artifactRef}
+          canPreview={canPreview}
+          content={content}
+          error={error}
+          kind="spreadsheet"
+          loading={loadingOverride ?? loading}
+          previewMode={mode}
+        />
+      );
+    }
+
     return (
       <ArtifactAttachmentPanelBody
         artifact={artifactRef}
@@ -130,6 +150,7 @@ export function KnowledgeDocumentPreview({
         isHtml: false,
         isImage: false,
         isMarkdown,
+        isSpreadsheet,
         previewMode: mode,
       }),
       content: buildPanelBody(undefined, mode),
@@ -172,6 +193,7 @@ export function KnowledgeDocumentPreview({
     document,
     fullscreen,
     isMarkdown,
+    isSpreadsheet,
     language,
     loading,
     error,

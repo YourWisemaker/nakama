@@ -3,11 +3,13 @@ import { CodeBlock } from "@/components/ai-elements/code-block";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { ArtifactMarkdownToc } from "@/components/chat/artifact-markdown-toc";
 import type { ArtifactPreviewMode } from "@/components/chat/artifact-preview-mode-toggle";
+import { SpreadsheetGrid } from "@/components/chat/artifact-spreadsheet-editor";
 import { Spinner } from "@/components/ui/spinner";
 import {
   ARTIFACT_HTML_IFRAME_SANDBOX,
   htmlForArtifactPreview,
 } from "@/lib/artifact-html-preview";
+import { parseSpreadsheetText } from "@/lib/artifact-spreadsheet";
 import type { ChatArtifactRef } from "@/lib/chat-artifacts";
 import { extractMarkdownHeadings } from "@/lib/markdown-toc";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,10 @@ export type ArtifactAttachmentPanelBodyProps =
       kind: "html";
       content: string | null;
       htmlSandbox?: string;
+    })
+  | (ArtifactPanelSharedProps & {
+      kind: "spreadsheet";
+      content: string | null;
     })
   | (ArtifactPanelSharedProps & {
       kind: "text";
@@ -258,6 +264,43 @@ function ArtifactAttachmentTextBody({
   );
 }
 
+function ArtifactAttachmentSpreadsheetBody({
+  loading,
+  error,
+  content,
+  canPreview,
+  artifact,
+  previewMode = "preview",
+}: Extract<ArtifactAttachmentPanelBodyProps, { kind: "spreadsheet" }>) {
+  const showSource = previewMode === "source" && Boolean(content);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {loading ? <LoadingState /> : null}
+      {error ? <p className="p-4 text-destructive text-sm">{error}</p> : null}
+      {!(loading || error) && showSource && content
+        ? renderTextContent({
+            content,
+            fillHeight: true,
+            format: "plain",
+            language: null,
+          })
+        : null}
+      {!(loading || error || showSource) && content ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SpreadsheetGrid
+            editable={false}
+            rows={parseSpreadsheetText(artifact.filename, content)}
+          />
+        </div>
+      ) : null}
+      {loading || error || content || canPreview ? null : (
+        <UnavailablePreview padded />
+      )}
+    </div>
+  );
+}
+
 export function ArtifactAttachmentPanelBody(
   props: ArtifactAttachmentPanelBodyProps
 ) {
@@ -268,6 +311,8 @@ export function ArtifactAttachmentPanelBody(
       return <ArtifactAttachmentVideoBody {...props} />;
     case "html":
       return <ArtifactAttachmentHtmlBody {...props} />;
+    case "spreadsheet":
+      return <ArtifactAttachmentSpreadsheetBody {...props} />;
     case "text":
       return <ArtifactAttachmentTextBody {...props} />;
     default: {

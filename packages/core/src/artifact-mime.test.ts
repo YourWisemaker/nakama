@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   artifactCodeLanguage,
   inferArtifactMimeType,
+  isDelimitedSpreadsheetFile,
   isHtmlArtifactMimeType,
   isImageArtifactMimeType,
   isMarkdownArtifactMimeType,
@@ -77,6 +78,17 @@ describe("mime predicates", () => {
     expect(isVideoArtifactMimeType("image/png")).toBe(false);
     expect(isUnknownArtifactMimeType("application/octet-stream")).toBe(true);
     expect(isUnknownArtifactMimeType("text/plain")).toBe(false);
+  });
+
+  test("classifies csv and tsv as delimited spreadsheets", () => {
+    expect(isDelimitedSpreadsheetFile("sample_customers.csv")).toBe(true);
+    expect(isDelimitedSpreadsheetFile("rates.tsv")).toBe(true);
+    expect(isDelimitedSpreadsheetFile("data.txt", "text/csv")).toBe(true);
+    expect(
+      isDelimitedSpreadsheetFile("data.txt", "text/tab-separated-values")
+    ).toBe(true);
+    expect(isDelimitedSpreadsheetFile("notes.md")).toBe(false);
+    expect(isDelimitedSpreadsheetFile("budget.xlsx")).toBe(false);
   });
 });
 
