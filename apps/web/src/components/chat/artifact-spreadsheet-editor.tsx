@@ -3,12 +3,22 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  columnIndexToLetter,
+  isSpreadsheetNumericCell,
   normalizeSpreadsheetShape,
   parseSpreadsheetText,
   type SpreadsheetRows,
   serializeSpreadsheetText,
 } from "@/lib/artifact-spreadsheet";
 import { cn } from "@/lib/utils";
+
+const GRID_LINE = "border-[#e0e0e0] dark:border-[#3c4043]";
+const GUTTER_BG = "bg-[#f8f9fa] dark:bg-[#2d2e30]";
+const HEADER_ROW_BG = "bg-[#f8f9fa] dark:bg-[#292a2d]";
+const SELECTION_RING =
+  "ring-2 ring-inset ring-[#1a73e8] dark:ring-[#8ab4f8] z-[1]";
+
+type CellCoord = { row: number; col: number };
 
 export function SpreadsheetGrid({
   rows,
@@ -19,57 +29,132 @@ export function SpreadsheetGrid({
   editable: boolean;
   onChangeCell?: (rowIndex: number, columnIndex: number, value: string) => void;
 }) {
-  return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full border-collapse text-xs">
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr
-              className={cn(
-                rowIndex === 0 && "bg-muted/40 font-medium",
-                rowIndex > 0 && rowIndex % 2 === 0 && "bg-muted/20"
-              )}
-              key={`row-${rowIndex}`}
-            >
-              {row.map((cell, columnIndex) => {
-                const header = rows[0]?.[columnIndex]?.trim();
-                const columnLabel =
-                  header && header.length > 0
-                    ? header
-                    : `Column ${columnIndex + 1}`;
-                const cellLabel =
-                  rowIndex === 0
-                    ? `Header ${columnLabel}`
-                    : `${columnLabel}, row ${rowIndex}`;
+  const [selected, setSelected] = useState<CellCoord | null>(null);
+  const columnCount = Math.max(1, ...rows.map((row) => row.length));
 
-                return (
-                  <td
-                    className="border-border border-b not-first:border-l p-0 align-top"
-                    key={`cell-${rowIndex}-${columnIndex}`}
-                  >
-                    {editable ? (
-                      <input
-                        aria-label={cellLabel}
-                        className="h-8 w-full min-w-[7.5rem] bg-transparent px-2 text-foreground outline-none focus:bg-muted/50"
-                        onChange={(event) =>
-                          onChangeCell?.(
-                            rowIndex,
-                            columnIndex,
-                            event.target.value
-                          )
-                        }
-                        value={cell}
-                      />
-                    ) : (
-                      <div className="min-w-[7.5rem] whitespace-pre-wrap break-words px-2 py-2 text-foreground">
-                        {cell}
-                      </div>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+  return (
+    <div className="min-h-0 flex-1 overflow-auto bg-background">
+      <table className="w-max min-w-full border-collapse text-[13px] leading-none [font-family:Arial,Helvetica,sans-serif]">
+        <thead>
+          <tr>
+            <th
+              aria-hidden
+              className={cn(
+                "sticky top-0 left-0 z-30 h-6 w-10 min-w-10 border-r border-b p-0",
+                GRID_LINE,
+                GUTTER_BG
+              )}
+            />
+            {Array.from({ length: columnCount }, (_, columnIndex) => (
+              <th
+                className={cn(
+                  "sticky top-0 z-20 h-6 min-w-[6.5rem] border-r border-b px-1 text-center font-normal text-[#5f6368] text-[11px] dark:text-[#9aa0a6]",
+                  GRID_LINE,
+                  GUTTER_BG,
+                  selected?.col === columnIndex &&
+                    "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#394457] dark:text-[#8ab4f8]"
+                )}
+                key={`col-${columnIndex}`}
+                scope="col"
+              >
+                {columnIndexToLetter(columnIndex)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => {
+            const isHeaderRow = rowIndex === 0;
+            const rowNumber = rowIndex + 1;
+            const rowSelected = selected?.row === rowIndex;
+
+            return (
+              <tr key={`row-${rowIndex}`}>
+                <th
+                  className={cn(
+                    "sticky left-0 z-20 h-7 w-10 min-w-10 border-r border-b p-0 text-center font-normal text-[#5f6368] text-[11px] tabular-nums dark:text-[#9aa0a6]",
+                    GRID_LINE,
+                    GUTTER_BG,
+                    rowSelected &&
+                      "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#394457] dark:text-[#8ab4f8]"
+                  )}
+                  scope="row"
+                >
+                  {rowNumber}
+                </th>
+                {Array.from({ length: columnCount }, (_, columnIndex) => {
+                  const cell = row[columnIndex] ?? "";
+                  const header = rows[0]?.[columnIndex]?.trim();
+                  const columnLabel =
+                    header && header.length > 0
+                      ? header
+                      : `Column ${columnIndexToLetter(columnIndex)}`;
+                  const cellLabel = isHeaderRow
+                    ? `Header ${columnLabel}`
+                    : `${columnLabel}, row ${rowNumber}`;
+                  const isSelected =
+                    selected?.row === rowIndex && selected.col === columnIndex;
+                  const numeric =
+                    !isHeaderRow && isSpreadsheetNumericCell(cell);
+
+                  return (
+                    <td
+                      className={cn(
+                        "relative h-7 min-w-[6.5rem] border-r border-b p-0 align-middle",
+                        GRID_LINE,
+                        isHeaderRow && HEADER_ROW_BG,
+                        isSelected && SELECTION_RING
+                      )}
+                      key={`cell-${rowIndex}-${columnIndex}`}
+                    >
+                      {editable ? (
+                        <input
+                          aria-label={cellLabel}
+                          className={cn(
+                            "h-7 w-full min-w-[6.5rem] bg-transparent px-1.5 text-foreground outline-none",
+                            isHeaderRow
+                              ? "text-center font-semibold"
+                              : numeric
+                                ? "text-right tabular-nums"
+                                : "text-left"
+                          )}
+                          onChange={(event) =>
+                            onChangeCell?.(
+                              rowIndex,
+                              columnIndex,
+                              event.target.value
+                            )
+                          }
+                          onFocus={() =>
+                            setSelected({ col: columnIndex, row: rowIndex })
+                          }
+                          value={cell}
+                        />
+                      ) : (
+                        <button
+                          aria-label={cellLabel}
+                          className={cn(
+                            "flex h-7 w-full min-w-[6.5rem] items-center overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-1.5 text-left text-foreground outline-none",
+                            isHeaderRow
+                              ? "justify-center font-semibold"
+                              : numeric
+                                ? "justify-end tabular-nums"
+                                : "justify-start"
+                          )}
+                          onClick={() =>
+                            setSelected({ col: columnIndex, row: rowIndex })
+                          }
+                          type="button"
+                        >
+                          {cell}
+                        </button>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

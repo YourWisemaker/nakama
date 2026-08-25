@@ -110,3 +110,25 @@ export function normalizeSpreadsheetShape(
   );
   return normalized.length > 0 ? normalized : [[""]];
 }
+
+/** 0 → A, 25 → Z, 26 → AA */
+export function columnIndexToLetter(index: number): string {
+  let n = index + 1;
+  let result = "";
+
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    result = String.fromCharCode(65 + rem) + result;
+    n = Math.floor((n - 1) / 26);
+  }
+
+  return result;
+}
+
+export function isSpreadsheetNumericCell(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return /^-?\d[\d,]*(\.\d+)?%?$/.test(trimmed);
+}
