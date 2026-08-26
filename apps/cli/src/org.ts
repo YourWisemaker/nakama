@@ -17,7 +17,7 @@ const ORG_ID_PATTERN = /^org_[A-Za-z0-9]+$/;
 const ORG_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const MAX_ORG_REF_LENGTH = 128;
 
-export function assertOrgRef(value: string): string {
+function assertOrgRef(value: string): string {
   if (value.length > MAX_ORG_REF_LENGTH) {
     throw new InvalidOrgArgError(
       `Invalid --org value: exceeds ${MAX_ORG_REF_LENGTH} characters.`
