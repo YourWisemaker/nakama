@@ -76,17 +76,12 @@ export function WebPublicUrlSettingsRow() {
   return (
     <div className="space-y-2 px-4 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <div className="min-w-0 space-y-0.5">
-          <label
-            className="text-balance font-medium text-foreground text-sm"
-            htmlFor="web-public-url"
-          >
-            Public web URL
-          </label>
-          <p className="text-pretty text-muted-foreground text-xs">
-            For OAuth callbacks
-          </p>
-        </div>
+        <label
+          className="min-w-0 text-balance font-medium text-foreground text-sm"
+          htmlFor="web-public-url"
+        >
+          Public web URL
+        </label>
         {savedHint ? (
           <p
             className="text-emerald-700 text-xs dark:text-emerald-300"

@@ -51,12 +51,7 @@ export function SettingsPage() {
       <Card className="w-full shadow-none">
         <CardContent className="divide-y divide-border p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div className="space-y-0.5">
-              <p className="font-medium text-foreground text-sm">Appearance</p>
-              <p className="text-pretty text-muted-foreground text-xs">
-                Color theme
-              </p>
-            </div>
+            <p className="font-medium text-foreground text-sm">Appearance</p>
             <ThemeToggle />
           </div>
 
@@ -74,11 +69,7 @@ export function SettingsPage() {
                     >
                       {timezoneHint}
                     </p>
-                  ) : (
-                    <p className="text-pretty text-muted-foreground text-xs">
-                      For scheduled automations
-                    </p>
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <TimezoneSelect

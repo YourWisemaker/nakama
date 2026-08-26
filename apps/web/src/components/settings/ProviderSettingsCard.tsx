@@ -2,13 +2,7 @@ import { Add01Icon, Alert02Icon } from "hugeicons-react";
 import { useState } from "react";
 import { ProviderSetupForm } from "@/components/ProviderSetupForm";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -63,15 +57,10 @@ export function ProviderSettingsCard({
     <>
       <Card className="w-full shadow-none">
         <CardHeader className="border-border border-b px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-0.5">
-              <CardTitle className="font-medium text-sm leading-snug tracking-normal">
-                LLM providers
-              </CardTitle>
-              <CardDescription className="text-xs leading-snug">
-                Connect providers and choose models for chat.
-              </CardDescription>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="min-w-0 font-medium text-sm leading-snug tracking-normal">
+              LLM providers
+            </CardTitle>
             {isConfigured ? (
               <Button
                 onClick={() => setAddOpen(true)}
