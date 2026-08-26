@@ -21,6 +21,21 @@ async function setupToolsDir(): Promise<{
   return { configDir, toolsDir };
 }
 
+function makeRecord(
+  overrides: Partial<StoredToolRecord> = {}
+): StoredToolRecord {
+  return {
+    createdAt: new Date().toISOString(),
+    description: "Echo a message",
+    handlerConfig: { modulePath: "echo.js" },
+    handlerType: "javascript",
+    id: "tool_echo",
+    name: "echo",
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
 describe("javascript tool loader", () => {
   let configDir = "";
 
@@ -37,73 +52,65 @@ describe("javascript tool loader", () => {
     }
   });
 
-  test("loads a module and runs exported run(input)", async () => {
+  test("loads a module and runs run(input) with JSON over stdin, in a subprocess", async () => {
     const { configDir: dir, toolsDir } = await setupToolsDir();
     configDir = dir;
 
     await writeFile(
       path.join(toolsDir, "echo.js"),
-      `export const parameters = {
-  type: "object",
-  properties: { message: { type: "string" } },
-  required: ["message"],
-  additionalProperties: false,
-};
+      `async function run(input, context) {
+  return { echoed: input.message, root: process.env.NAKAMA_WORKSPACE_ROOT ?? "" };
+}
 
-export async function run(input) {
-  return { echoed: input.message };
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  const result = await run(payload, {});
+  process.stdout.write(JSON.stringify(result));
 }
 `,
       "utf8"
     );
 
-    const record: StoredToolRecord = {
-      createdAt: new Date().toISOString(),
-      description: "Echo a message",
-      handlerConfig: { modulePath: "echo.js" },
-      handlerType: "javascript",
-      id: "tool_echo",
-      name: "echo",
-      updatedAt: new Date().toISOString(),
-    };
-
-    const tool = await loadJavascriptTool(record);
+    const tool = await loadJavascriptTool(makeRecord());
 
     expect(tool).not.toBeNull();
     expect(tool?.name).toBe("echo");
     expect(tool?.parallelSafe).not.toBe(true);
-    expect(tool?.parameters?.required).toEqual(["message"]);
 
-    const result = await tool!.run({ message: "hello" }, {});
-    expect(result).toEqual({ echoed: "hello" });
+    const result = (await tool!.run(
+      { message: "hello" },
+      { workspaceRoot: "/tmp/nakama-ws" }
+    )) as { echoed: string; root: string };
+    expect(result.echoed).toBe("hello");
+    // The loader must forward context.workspaceRoot to the child process as
+    // NAKAMA_WORKSPACE_ROOT, same as the Python loader.
+    expect(result.root).toBe("/tmp/nakama-ws");
   });
 
-  test("loads parallelSafe when the module exports it", async () => {
+  test("reads parallelSafe from handlerConfig, not the module", async () => {
     const { configDir: dir, toolsDir } = await setupToolsDir();
     configDir = dir;
 
     await writeFile(
       path.join(toolsDir, "parallel-echo.js"),
-      `export const parallelSafe = true;
-
-export async function run(input) {
+      `async function run(input, context) {
   return { echoed: input.message };
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
     );
 
-    const record: StoredToolRecord = {
-      createdAt: new Date().toISOString(),
-      description: "Parallel-safe echo",
-      handlerConfig: { modulePath: "parallel-echo.js" },
-      handlerType: "javascript",
-      id: "tool_parallel_echo",
-      name: "parallel_echo",
-      updatedAt: new Date().toISOString(),
-    };
-
-    const tool = await loadJavascriptTool(record);
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "parallel-echo.js", parallelSafe: true },
+        name: "parallel_echo",
+      })
+    );
 
     expect(tool?.parallelSafe).toBe(true);
   });
@@ -121,20 +128,260 @@ export async function run(input) {
     const { configDir: dir } = await setupToolsDir();
     configDir = dir;
 
-    const record: StoredToolRecord = {
-      createdAt: new Date().toISOString(),
-      description: "Missing module",
-      handlerConfig: { modulePath: "missing.js" },
-      handlerType: "javascript",
-      id: "tool_missing",
-      name: "missing",
-      updatedAt: new Date().toISOString(),
-    };
-
-    const tool = await loadJavascriptTool(record);
+    const tool = await loadJavascriptTool(makeRecord());
     const result = await tool!.run({}, {});
 
-    expect(result).toEqual({ error: "Tool module not found: missing.js" });
+    expect(result).toEqual({ error: "Tool module not found: echo.js" });
+  });
+
+  test("returns an error tool when the module lacks a run function", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "norun.js"),
+      `// no run() defined
+console.log("hi");
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({ handlerConfig: { modulePath: "norun.js" }, name: "norun" })
+    );
+
+    const result = (await tool!.run({}, {})) as { error: string };
+    expect(result.error).toMatch(/run\s*\(/i);
+  });
+
+  test("returns an error tool when the module lacks an import.meta.main harness", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "noharness.js"),
+      `async function run(input, context) {
+  return input;
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "noharness.js" },
+        name: "noharness",
+      })
+    );
+
+    const result = (await tool!.run({}, {})) as { error: string };
+    expect(result.error).toMatch(/import\.meta\.main/i);
+  });
+
+  test("returns an error tool when the module exits non-zero", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "boom.js"),
+      `async function run(input, context) {
+  console.error("kaboom");
+  process.exit(7);
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({ handlerConfig: { modulePath: "boom.js" }, name: "boom" })
+    );
+
+    // A failed spawn must reject so the retry policy can retry transient
+    // failures; executeToolCall turns the throw into `{ error }` for callers.
+    const err = await tool!.run({}, {}).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/exit code/i);
+    expect((err as Error).message).toContain("kaboom");
+  });
+
+  test("process.exit() inside a tool does not affect the server process", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "hostile-exit.js"),
+      `async function run(input, context) {
+  process.exit(1);
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "hostile-exit.js" },
+        name: "hostile_exit",
+      })
+    );
+
+    const err = await tool!.run({}, {}).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/exit code/i);
+    // Reaching this assertion at all proves the child's process.exit() did
+    // not tear down the test's own (server-simulating) process.
+    expect(process.pid).toBeGreaterThan(0);
+  });
+
+  test("runs with cwd scoped to the tools directory, not the server checkout", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "cwd-probe.js"),
+      `async function run(input, context) {
+  return { cwd: process.cwd() };
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "cwd-probe.js" },
+        name: "cwd_probe",
+      })
+    );
+
+    const result = (await tool!.run({}, {})) as { cwd: string };
+    expect(path.resolve(result.cwd)).toBe(path.resolve(toolsDir));
+  });
+
+  test("cannot read a secret-shaped env var from the parent process", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "env-probe.js"),
+      `async function run(input, context) {
+  return { secret: process.env.NAKAMA_TEST_CANARY_SECRET ?? null };
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "env-probe.js" },
+        name: "env_probe",
+      })
+    );
+
+    process.env.NAKAMA_TEST_CANARY_SECRET = "canary-not-a-real-secret";
+    try {
+      const result = (await tool!.run({}, {})) as { secret: string | null };
+      expect(result.secret).toBeNull();
+    } finally {
+      delete process.env.NAKAMA_TEST_CANARY_SECRET;
+    }
+  });
+
+  test("rejects on timeout even when the module exits 0", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    await writeFile(
+      path.join(toolsDir, "stubborn.js"),
+      `async function run(input, context) {
+  // Never resolves on its own; only the loader's SIGTERM/SIGKILL ends this.
+  await new Promise(() => {});
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "stubborn.js" },
+        name: "stubborn",
+      })
+    );
+
+    process.env.NAKAMA_JAVASCRIPT_TOOL_TIMEOUT_MS = "200";
+    try {
+      const err = await tool!.run({}, {}).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(Error);
+      expect((err as Error).message).toMatch(/timed out/i);
+    } finally {
+      delete process.env.NAKAMA_JAVASCRIPT_TOOL_TIMEOUT_MS;
+    }
+  });
+
+  test("concurrent calls to a parallelSafe tool do not share module state", async () => {
+    const { configDir: dir, toolsDir } = await setupToolsDir();
+    configDir = dir;
+
+    // Each call is its own OS process, so a module-level counter starts fresh
+    // every time — the #481 "race on shared global state" concern is gone
+    // structurally, not just avoided by sequencing.
+    await writeFile(
+      path.join(toolsDir, "counter.js"),
+      `let count = 0;
+
+async function run(input, context) {
+  count += 1;
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  return { count };
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`,
+      "utf8"
+    );
+
+    const tool = await loadJavascriptTool(
+      makeRecord({
+        handlerConfig: { modulePath: "counter.js", parallelSafe: true },
+        name: "counter",
+      })
+    );
+
+    const [first, second] = await Promise.all([
+      tool!.run({}, {}) as Promise<{ count: number }>,
+      tool!.run({}, {}) as Promise<{ count: number }>,
+    ]);
+
+    expect(first.count).toBe(1);
+    expect(second.count).toBe(1);
   });
 });
 
@@ -160,8 +407,13 @@ describe("tool resolver", () => {
 
     await writeFile(
       path.join(toolsDir, "adder.js"),
-      `export async function run(input) {
+      `async function run(input, context) {
   return { sum: Number(input.a) + Number(input.b) };
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"

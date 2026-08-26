@@ -206,7 +206,15 @@ describe("profile portability", () => {
     });
     const toolsDir = getCustomToolsDir();
     const modulePath = "portable-echo.js";
-    const source = "export async function run(input) { return input; }\n";
+    const source = `async function run(input, context) {
+  return input;
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
+}
+`;
     await mkdir(toolsDir, { recursive: true });
     await writeFile(path.join(toolsDir, modulePath), source, "utf8");
     await db.upsertTool({

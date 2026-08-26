@@ -33,6 +33,7 @@ function isPathInsideDirectory(
 
 export interface CustomToolHandlerConfig {
   modulePath: string;
+  parallelSafe?: boolean;
   parameters?: JsonSchema;
 }
 
@@ -56,8 +57,9 @@ export function readHandlerConfig(
   const parameters = isJsonSchema(record.parameters)
     ? record.parameters
     : undefined;
+  const parallelSafe = record.parallelSafe === true;
 
-  return { modulePath, parameters };
+  return { modulePath, parallelSafe, parameters };
 }
 
 export function readHandlerModulePath(handlerConfig: unknown): string | null {
@@ -74,7 +76,7 @@ export function readHandlerModulePath(handlerConfig: unknown): string | null {
   return modulePath.trim();
 }
 
-export function isJsonSchema(value: unknown): value is JsonSchema {
+function isJsonSchema(value: unknown): value is JsonSchema {
   return typeof value === "object" && value !== null;
 }
 
