@@ -1,6 +1,35 @@
 const CURSOR_POSITION_REPORT = /^\x1b\[(\d+);(\d+)R$/;
 const MOUSE_EVENT_REPORT = /^\x1b\[<\d+;\d+;\d+[mM]$/;
 
+type ReadableEncodingState = {
+  decoder?: unknown;
+  encoding?: string | null;
+};
+
+/**
+ * Restore a Readable stream's prior encoding.
+ * `setEncoding(null)` does not clear encoding in Node/Bun (nodejs/node#51083),
+ * so buffer mode is restored by clearing `_readableState` when needed.
+ */
+export function restoreReadableEncoding(
+  stream: NodeJS.ReadableStream,
+  previous: BufferEncoding | null | undefined
+): void {
+  if (previous) {
+    stream.setEncoding(previous);
+    return;
+  }
+
+  const state = (stream as { _readableState?: ReadableEncodingState })
+    ._readableState;
+  if (!state) {
+    return;
+  }
+
+  state.encoding = null;
+  state.decoder = null;
+}
+
 export function isTerminalResponse(chunk: string): boolean {
   if (CURSOR_POSITION_REPORT.test(chunk)) {
     return true;
@@ -75,7 +104,7 @@ export class TerminalInput {
   private pending = "";
   private listeners = new Set<(chunk: string) => void>();
   private cursorWaiters = new Set<(row: number) => void>();
-  private previousEncoding: BufferEncoding | null = null;
+  private previousEncoding: BufferEncoding | null | undefined;
 
   start(): void {
     if (this.active) {
@@ -103,7 +132,8 @@ export class TerminalInput {
     this.active = false;
     process.stdin.off("data", this.handleData);
     process.stdin.setRawMode(false);
-    process.stdin.setEncoding(this.previousEncoding);
+    restoreReadableEncoding(process.stdin, this.previousEncoding);
+    this.previousEncoding = undefined;
 
     if (this.mouseTracking) {
       process.stdout.write("\x1b[?1000l\x1b[?1006l");
