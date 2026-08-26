@@ -106,6 +106,7 @@ export async function seedOrgSuperBotProfile(
 
   if (existing) {
     await ensureProfileDefaultBuiltinTools(db, existing.id);
+    await db.unassignToolFromProfile(existing.id, BUILTIN_TOOL_IDS.delete_file);
     await ensureProfileDefaultBundledSkills(db, existing.id);
     await ensureProfileSuperBotBundledSkills(db, existing.id);
     await ensureSuperBotBashTool(db, existing.id);
@@ -128,10 +129,8 @@ export async function seedOrgSuperBotProfile(
 
   await db.upsertProfile(profile);
 
-  for (const toolId of DEFAULT_BUILTIN_TOOL_IDS) {
-    await db.assignToolToProfile(profile.id, toolId);
-  }
-
+  await ensureProfileDefaultBuiltinTools(db, profile.id);
+  await db.unassignToolFromProfile(profile.id, BUILTIN_TOOL_IDS.delete_file);
   await ensureSuperBotBashTool(db, profile.id);
   await ensureSuperBotSessionTools(db, profile.id);
   await ensureProfileDefaultBundledSkills(db, profile.id);
