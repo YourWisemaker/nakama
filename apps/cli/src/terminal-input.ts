@@ -1,4 +1,5 @@
 const CURSOR_POSITION_REPORT = /^\x1b\[(\d+);(\d+)R$/;
+const CURSOR_POSITION_REPORT_GLOBAL = /\x1b\[(\d+);(\d+)R/g;
 const MOUSE_EVENT_REPORT = /^\x1b\[<\d+;\d+;\d+[mM]$/;
 
 type ReadableEncodingState = {
@@ -28,6 +29,24 @@ export function restoreReadableEncoding(
 
   state.encoding = null;
   state.decoder = null;
+}
+
+/** Strip all CPR sequences in one pass; return the first report's row. */
+export function stripCursorPositionReports(pending: string): {
+  pending: string;
+  row: number | null;
+} {
+  let row: number | null = null;
+  const cleaned = pending.replace(
+    CURSOR_POSITION_REPORT_GLOBAL,
+    (_match, rowText: string) => {
+      if (row === null) {
+        row = Number(rowText);
+      }
+      return "";
+    }
+  );
+  return { pending: cleaned, row };
 }
 
 export function isTerminalResponse(chunk: string): boolean {
@@ -196,17 +215,14 @@ export class TerminalInput {
   private handleData = (chunk: Buffer | string): void => {
     this.pending += String(chunk);
 
-    const cursorMatch = this.pending.match(/\x1b\[(\d+);(\d+)R/);
+    const stripped = stripCursorPositionReports(this.pending);
+    this.pending = stripped.pending;
 
-    if (cursorMatch) {
-      const row = Number(cursorMatch[1]);
-
+    if (stripped.row !== null) {
       for (const waiter of this.cursorWaiters) {
-        waiter(row);
+        waiter(stripped.row);
       }
-
       this.cursorWaiters.clear();
-      this.pending = this.pending.replace(/\x1b\[\d+;\d+R/g, "");
     }
 
     const consumed = consumeTerminalInput(this.pending);
