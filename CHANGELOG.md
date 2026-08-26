@@ -9,6 +9,38 @@ Entries marked *(in review)* come from a pull request that is open but not merge
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-08-26
+
+### Added
+
+- Export and import a single profile pack as a zip ([#475])
+- WhatsApp can send artifact share links and documents ([#473])
+- CSV and TSV artifacts open as spreadsheet tables ([#468])
+- Batch-add provider models from setup ([#465])
+- Optional error delivery to a Sentry-compatible DSN ([#442], [#443])
+- Custom tool failures retry at most twice with backoff ([#454])
+- Super Bot `update_profile` can edit soul files
+
+### Changed
+
+- Ponytail audit: shrink providers and drop unused deps ([#467])
+- WhatsApp auth-state reduced after review ([#471])
+- `AgentChannel` derived from a single `AGENT_CHANNELS` array ([#463])
+- Asserts reviewed and low-value tests removed ([#455], [#458])
+
+### Fixed
+
+- Chat turns can run for 24 hours instead of timing out early ([#462])
+- MCP server creation returns 4xx and is not persisted when the initial connect fails ([#633])
+- WhatsApp init query timeouts no longer fail startup ([#476])
+- WhatsApp auth state files use tighter permissions ([#460])
+- WhatsApp stays silent when the account is not linked ([#459])
+- Chat model picker stays scoped to the current session ([#466])
+- Provider and timezone settings no longer answer with a TypeError ([#457])
+- Creating an automation no longer answers with a raw TypeError ([#451])
+- Internal automation run requires an org-scoped id ([#438])
+- Database file and directory are created private ([#452])
+
 ## [0.4.3] - 2026-08-23
 
 ### Added
@@ -536,7 +568,8 @@ First tagged release. The baseline it established:
 - Export and import for data portability
 - Docker image published from GitHub Actions, and a VitePress documentation site
 
-[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.3...main
+[Unreleased]: https://github.com/ahmadrosid/nakama/compare/v0.4.4...main
+[0.4.4]: https://github.com/ahmadrosid/nakama/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/ahmadrosid/nakama/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/ahmadrosid/nakama/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/ahmadrosid/nakama/compare/v0.4.0...v0.4.1
@@ -689,5 +722,27 @@ First tagged release. The baseline it established:
 [#432]: https://github.com/ahmadrosid/nakama/pull/432
 [#436]: https://github.com/ahmadrosid/nakama/pull/436
 [#437]: https://github.com/ahmadrosid/nakama/pull/437
+[#438]: https://github.com/ahmadrosid/nakama/pull/438
+[#442]: https://github.com/ahmadrosid/nakama/pull/442
+[#443]: https://github.com/ahmadrosid/nakama/pull/443
 [#446]: https://github.com/ahmadrosid/nakama/pull/446
 [#450]: https://github.com/ahmadrosid/nakama/pull/450
+[#451]: https://github.com/ahmadrosid/nakama/pull/451
+[#452]: https://github.com/ahmadrosid/nakama/pull/452
+[#454]: https://github.com/ahmadrosid/nakama/pull/454
+[#455]: https://github.com/ahmadrosid/nakama/pull/455
+[#457]: https://github.com/ahmadrosid/nakama/pull/457
+[#458]: https://github.com/ahmadrosid/nakama/pull/458
+[#459]: https://github.com/ahmadrosid/nakama/pull/459
+[#460]: https://github.com/ahmadrosid/nakama/pull/460
+[#462]: https://github.com/ahmadrosid/nakama/pull/462
+[#463]: https://github.com/ahmadrosid/nakama/pull/463
+[#465]: https://github.com/ahmadrosid/nakama/pull/465
+[#466]: https://github.com/ahmadrosid/nakama/pull/466
+[#467]: https://github.com/ahmadrosid/nakama/pull/467
+[#468]: https://github.com/ahmadrosid/nakama/pull/468
+[#471]: https://github.com/ahmadrosid/nakama/pull/471
+[#473]: https://github.com/ahmadrosid/nakama/pull/473
+[#475]: https://github.com/ahmadrosid/nakama/pull/475
+[#476]: https://github.com/ahmadrosid/nakama/pull/476
+[#633]: https://github.com/ahmadrosid/nakama/pull/633
