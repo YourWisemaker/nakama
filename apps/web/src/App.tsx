@@ -124,8 +124,10 @@ function AppShell() {
                     path="/system/playground/:toolId"
                   />
                   <Route element={<SystemPage />} path="/system" />
-                  <Route element={<PlatformAdminGuard />}>
+                  <Route element={<PlatformAdminGuard allowOrgAdmin />}>
                     <Route element={<ProfilesPage />} path="/profiles" />
+                  </Route>
+                  <Route element={<PlatformAdminGuard />}>
                     <Route
                       element={<SkillDetailPage />}
                       path="/profiles/skills/:skillId"

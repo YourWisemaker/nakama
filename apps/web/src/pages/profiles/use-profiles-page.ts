@@ -6,6 +6,7 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useActiveChatProfile } from "@/context/use-active-chat-profile";
+import { useAuth } from "@/context/use-auth";
 import {
   useMcpServersQuery,
   useModelsQuery,
@@ -57,6 +58,8 @@ import {
 export function useProfilesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { profileId: liveChatProfileId } = useActiveChatProfile();
+  const { user } = useAuth();
+  const canManageProfile = user?.isPlatformAdmin === true;
   const {
     data: profiles = [],
     isLoading: profilesLoading,
@@ -101,6 +104,8 @@ export function useProfilesPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [cloneTargetId, setCloneTargetId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [removeConfirm, setRemoveConfirm] =
@@ -156,6 +161,7 @@ export function useProfilesPage() {
 
   const busy =
     updateMutation.isPending ||
+    cloneProfileMutation.isPending ||
     deleteMutation.isPending ||
     assignMutation.isPending ||
     unassignMutation.isPending ||
@@ -204,6 +210,10 @@ export function useProfilesPage() {
     (delayMs = profileTextSaveDelayMs) => {
       clearScheduledSave();
 
+      if (!canManageProfile) {
+        return;
+      }
+
       const snapshot = editStateRef.current;
       const { selectedId: profileId, detail: profileDetail } = snapshot;
 
@@ -227,10 +237,14 @@ export function useProfilesPage() {
         void performSaveRef.current();
       }, delayMs);
     },
-    [clearScheduledSave]
+    [canManageProfile, clearScheduledSave]
   );
 
   const performSave = useCallback(async (): Promise<boolean> => {
+    if (!canManageProfile) {
+      return true;
+    }
+
     if (savingRef.current) {
       pendingSaveRef.current = true;
       return false;
@@ -318,7 +332,7 @@ export function useProfilesPage() {
         scheduleSave(profileTextSaveDelayMs);
       }
     }
-  }, [scheduleSave, updateMutation]);
+  }, [canManageProfile, scheduleSave, updateMutation]);
 
   useEffect(() => {
     editStateRef.current = {
@@ -638,6 +652,16 @@ export function useProfilesPage() {
     setDeleteOpen(true);
   }
 
+  function openCloneDialog(profileId: string) {
+    setCloneTargetId(profileId);
+  }
+
+  function handleCloneOpenChange(open: boolean) {
+    if (!(open || busy)) {
+      setCloneTargetId(null);
+    }
+  }
+
   function handleDeleteOpenChange(open: boolean) {
     if (busy) {
       return;
@@ -650,15 +674,27 @@ export function useProfilesPage() {
     }
   }
 
-  async function handleCloneProfile(profileId: string) {
+  async function handleCloneConfirm() {
+    const profileId = cloneTargetId;
+
+    if (!profileId) {
+      return;
+    }
+
     setError(null);
 
     try {
       const response = await cloneProfileMutation.mutateAsync(profileId);
+      setCloneTargetId(null);
       setSelectedId(response.profile.id);
     } catch (err) {
       setError(formatError(err));
     }
+  }
+
+  function handleProfileImported(profileId: string) {
+    setImportOpen(false);
+    setSelectedId(profileId);
   }
 
   async function handleDeleteConfirm() {
@@ -939,6 +975,9 @@ export function useProfilesPage() {
   const deleteTarget = deleteTargetId
     ? profiles.find((entry) => entry.id === deleteTargetId)
     : null;
+  const cloneTarget = cloneTargetId
+    ? profiles.find((entry) => entry.id === cloneTargetId)
+    : null;
 
   return {
     allMcpServers,
@@ -953,7 +992,10 @@ export function useProfilesPage() {
     availableTools,
     avatarInputRef,
     busy,
+    canManageProfile,
     cloneProfileMutation,
+    cloneTarget,
+    cloneTargetId,
     composioToolkitsData,
     createMcpMutation,
     createOpen,
@@ -978,7 +1020,8 @@ export function useProfilesPage() {
     handleAssignTool,
     handleAvatarRemove,
     handleAvatarSelected,
-    handleCloneProfile,
+    handleCloneConfirm,
+    handleCloneOpenChange,
     handleCreateMcpServer,
     handleCreateOpenChange,
     handleCreateSkill,
@@ -989,13 +1032,16 @@ export function useProfilesPage() {
     handleEditNameChange,
     handleEditPromptChange,
     handleInstallSkill,
+    handleProfileImported,
     handleRemoveAssignmentConfirm,
+    importOpen,
     installSkillMutation,
     isDirty,
     mcpCreateOpen,
     modelInCatalog,
     modelSelectionValue,
     modelsResponse,
+    openCloneDialog,
     openDeleteDialog,
     profileComposioData,
     profiles,
@@ -1010,6 +1056,7 @@ export function useProfilesPage() {
     setCreateOpen,
     setDeleteOpen,
     setDetailTab,
+    setImportOpen,
     setMcpCreateOpen,
     setRemoveConfirm,
     setSelectedId,

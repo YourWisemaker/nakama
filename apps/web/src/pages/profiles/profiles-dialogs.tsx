@@ -1,4 +1,5 @@
 import { ProfileCreateDialog } from "@/components/ProfileCreateDialog";
+import { ProfileImportDialog } from "@/components/profiles/ProfileImportDialog";
 import { SkillCreateDialog } from "@/components/SkillCreateDialog";
 import { SkillInstallDialog } from "@/components/SkillInstallDialog";
 import { McpServerDialog } from "@/components/soul-tools/mcp-tab/McpServerDialog";
@@ -22,6 +23,9 @@ export function ProfilesDialogs(state: ProfilesPageState) {
     createOpen,
     handleCreateOpenChange,
     setSelectedId,
+    importOpen,
+    setImportOpen,
+    handleProfileImported,
     skillCreateOpen,
     setSkillCreateOpen,
     skillInstallOpen,
@@ -41,6 +45,11 @@ export function ProfilesDialogs(state: ProfilesPageState) {
     availableMcpServers,
     handleAssignMcpServer,
     handleCreateMcpServer,
+    cloneTarget,
+    cloneTargetId,
+    cloneProfileMutation,
+    handleCloneOpenChange,
+    handleCloneConfirm,
     deleteOpen,
     handleDeleteOpenChange,
     setDeleteOpen,
@@ -70,6 +79,12 @@ export function ProfilesDialogs(state: ProfilesPageState) {
         tools={allTools}
       />
 
+      <ProfileImportDialog
+        onImported={handleProfileImported}
+        onOpenChange={setImportOpen}
+        open={importOpen}
+      />
+
       <SkillCreateDialog
         busy={createSkillMutation.isPending || assignSkillMutation.isPending}
         onOpenChange={setSkillCreateOpen}
@@ -96,6 +111,44 @@ export function ProfilesDialogs(state: ProfilesPageState) {
         onSubmit={handleCreateMcpServer}
         open={mcpCreateOpen}
       />
+
+      <Dialog
+        onOpenChange={handleCloneOpenChange}
+        open={cloneTargetId !== null}
+      >
+        <DialogContent className="gap-6 p-6 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <DialogTitle>Clone profile?</DialogTitle>
+            <DialogDescription>
+              {cloneTarget
+                ? `This creates a copy of ${cloneTarget.name}.`
+                : "This creates a copy of the profile."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-3 border-t-0 bg-transparent p-0 pt-2 pb-2 sm:justify-end">
+            <Button
+              disabled={busy}
+              onClick={() => handleCloneOpenChange(false)}
+              type="button"
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() => void handleCloneConfirm()}
+              type="button"
+            >
+              {cloneProfileMutation.isPending ? (
+                <Spinner className="size-4" />
+              ) : (
+                "Clone"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog onOpenChange={handleDeleteOpenChange} open={deleteOpen}>
         <DialogContent className="gap-6 p-6 sm:max-w-md">
