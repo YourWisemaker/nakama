@@ -312,7 +312,8 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     console.log(
       "[discord] chat start",
       replyConversationKey,
-      messageText.slice(0, 80) || "(image)"
+      `messageId=${message.id ?? "unknown"}`,
+      `textBytes=${Buffer.byteLength(messageText, "utf8")}`
     );
 
     await withChatLock(replyConversationKey, async () => {
