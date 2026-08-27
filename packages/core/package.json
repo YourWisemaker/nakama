@@ -11,6 +11,7 @@
     "./bridge-api": "./src/bridge-api.ts",
     "./channel-active-stream": "./src/channel-active-stream.ts",
     "./channel-org": "./src/channel-org.ts",
+    "./channel-test-helpers": "./src/channel-test-helpers.ts",
     "./channel-session-store": "./src/channel-session-store.ts",
     "./contract": "./src/contract.ts",
     "./chat-stream-timeout": "./src/chat-stream-timeout.ts",

@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import * as os from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { NakamaClient, StreamHandlers } from "@nakama/client";
 import {
@@ -7,27 +6,18 @@ import {
   parseListProfilesResponse,
   parseListUserOrgsResponse,
 } from "@nakama/core/bridge-api";
-import { ChannelOrgStore } from "@nakama/core/channel-org";
+import type { ChannelOrgStore } from "@nakama/core/channel-org";
+import {
+  createDefaultTestOrgs,
+  createTestOrgStore as createSharedTestOrgStore,
+  withTempHome as withSharedTempHome,
+} from "@nakama/core/channel-test-helpers";
 import type {
   AgentQuestionnaire,
   ChatMessage,
   UserOrgSummary,
 } from "@nakama/core/contract";
 import type { Message } from "discord.js";
-
-export function createDefaultTestOrgs(): UserOrgSummary[] {
-  const now = new Date().toISOString();
-  return [
-    {
-      createdAt: now,
-      id: "org_test",
-      name: "Test Org",
-      role: "admin",
-      slug: "test-org",
-      updatedAt: now,
-    },
-  ];
-}
 
 export function createMultiTestOrgs(): UserOrgSummary[] {
   const now = new Date().toISOString();
@@ -618,41 +608,14 @@ export async function writeDiscordConfigIni(
   await writeFile(path.join(dir, "config.ini"), lines.join("\n"), "utf8");
 }
 
-export function createTestOrgStore(homeDir: string): ChannelOrgStore {
-  return new ChannelOrgStore(
-    path.join(homeDir, ".nakama", "discord", "org-selection.json")
-  );
-}
+export { createDefaultTestOrgs };
 
-let tempHomeChain: Promise<void> = Promise.resolve();
+export function createTestOrgStore(homeDir: string): ChannelOrgStore {
+  return createSharedTestOrgStore(homeDir, "discord");
+}
 
 export async function withTempHome<T>(
   run: (homeDir: string) => Promise<T>
 ): Promise<T> {
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const previous = tempHomeChain;
-  tempHomeChain = previous.then(() => gate);
-
-  await previous;
-
-  const homeDir = await mkdtemp(path.join(os.tmpdir(), "nakama-discord-home-"));
-  const configDir = path.join(homeDir, ".nakama");
-  const previousConfigDir = process.env.NAKAMA_CONFIG_DIR;
-  process.env.NAKAMA_CONFIG_DIR = configDir;
-
-  try {
-    return await run(homeDir);
-  } finally {
-    if (previousConfigDir === undefined) {
-      delete process.env.NAKAMA_CONFIG_DIR;
-    } else {
-      process.env.NAKAMA_CONFIG_DIR = previousConfigDir;
-    }
-
-    await rm(homeDir, { force: true, recursive: true });
-    release();
-  }
+  return withSharedTempHome("nakama-discord-home-", run);
 }
