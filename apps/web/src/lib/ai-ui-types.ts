@@ -9,14 +9,6 @@ export type FileUIPart = {
   url: string;
 };
 
-export type SourceDocumentUIPart = {
-  filename?: string;
-  mediaType: string;
-  sourceId: string;
-  title: string;
-  type: "source-document";
-};
-
 export type UIMessage = {
   role: "system" | "user" | "assistant";
 };
