@@ -29,11 +29,11 @@ installErrorHandlers("worker:discord");
 void installErrorTrackingSink();
 
 let spawnedChild: Bun.Subprocess | null = null;
-let clientStop: (() => void) | null = null;
+let clientStop: (() => void | Promise<void>) | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
-registerCleanupHandlers(() => {
-  clientStop?.();
+registerCleanupHandlers(async () => {
+  await clientStop?.();
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
   }
@@ -125,8 +125,8 @@ try {
   );
   console.log(`Bot: ${discord.user.tag}`);
 
-  clientStop = () => {
-    void discord.destroy();
+  clientStop = async () => {
+    await discord.destroy();
   };
 
   await writeDiscordWorkerHeartbeat(
@@ -148,11 +148,14 @@ try {
   process.exit(1);
 }
 
-function registerCleanupHandlers(cleanup: () => void): void {
+function registerCleanupHandlers(
+  cleanup: () => void | Promise<void>
+): void {
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
     process.on(signal, () => {
-      cleanup();
-      process.exit(0);
+      void Promise.resolve(cleanup()).finally(() => {
+        process.exit(0);
+      });
     });
   }
 }
