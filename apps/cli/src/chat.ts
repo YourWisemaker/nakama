@@ -1019,8 +1019,9 @@ async function runBlockingChat(context: ChatContext): Promise<void> {
       }
     }
   } finally {
+    disableRawModeIfActive(process.stdin);
+
     if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
       process.stdin.pause();
     }
 
@@ -1139,6 +1140,21 @@ export function formatErrorLines(error: unknown): string[] {
   return ["", ...formatError(error).split(/\r?\n/)];
 }
 
+/** Disable raw mode only when stdin is a TTY currently in raw mode. */
+export function disableRawModeIfActive(
+  stdin: NodeJS.ReadStream = process.stdin
+): void {
+  if (!(stdin.isTTY && stdin.isRaw && typeof stdin.setRawMode === "function")) {
+    return;
+  }
+
+  try {
+    stdin.setRawMode(false);
+  } catch {
+    // Cleanup must not throw if the TTY rejects the mode change.
+  }
+}
+
 export function isEscInterruptKey(key: string): boolean {
   return key === "\u001b";
 }
@@ -1165,8 +1181,8 @@ function startEscAbortListener(onAbort: () => void): () => void {
   return () => {
     stdin.off("data", onData);
 
-    if (!wasRaw && process.stdin.isTTY) {
-      stdin.setRawMode(false);
+    if (!wasRaw) {
+      disableRawModeIfActive(stdin);
     }
   };
 }
