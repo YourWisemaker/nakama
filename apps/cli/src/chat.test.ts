@@ -5,6 +5,7 @@ import type {
   ProfileSummary,
 } from "@nakama/core";
 import {
+  disableRawModeIfActive,
   formatErrorLines,
   formatStatusLines,
   isEscInterruptKey,
@@ -92,5 +93,46 @@ describe("isEscInterruptKey", () => {
   test("matches only a standalone escape key", () => {
     expect(isEscInterruptKey("\u001b")).toBe(true);
     expect(isEscInterruptKey("\u001b[A")).toBe(false);
+  });
+});
+
+describe("disableRawModeIfActive", () => {
+  test("skips setRawMode when stdin is not a TTY", () => {
+    const calls: boolean[] = [];
+    disableRawModeIfActive({
+      isRaw: true,
+      isTTY: false,
+      setRawMode: (mode) => {
+        calls.push(mode);
+      },
+    } as NodeJS.ReadStream);
+
+    expect(calls).toEqual([]);
+  });
+
+  test("skips setRawMode when raw mode is already off", () => {
+    const calls: boolean[] = [];
+    disableRawModeIfActive({
+      isRaw: false,
+      isTTY: true,
+      setRawMode: (mode) => {
+        calls.push(mode);
+      },
+    } as NodeJS.ReadStream);
+
+    expect(calls).toEqual([]);
+  });
+
+  test("disables raw mode when a TTY is currently raw", () => {
+    const calls: boolean[] = [];
+    disableRawModeIfActive({
+      isRaw: true,
+      isTTY: true,
+      setRawMode: (mode) => {
+        calls.push(mode);
+      },
+    } as NodeJS.ReadStream);
+
+    expect(calls).toEqual([false]);
   });
 });
