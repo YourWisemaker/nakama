@@ -27,9 +27,8 @@ import type {
 } from "@nakama/db";
 import type { AuthService } from "./auth-service";
 import {
-  type ComposioApiClient,
+  ComposioApiClient,
   type ComposioSessionMcpEndpoint,
-  SdkComposioApiClient,
 } from "./composio-api-client";
 import { encryptComposioSecret } from "./composio-secret";
 
@@ -141,7 +140,7 @@ export class ComposioService {
       return this.apiClientCache.client;
     }
 
-    const client = new SdkComposioApiClient(apiKey);
+    const client = new ComposioApiClient(apiKey);
 
     this.apiClientCache = { client, key: apiKey };
     return client;
@@ -210,7 +209,7 @@ export class ComposioService {
       throw new NakamaApiError("Composio API key is required.", 400);
     }
 
-    const client = new SdkComposioApiClient(resolvedKey);
+    const client = new ComposioApiClient(resolvedKey);
 
     try {
       await client.listCatalogToolkits({ limit: 1 });
