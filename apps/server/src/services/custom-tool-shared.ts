@@ -6,7 +6,7 @@ import type { StoredToolRecord } from "@nakama/db";
 // Helpers shared by the custom tool loaders (javascript, python, and any
 // future handler type registered in custom-tool-handlers.ts).
 
-export function createErrorTool(
+function createErrorTool(
   record: StoredToolRecord,
   message: string
 ): ToolDefinition {
@@ -90,13 +90,13 @@ function isPathInsideDirectory(
   );
 }
 
-export interface CustomToolHandlerConfig {
+interface CustomToolHandlerConfig {
   modulePath: string;
   parallelSafe?: boolean;
   parameters?: JsonSchema;
 }
 
-export function readHandlerConfig(
+function readHandlerConfig(
   handlerConfig: unknown
 ): CustomToolHandlerConfig | null {
   if (typeof handlerConfig !== "object" || handlerConfig === null) {
