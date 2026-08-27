@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { JsonSchema, ToolDefinition } from "@nakama/core";
+import type { JsonSchema, ToolContext, ToolDefinition } from "@nakama/core";
 import { getCustomToolsDir, permissiveObjectSchema } from "@nakama/core";
 import type { StoredToolRecord } from "@nakama/db";
 
@@ -16,6 +16,65 @@ export function createErrorTool(
     parameters: permissiveObjectSchema(),
     async run() {
       return { error: message };
+    },
+  };
+}
+
+export function readOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined;
+}
+
+/** Shared load path for javascript/python subprocess tools. */
+export async function loadCustomSubprocessTool(options: {
+  allowParallelSafe?: boolean;
+  record: StoredToolRecord;
+  resolveModulePath: (modulePath: string) => string;
+  run: (
+    modulePath: string,
+    input: unknown,
+    context: ToolContext
+  ) => Promise<unknown>;
+  validateModule: (modulePath: string) => Promise<void>;
+}): Promise<ToolDefinition | null> {
+  const { allowParallelSafe, record, resolveModulePath, run, validateModule } =
+    options;
+  const config = readHandlerConfig(record.handlerConfig);
+
+  if (!config?.modulePath) {
+    return createErrorTool(
+      record,
+      `Tool "${record.name}" is missing handlerConfig.modulePath.`
+    );
+  }
+
+  let modulePath: string;
+
+  try {
+    modulePath = resolveModulePath(config.modulePath);
+  } catch (error) {
+    return createErrorTool(
+      record,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+
+  // validateModule owns the missing-file check so load does not pathExists twice.
+  try {
+    await validateModule(config.modulePath);
+  } catch (error) {
+    return createErrorTool(
+      record,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+
+  return {
+    description: record.description,
+    name: record.name,
+    parameters: config.parameters ?? permissiveObjectSchema(),
+    ...(allowParallelSafe && config.parallelSafe ? { parallelSafe: true } : {}),
+    async run(input, context) {
+      return run(modulePath, input, context);
     },
   };
 }

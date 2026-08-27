@@ -46,13 +46,8 @@ describe("super bot create_tool", () => {
 
     await writeFile(
       path.join(toolsDir, "echo.js"),
-      `async function run(input, context) {
+      `export async function run(input) {
   return input;
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
