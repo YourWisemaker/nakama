@@ -19,27 +19,6 @@ export interface ComposioSessionMcpEndpoint {
   url: string;
 }
 
-export interface ComposioApiClient {
-  createProfileSession(
-    userId: string,
-    toolkitSlugs: string[],
-    allowedToolsByToolkit: Record<string, string[] | null>,
-    connectedAccountsByToolkit?: Record<string, string>
-  ): Promise<ComposioSessionMcpEndpoint>;
-  deleteConnectedAccount(connectedAccountId: string): Promise<void>;
-  linkToolkitAccount(
-    userId: string,
-    toolkitSlug: string,
-    callbackUrl: string
-  ): Promise<ComposioLinkResult>;
-  listCatalogToolkits(options?: {
-    limit?: number;
-  }): Promise<ComposioCatalogToolkit[]>;
-  listSessionTools(
-    session: ComposioSessionMcpEndpoint
-  ): Promise<ComposioCachedToolSummary[]>;
-}
-
 export function extractComposioListItems<T>(
   response: { items?: T[] } | T[] | null | undefined
 ): T[] {
@@ -228,7 +207,7 @@ export function parseSessionToolItems(
     .filter((tool): tool is ComposioCachedToolSummary => tool !== null);
 }
 
-export class SdkComposioApiClient implements ComposioApiClient {
+export class ComposioApiClient {
   private readonly composio: Composio;
 
   constructor(apiKey: string) {
