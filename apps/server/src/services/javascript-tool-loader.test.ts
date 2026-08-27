@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -52,20 +53,14 @@ describe("javascript tool loader", () => {
     }
   });
 
-  test("loads a module and runs run(input) with JSON over stdin, in a subprocess", async () => {
+  test("loads a module and runs exported run(input) in a subprocess", async () => {
     const { configDir: dir, toolsDir } = await setupToolsDir();
     configDir = dir;
 
     await writeFile(
       path.join(toolsDir, "echo.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   return { echoed: input.message, root: process.env.NAKAMA_WORKSPACE_ROOT ?? "" };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  const result = await run(payload, {});
-  process.stdout.write(JSON.stringify(result));
 }
 `,
       "utf8"
@@ -82,8 +77,6 @@ if (import.meta.main) {
       { workspaceRoot: "/tmp/nakama-ws" }
     )) as { echoed: string; root: string };
     expect(result.echoed).toBe("hello");
-    // The loader must forward context.workspaceRoot to the child process as
-    // NAKAMA_WORKSPACE_ROOT, same as the Python loader.
     expect(result.root).toBe("/tmp/nakama-ws");
   });
 
@@ -93,13 +86,8 @@ if (import.meta.main) {
 
     await writeFile(
       path.join(toolsDir, "parallel-echo.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   return { echoed: input.message };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -134,14 +122,15 @@ if (import.meta.main) {
     expect(result).toEqual({ error: "Tool module not found: echo.js" });
   });
 
-  test("returns an error tool when the module lacks a run function", async () => {
+  test("returns an error tool when the module lacks an exported run function", async () => {
     const { configDir: dir, toolsDir } = await setupToolsDir();
     configDir = dir;
 
     await writeFile(
       path.join(toolsDir, "norun.js"),
-      `// no run() defined
-console.log("hi");
+      `async function run(input, context) {
+  return input;
+}
 `,
       "utf8"
     );
@@ -151,31 +140,7 @@ console.log("hi");
     );
 
     const result = (await tool!.run({}, {})) as { error: string };
-    expect(result.error).toMatch(/run\s*\(/i);
-  });
-
-  test("returns an error tool when the module lacks an import.meta.main harness", async () => {
-    const { configDir: dir, toolsDir } = await setupToolsDir();
-    configDir = dir;
-
-    await writeFile(
-      path.join(toolsDir, "noharness.js"),
-      `async function run(input, context) {
-  return input;
-}
-`,
-      "utf8"
-    );
-
-    const tool = await loadJavascriptTool(
-      makeRecord({
-        handlerConfig: { modulePath: "noharness.js" },
-        name: "noharness",
-      })
-    );
-
-    const result = (await tool!.run({}, {})) as { error: string };
-    expect(result.error).toMatch(/import\.meta\.main/i);
+    expect(result.error).toMatch(/export.*run/i);
   });
 
   test("returns an error tool when the module exits non-zero", async () => {
@@ -184,14 +149,9 @@ console.log("hi");
 
     await writeFile(
       path.join(toolsDir, "boom.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   console.error("kaboom");
   process.exit(7);
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -201,8 +161,6 @@ if (import.meta.main) {
       makeRecord({ handlerConfig: { modulePath: "boom.js" }, name: "boom" })
     );
 
-    // A failed spawn must reject so the retry policy can retry transient
-    // failures; executeToolCall turns the throw into `{ error }` for callers.
     const err = await tool!.run({}, {}).catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(Error);
@@ -216,13 +174,8 @@ if (import.meta.main) {
 
     await writeFile(
       path.join(toolsDir, "hostile-exit.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   process.exit(1);
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -239,8 +192,6 @@ if (import.meta.main) {
 
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toMatch(/exit code/i);
-    // Reaching this assertion at all proves the child's process.exit() did
-    // not tear down the test's own (server-simulating) process.
     expect(process.pid).toBeGreaterThan(0);
   });
 
@@ -250,13 +201,8 @@ if (import.meta.main) {
 
     await writeFile(
       path.join(toolsDir, "cwd-probe.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   return { cwd: process.cwd() };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -270,7 +216,7 @@ if (import.meta.main) {
     );
 
     const result = (await tool!.run({}, {})) as { cwd: string };
-    expect(path.resolve(result.cwd)).toBe(path.resolve(toolsDir));
+    expect(realpathSync(result.cwd)).toBe(realpathSync(toolsDir));
   });
 
   test("cannot read a secret-shaped env var from the parent process", async () => {
@@ -279,13 +225,8 @@ if (import.meta.main) {
 
     await writeFile(
       path.join(toolsDir, "env-probe.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   return { secret: process.env.NAKAMA_TEST_CANARY_SECRET ?? null };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -313,14 +254,8 @@ if (import.meta.main) {
 
     await writeFile(
       path.join(toolsDir, "stubborn.js"),
-      `async function run(input, context) {
-  // Never resolves on its own; only the loader's SIGTERM/SIGKILL ends this.
+      `export async function run(input, context) {
   await new Promise(() => {});
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -333,13 +268,13 @@ if (import.meta.main) {
       })
     );
 
-    process.env.NAKAMA_JAVASCRIPT_TOOL_TIMEOUT_MS = "200";
+    process.env.NAKAMA_CUSTOM_TOOL_TIMEOUT_MS = "200";
     try {
       const err = await tool!.run({}, {}).catch((e: unknown) => e);
       expect(err).toBeInstanceOf(Error);
       expect((err as Error).message).toMatch(/timed out/i);
     } finally {
-      delete process.env.NAKAMA_JAVASCRIPT_TOOL_TIMEOUT_MS;
+      delete process.env.NAKAMA_CUSTOM_TOOL_TIMEOUT_MS;
     }
   });
 
@@ -347,22 +282,14 @@ if (import.meta.main) {
     const { configDir: dir, toolsDir } = await setupToolsDir();
     configDir = dir;
 
-    // Each call is its own OS process, so a module-level counter starts fresh
-    // every time — the #481 "race on shared global state" concern is gone
-    // structurally, not just avoided by sequencing.
     await writeFile(
       path.join(toolsDir, "counter.js"),
       `let count = 0;
 
-async function run(input, context) {
+export async function run(input, context) {
   count += 1;
   await new Promise((resolve) => setTimeout(resolve, 50));
   return { count };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"
@@ -407,13 +334,8 @@ describe("tool resolver", () => {
 
     await writeFile(
       path.join(toolsDir, "adder.js"),
-      `async function run(input, context) {
+      `export async function run(input, context) {
   return { sum: Number(input.a) + Number(input.b) };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"

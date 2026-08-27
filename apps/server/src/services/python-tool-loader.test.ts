@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     );
 
     const result = (await tool!.run({}, {})) as { cwd: string };
-    expect(path.resolve(result.cwd)).toBe(path.resolve(toolsDir));
+    expect(realpathSync(result.cwd)).toBe(realpathSync(toolsDir));
   });
 
   test("cannot read a secret-shaped env var from the parent process", async () => {
@@ -323,11 +324,11 @@ if __name__ == "__main__":
       })
     );
 
-    process.env.NAKAMA_PYTHON_TOOL_TIMEOUT_MS = "200";
+    process.env.NAKAMA_CUSTOM_TOOL_TIMEOUT_MS = "200";
     try {
       await expect(tool!.run({}, {})).rejects.toThrow(/timed out/i);
     } finally {
-      delete process.env.NAKAMA_PYTHON_TOOL_TIMEOUT_MS;
+      delete process.env.NAKAMA_CUSTOM_TOOL_TIMEOUT_MS;
     }
   });
 

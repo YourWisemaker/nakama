@@ -216,7 +216,7 @@ if __name__ == "__main__":
       `import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-async function run(input, context) {
+export async function run(input, context) {
   const root = process.env.NAKAMA_WORKSPACE_ROOT ?? "/tmp";
   const counter = path.join(root, "attempts.txt");
   let n = existsSync(counter) ? Number(readFileSync(counter, "utf8").trim() || "0") : 0;
@@ -227,11 +227,6 @@ async function run(input, context) {
     process.exit(3);
   }
   return { ok: true, attempts: n };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"

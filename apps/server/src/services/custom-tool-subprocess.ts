@@ -8,15 +8,16 @@ import type { ToolContext } from "@nakama/core";
 
 const SIGKILL_GRACE_MS = 5000;
 const MAX_OUTPUT_CHARS = 1_000_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
-/**
- * Builds the child process env from an explicit allowlist: PATH (needed to
- * resolve the interpreter binary), NAKAMA_CONFIG_DIR, and the active
- * workspace root. Nothing else from the server's environment is passed
- * through, so provider API keys and ambient shell secrets never reach a
- * tool's process.
- */
-export function buildAllowlistedSubprocessEnv(
+function resolveCustomToolTimeoutMs(): number {
+  const configured = Number(process.env.NAKAMA_CUSTOM_TOOL_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_TIMEOUT_MS;
+}
+
+function buildAllowlistedSubprocessEnv(
   workspaceRoot?: string
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
@@ -43,23 +44,25 @@ export interface SpawnJsonToolOptions {
   /** Working directory for the child. Keeps a tool's relative file access
    * scoped to its own directory instead of the server's checkout. */
   cwd: string;
-  env: NodeJS.ProcessEnv;
   input: unknown;
   /** Used in error messages, e.g. "Python tool", "JavaScript tool". */
   label: string;
-  timeoutMs: number;
+  workspaceRoot?: string;
 }
 
 /**
  * Spawns a tool as a subprocess, writes `input` as JSON to stdin, and parses
  * one JSON value from stdout as the result. Kills the child (SIGTERM, then
- * SIGKILL after a grace period) if it outlives `timeoutMs` or if
+ * SIGKILL after a grace period) if it outlives the timeout or if
  * `context.signal` aborts.
  */
 export async function spawnJsonTool(
   options: SpawnJsonToolOptions
 ): Promise<unknown> {
-  const { args, bin, context, cwd, env, input, label, timeoutMs } = options;
+  const { args, bin, context, cwd, input, label, workspaceRoot } = options;
+  const env = buildAllowlistedSubprocessEnv(workspaceRoot);
+  const timeoutMs = resolveCustomToolTimeoutMs();
+
   const result = await new Promise<{ stderr: string; stdout: string }>(
     (resolve, reject) => {
       // Node SIGTERMs the child when the turn is cancelled, so a stopped chat

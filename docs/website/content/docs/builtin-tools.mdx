@@ -444,25 +444,19 @@ Neither handler inherits the server's full environment. The child process only g
 
 ### Authoring a JavaScript tool
 
-A JavaScript tool is a `.js` file that defines a `run(input, context)` function and prints one JSON value to stdout when run as a script:
+A JavaScript tool is a `.js` file that exports a `run(input, context)` function. Nakama loads it through a small runner subprocess — you do not write a stdin/stdout harness yourself:
 
 ```javascript
 // ~/.nakama/tools/word_count.js
-async function run(input, context) {
+export async function run(input, context) {
   const text = String(input.text ?? "");
   return { words: text.split(/\s+/).filter(Boolean).length };
-}
-
-if (import.meta.main) {
-  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
-  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 ```
 
 The contract:
 
-- Nakama invokes `bun <file>` once per call and writes the call arguments to stdin as JSON.
-- Whatever the script prints to stdout must be one JSON value — that becomes the tool result the agent sees.
+- Nakama invokes `bun` with a built-in runner that imports your module, calls `run`, and prints one JSON value to stdout.
 - A non-zero exit code or non-JSON stdout is returned to the agent as an error message (stderr is included).
 - Calls time out after 30 seconds.
 - Set `NAKAMA_BUN_BIN` before starting Nakama if `bun` is not the right interpreter to invoke on `PATH`.
