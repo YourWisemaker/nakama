@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ThemeContext } from "@/context/theme-context-shared";
@@ -21,29 +22,36 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState(() =>
     resolveTheme(getInitialTheme())
   );
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+
+  const syncTheme = useCallback(() => {
+    const currentTheme = themeRef.current;
+    applyTheme(currentTheme);
+    setResolvedTheme(resolveTheme(currentTheme));
+
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
+    } catch {
+      // Ignore storage failures (private browsing, etc.)
+    }
+  }, []);
 
   useEffect(() => {
-    const syncTheme = () => {
-      applyTheme(theme);
-      setResolvedTheme(resolveTheme(theme));
-
-      try {
-        localStorage.setItem(THEME_STORAGE_KEY, theme);
-      } catch {
-        // Ignore storage failures (private browsing, etc.)
-      }
-    };
-
     syncTheme();
+  }, [theme, syncTheme]);
 
-    if (theme !== "system") {
-      return;
-    }
-
+  useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    mediaQuery.addEventListener("change", syncTheme);
-    return () => mediaQuery.removeEventListener("change", syncTheme);
-  }, [theme]);
+    const handleChange = () => {
+      if (themeRef.current !== "system") {
+        return;
+      }
+      syncTheme();
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [syncTheme]);
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
