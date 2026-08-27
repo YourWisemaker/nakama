@@ -52,8 +52,13 @@ describe("profile service createTool", () => {
 
     await writeFile(
       path.join(toolsDir, "echo.js"),
-      `export async function run(input) {
+      `async function run(input, context) {
   return input;
+}
+
+if (import.meta.main) {
+  const payload = JSON.parse((await Bun.stdin.text()) || "{}");
+  process.stdout.write(JSON.stringify(await run(payload, {})));
 }
 `,
       "utf8"

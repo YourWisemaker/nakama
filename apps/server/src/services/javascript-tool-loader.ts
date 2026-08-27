@@ -1,20 +1,27 @@
-import { pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type { JsonSchema, ToolContext, ToolDefinition } from "@nakama/core";
 import { pathExists, permissiveObjectSchema } from "@nakama/core";
 import type { StoredToolRecord } from "@nakama/db";
 import {
   createErrorTool,
-  isJsonSchema,
   readHandlerConfig,
   resolveCustomToolModulePath,
 } from "./custom-tool-shared";
+import {
+  buildAllowlistedSubprocessEnv,
+  spawnJsonTool,
+} from "./custom-tool-subprocess";
 
-const moduleCache = new Map<string, JavascriptToolModule>();
+const BUN_BIN = process.env.NAKAMA_BUN_BIN ?? "bun";
+const DEFAULT_TIMEOUT_MS = 30_000;
 
-interface JavascriptToolModule {
-  parallelSafe?: boolean;
-  parameters?: JsonSchema;
-  run: (input: unknown, context: ToolContext) => Promise<unknown>;
+// Call-time env override so tests can shrink the kill timer.
+function resolveTimeoutMs(): number {
+  const configured = Number(process.env.NAKAMA_JAVASCRIPT_TOOL_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_TIMEOUT_MS;
 }
 
 export async function loadJavascriptTool(
@@ -47,26 +54,28 @@ export async function loadJavascriptTool(
     );
   }
 
+  // Surface the missing-`run` error at load time so the agent sees a clear
+  // message instead of a confusing JSON parse error from spawn.
   try {
-    const module = await importJavascriptModule(modulePath);
-    const parameters =
-      module.parameters ?? config.parameters ?? permissiveObjectSchema();
-
-    return {
-      description: record.description,
-      name: record.name,
-      parameters,
-      ...(module.parallelSafe ? { parallelSafe: true } : {}),
-      async run(input, context) {
-        return module.run(input, context);
-      },
-    };
+    await validateJavascriptToolModule(config.modulePath);
   } catch (error) {
     return createErrorTool(
       record,
       error instanceof Error ? error.message : String(error)
     );
   }
+
+  const parameters: JsonSchema = config.parameters ?? permissiveObjectSchema();
+
+  return {
+    description: record.description,
+    name: record.name,
+    parameters,
+    ...(config.parallelSafe ? { parallelSafe: true } : {}),
+    async run(input, context) {
+      return runJavascriptTool(modulePath, input, context);
+    },
+  };
 }
 
 export async function validateJavascriptToolModule(
@@ -78,61 +87,53 @@ export async function validateJavascriptToolModule(
     throw new Error(`Tool module not found: ${modulePath}`);
   }
 
-  await importJavascriptModule(resolvedPath);
+  // Static checks catch the obvious authoring failures before registration.
+  // Syntax errors still surface at invocation.
+  const source = await readFile(resolvedPath, "utf8");
+
+  if (!/\bfunction\s+run\s*\(|\b(?:const|let|var)\s+run\s*=/.test(source)) {
+    throw new Error("Tool module must define a run(input, context) function.");
+  }
+
+  const hasHarness =
+    /import\.meta\.main/.test(source) &&
+    /stdin/i.test(source) &&
+    /stdout/i.test(source);
+  if (!hasHarness) {
+    throw new Error(
+      "JavaScript tools must include an if (import.meta.main) harness that reads JSON from stdin and writes JSON to stdout."
+    );
+  }
 }
 
 export function resolveJavascriptModulePath(modulePath: string): string {
   return resolveCustomToolModulePath(modulePath);
 }
 
-async function importJavascriptModule(
-  modulePath: string
-): Promise<JavascriptToolModule> {
-  const cached = moduleCache.get(modulePath);
+async function runJavascriptTool(
+  modulePath: string,
+  input: unknown,
+  context: ToolContext
+): Promise<unknown> {
+  const env = buildAllowlistedSubprocessEnv(
+    readString(context?.workspaceRoot) || undefined
+  );
 
-  if (cached) {
-    return cached;
-  }
-
-  const imported = await import(pathToFileURL(modulePath).href);
-  const module = normalizeJavascriptModule(imported);
-
-  moduleCache.set(modulePath, module);
-  return module;
+  // No try/catch here on purpose, matching the Python loader: a failed spawn
+  // must reject so the retry policy in withToolRetries can retry transient
+  // failures. executeToolCall converts the throw into `{ error: message }`.
+  return spawnJsonTool({
+    args: [modulePath],
+    bin: BUN_BIN,
+    context,
+    cwd: path.dirname(modulePath),
+    env,
+    input,
+    label: "JavaScript tool",
+    timeoutMs: resolveTimeoutMs(),
+  });
 }
 
-export function invalidateJavascriptModuleCache(modulePath: string): void {
-  moduleCache.delete(modulePath);
-}
-
-function normalizeJavascriptModule(imported: unknown): JavascriptToolModule {
-  if (typeof imported !== "object" || imported === null) {
-    throw new Error("Tool module must export a run function.");
-  }
-
-  const record = imported as Record<string, unknown>;
-  const defaultExport =
-    typeof record.default === "object" && record.default !== null
-      ? (record.default as Record<string, unknown>)
-      : null;
-  const source = defaultExport ?? record;
-  const run = source.run;
-
-  if (typeof run !== "function") {
-    throw new Error("Tool module must export a run function.");
-  }
-
-  const parameters = isJsonSchema(source.parameters)
-    ? source.parameters
-    : isJsonSchema(record.parameters)
-      ? record.parameters
-      : undefined;
-  const parallelSafe =
-    source.parallelSafe === true || record.parallelSafe === true;
-
-  return {
-    parameters,
-    ...(parallelSafe ? { parallelSafe: true } : {}),
-    run: (input, context) => Promise.resolve(run(input, context)),
-  };
+function readString(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
