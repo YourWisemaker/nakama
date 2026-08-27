@@ -117,7 +117,8 @@ export function IntegrationStatusHeader({
   className,
 }: {
   title: string;
-  subtitle: string;
+  /** Omit it when the title already says everything, per the AGENTS.md React rule. */
+  subtitle?: string;
   statusBadge: string;
   configured: boolean;
   connected: boolean;
@@ -148,7 +149,11 @@ export function IntegrationStatusHeader({
             {statusBadge}
           </span>
         </div>
-        <p className="text-pretty text-muted-foreground text-xs">{subtitle}</p>
+        {subtitle ? (
+          <p className="text-pretty text-muted-foreground text-xs">
+            {subtitle}
+          </p>
+        ) : null}
       </div>
     </div>
   );

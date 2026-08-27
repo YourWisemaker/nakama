@@ -53,6 +53,7 @@ import type {
   DraftTaskPromptRequest,
   DraftTaskPromptResponse,
   EmailSettingsResponse,
+  ErrorTrackingSettingsResponse,
   GenerateImageRequest,
   GenerateImageResponse,
   HealthResponse,
@@ -123,6 +124,7 @@ import type {
   RunToolResponse,
   SendEmailTestRequest,
   SendEmailTestResponse,
+  SendErrorTrackingTestResponse,
   SendMessageResponse,
   SessionMessagesResponse,
   SessionStatusResponse,
@@ -165,6 +167,7 @@ import type {
   UpdateComposioSettingsRequest,
   UpdateDiscordSettingsRequest,
   UpdateEmailSettingsRequest,
+  UpdateErrorTrackingSettingsRequest,
   UpdateImageGenerationRequest,
   UpdateMcpServerRequest,
   UpdateNotificationDestinationRequest,
@@ -1618,6 +1621,28 @@ export class NakamaClient {
       {
         method: "POST",
       }
+    );
+  }
+
+  async getErrorTrackingSettings(): Promise<ErrorTrackingSettingsResponse> {
+    return this.request<ErrorTrackingSettingsResponse>(
+      "/v1/settings/error-tracking"
+    );
+  }
+
+  async setErrorTrackingSettings(
+    request: UpdateErrorTrackingSettingsRequest
+  ): Promise<ErrorTrackingSettingsResponse> {
+    return this.request<ErrorTrackingSettingsResponse>(
+      "/v1/settings/error-tracking",
+      { body: JSON.stringify(request), method: "PUT" }
+    );
+  }
+
+  async sendErrorTrackingTest(): Promise<SendErrorTrackingTestResponse> {
+    return this.request<SendErrorTrackingTestResponse>(
+      "/v1/settings/error-tracking/test",
+      { method: "POST" }
     );
   }
 

@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { maskSecret } from "./email-config";
 import { parseIni, readTextOrNull, writeTextFile } from "./fs";
 import { getUserConfigDir } from "./user-config";
 
@@ -74,4 +75,22 @@ export async function saveErrorTrackingDsn(
 
 export async function isErrorTrackingEnabled(): Promise<boolean> {
   return resolveErrorTrackingDsn(await loadErrorTrackingConfig()) !== null;
+}
+
+export interface ErrorTrackingSettingsPublic {
+  configured: boolean;
+  dsnMasked: string | null;
+}
+
+/**
+ * The raw DSN never leaves the server. It carries the operator's ingest key, and an
+ * API response is the easiest place for it to end up in a log or a browser cache.
+ */
+export async function loadErrorTrackingSettingsPublic(): Promise<ErrorTrackingSettingsPublic> {
+  const { dsn } = await loadErrorTrackingConfig();
+
+  return {
+    configured: Boolean(dsn),
+    dsnMasked: dsn ? maskSecret(dsn) : null,
+  };
 }

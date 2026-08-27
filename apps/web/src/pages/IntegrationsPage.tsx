@@ -1,4 +1,5 @@
 import {
+  Bug01Icon,
   CodeIcon,
   CpuChargeIcon,
   HashtagIcon,
@@ -13,6 +14,7 @@ import { CodingAgentsSettingsCard } from "@/components/CodingAgentsSettingsCard"
 import { ComposioConnectionsCard } from "@/components/ComposioConnectionsCard";
 import { ComposioSettingsCard } from "@/components/ComposioSettingsCard";
 import { DiscordSettingsCard } from "@/components/DiscordSettingsCard";
+import { ErrorTrackingSettingsCard } from "@/components/ErrorTrackingSettingsCard";
 import { LocalAuthTokenCard } from "@/components/LocalAuthTokenCard";
 import { NotificationDestinationsCard } from "@/components/NotificationDestinationsCard";
 import { TelegramSettingsCard } from "@/components/TelegramSettingsCard";
@@ -65,6 +67,11 @@ const INTEGRATION_SECTIONS = [
     id: "optimization",
     label: "Context savings",
   },
+  {
+    icon: Bug01Icon,
+    id: "error-tracking",
+    label: "Error tracking",
+  },
 ] as const;
 
 type IntegrationSectionId = (typeof INTEGRATION_SECTIONS)[number]["id"];
@@ -77,6 +84,7 @@ function resolveSection(value: string | null): IntegrationSectionId {
     value === "discord" ||
     value === "composio" ||
     value === "optimization" ||
+    value === "error-tracking" ||
     value === "coding-agents"
   ) {
     return value;
@@ -170,6 +178,8 @@ export function IntegrationsPage() {
           {section === "notifications" ? (
             <NotificationDestinationsCard />
           ) : null}
+
+          {section === "error-tracking" ? <ErrorTrackingSettingsCard /> : null}
 
           {section === "whatsapp" ? <WhatsAppSettingsCard /> : null}
         </div>
