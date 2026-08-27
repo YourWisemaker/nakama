@@ -64,7 +64,11 @@ export function ErrorTrackingSettingsCard() {
 
     try {
       const result = await testMutation.mutateAsync();
-      setTestResult(result.message);
+      setTestResult(
+        result.delivered
+          ? "Test event delivered. It should appear in your project within a few seconds."
+          : "The ingest rejected the event or could not be reached. Check the DSN."
+      );
     } catch (error) {
       setFormError(formatError(error));
     }

@@ -1174,12 +1174,7 @@ export class AgentService {
       })
     );
 
-    return {
-      delivered,
-      message: delivered
-        ? "Test event delivered. It should appear in your project within a few seconds."
-        : "The ingest rejected the event or could not be reached. Check the DSN.",
-    };
+    return { delivered };
   }
 
   async getEmailSettings(): Promise<EmailSettingsResponse> {
