@@ -1148,7 +1148,11 @@ export function disableRawModeIfActive(
     return;
   }
 
-  stdin.setRawMode(false);
+  try {
+    stdin.setRawMode(false);
+  } catch {
+    // Cleanup must not throw if the TTY rejects the mode change.
+  }
 }
 
 export function isEscInterruptKey(key: string): boolean {

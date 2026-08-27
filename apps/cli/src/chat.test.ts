@@ -135,4 +135,16 @@ describe("disableRawModeIfActive", () => {
 
     expect(calls).toEqual([false]);
   });
+
+  test("swallows setRawMode errors so cleanup can continue", () => {
+    expect(() =>
+      disableRawModeIfActive({
+        isRaw: true,
+        isTTY: true,
+        setRawMode: () => {
+          throw new Error("setRawMode rejected");
+        },
+      } as NodeJS.ReadStream)
+    ).not.toThrow();
+  });
 });
