@@ -24,10 +24,6 @@ import {
 } from "@/components/ai-elements/prompt-input-context";
 import { PromptInputForm } from "@/components/ai-elements/prompt-input-form";
 import { convertBlobUrlToDataUrl } from "@/components/ai-elements/prompt-input-media";
-import {
-  LocalReferencedSourcesContext,
-  type ReferencedSourcesContext,
-} from "@/components/ai-elements/prompt-input-referenced-sources-context";
 import { usePromptInputFileState } from "@/components/ai-elements/use-prompt-input-file-state";
 import {
   InputGroupAddon,
@@ -42,11 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import type {
-  ChatStatus,
-  FileUIPart,
-  SourceDocumentUIPart,
-} from "@/lib/ai-ui-types";
+import type { ChatStatus, FileUIPart } from "@/lib/ai-ui-types";
 import { createClientId } from "@/lib/client-id";
 import {
   countWords,
@@ -248,38 +240,6 @@ export const PromptInput = ({
     syncHiddenInput,
   });
 
-  const [referencedSources, setReferencedSources] = useState<
-    (SourceDocumentUIPart & { id: string })[]
-  >([]);
-
-  const clearReferencedSources = useCallback(
-    () => setReferencedSources([]),
-    []
-  );
-
-  const clear = useCallback(() => {
-    clearAttachments();
-    clearReferencedSources();
-  }, [clearAttachments, clearReferencedSources]);
-
-  const refsCtx = useMemo<ReferencedSourcesContext>(
-    () => ({
-      add: (incoming: SourceDocumentUIPart[] | SourceDocumentUIPart) => {
-        const array = Array.isArray(incoming) ? incoming : [incoming];
-        setReferencedSources((prev) => [
-          ...prev,
-          ...array.map((s) => ({ ...s, id: createClientId() })),
-        ]);
-      },
-      clear: clearReferencedSources,
-      remove: (id: string) => {
-        setReferencedSources((prev) => prev.filter((s) => s.id !== id));
-      },
-      sources: referencedSources,
-    }),
-    [referencedSources, clearReferencedSources]
-  );
-
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     async (event) => {
       event.preventDefault();
@@ -315,7 +275,7 @@ export const PromptInput = ({
         if (result instanceof Promise) {
           try {
             await result;
-            clear();
+            clearAttachments();
             if (usingProvider) {
               controller!.textInput.clear();
             }
@@ -323,7 +283,7 @@ export const PromptInput = ({
             // Don't clear on error - user may want to retry
           }
         } else {
-          clear();
+          clearAttachments();
           if (usingProvider) {
             controller!.textInput.clear();
           }
@@ -332,27 +292,25 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     },
-    [usingProvider, controller, files, onSubmit, clear]
+    [usingProvider, controller, files, onSubmit, clearAttachments]
   );
 
   return (
     <LocalAttachmentsContext.Provider value={attachmentsCtx}>
-      <LocalReferencedSourcesContext.Provider value={refsCtx}>
-        <PromptInputForm
-          accept={accept}
-          className={className}
-          formRef={formRef}
-          inputGroupClassName={inputGroupClassName}
-          inputRef={inputRef}
-          multiple={multiple}
-          onFileChange={handleChange}
-          onSubmit={handleSubmit}
-          rimActive={rimActive}
-          {...props}
-        >
-          {children}
-        </PromptInputForm>
-      </LocalReferencedSourcesContext.Provider>
+      <PromptInputForm
+        accept={accept}
+        className={className}
+        formRef={formRef}
+        inputGroupClassName={inputGroupClassName}
+        inputRef={inputRef}
+        multiple={multiple}
+        onFileChange={handleChange}
+        onSubmit={handleSubmit}
+        rimActive={rimActive}
+        {...props}
+      >
+        {children}
+      </PromptInputForm>
     </LocalAttachmentsContext.Provider>
   );
 };
@@ -594,15 +552,14 @@ export const PromptInputSubmit = ({
   );
 };
 
-export type PromptInputSelectProps = ComponentProps<typeof Select>;
-
-export const PromptInputSelect = (props: PromptInputSelectProps) => (
-  <Select {...props} />
-);
-
 export type PromptInputSelectTriggerProps = ComponentProps<
   typeof SelectTrigger
 >;
+
+export const PromptInputSelect = Select;
+export const PromptInputSelectContent = SelectContent;
+export const PromptInputSelectItem = SelectItem;
+export const PromptInputSelectValue = SelectValue;
 
 export const PromptInputSelectTrigger = ({
   className,
@@ -616,33 +573,4 @@ export const PromptInputSelectTrigger = ({
     )}
     {...props}
   />
-);
-
-export type PromptInputSelectContentProps = ComponentProps<
-  typeof SelectContent
->;
-
-export const PromptInputSelectContent = ({
-  className,
-  ...props
-}: PromptInputSelectContentProps) => (
-  <SelectContent className={cn(className)} {...props} />
-);
-
-export type PromptInputSelectItemProps = ComponentProps<typeof SelectItem>;
-
-export const PromptInputSelectItem = ({
-  className,
-  ...props
-}: PromptInputSelectItemProps) => (
-  <SelectItem className={cn(className)} {...props} />
-);
-
-export type PromptInputSelectValueProps = ComponentProps<typeof SelectValue>;
-
-export const PromptInputSelectValue = ({
-  className,
-  ...props
-}: PromptInputSelectValueProps) => (
-  <SelectValue className={cn(className)} {...props} />
 );
