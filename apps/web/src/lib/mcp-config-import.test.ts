@@ -78,4 +78,11 @@ describe("parseMcpConfigJson", () => {
       ok: false,
     });
   });
+
+  test("returns an error when mcpServers is empty", () => {
+    const result = parseMcpConfigJson(`{ "mcpServers": {} }`);
+
+    expect(result).not.toBeNull();
+    expect(result?.ok).toBe(false);
+  });
 });
