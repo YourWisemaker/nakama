@@ -148,14 +148,14 @@ try {
   process.exit(1);
 }
 
-function registerCleanupHandlers(
-  cleanup: () => void | Promise<void>
-): void {
+function registerCleanupHandlers(cleanup: () => void | Promise<void>): void {
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
-    process.on(signal, () => {
-      void Promise.resolve(cleanup()).finally(() => {
+    process.on(signal, async () => {
+      try {
+        await cleanup();
+      } finally {
         process.exit(0);
-      });
+      }
     });
   }
 }
