@@ -40,11 +40,12 @@ export function parseMcpConfigJson(text: string): ParseMcpConfigResult | null {
     return { error: "No MCP server config found in JSON.", ok: false };
   }
 
-  if (entries.length === 0) {
+  const first = entries[0];
+  if (!first) {
     return { error: "mcpServers is empty.", ok: false };
   }
 
-  const [name, serverConfig] = entries[0]!;
+  const [name, serverConfig] = first;
 
   if (typeof serverConfig !== "object" || serverConfig === null) {
     return { error: "Invalid server config.", ok: false };
