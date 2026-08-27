@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInMemoryDatabaseAdapter } from "@nakama/db";
 import { AgentService } from "../../services/agent-service";
-import { AuthService } from "../../services/auth-service";
 import { createMinimalHonoApp } from "../test-app-helpers";
 import { loginUserSession, seedOrgAdmin } from "../test-session-helpers";
 
@@ -16,46 +15,11 @@ async function createApp() {
   );
 
   const databaseAdapter = createInMemoryDatabaseAdapter();
-  const authService = new AuthService();
 
   return createMinimalHonoApp({
     agent: new AgentService(null, null, databaseAdapter),
-    authService,
     databaseAdapter,
   });
-}
-
-async function seedMember(
-  databaseAdapter: ReturnType<typeof createInMemoryDatabaseAdapter>,
-  authService: AuthService,
-  role: "member" | "viewer"
-) {
-  const now = new Date().toISOString();
-  const email = `${role}@example.com`;
-  const password = "password123";
-
-  await databaseAdapter.createUser({
-    createdAt: now,
-    email,
-    id: `user_${role}`,
-    passwordHash: await authService.hashPassword(password),
-    updatedAt: now,
-  });
-  await databaseAdapter.upsertOrganization({
-    createdAt: now,
-    id: "org_test",
-    name: "Test Org",
-    slug: "test-org",
-    updatedAt: now,
-  });
-  await databaseAdapter.upsertOrgMember({
-    createdAt: now,
-    orgId: "org_test",
-    role,
-    userId: `user_${role}`,
-  });
-
-  return { email, orgId: "org_test", password };
 }
 
 describe("error tracking routes", () => {
@@ -133,31 +97,6 @@ describe("error tracking routes", () => {
 
     expect(response.status).toBe(400);
   });
-
-  for (const role of ["member", "viewer"] as const) {
-    test(`a ${role} cannot write the workspace-wide DSN`, async () => {
-      const { app, databaseAdapter, authService } = await createApp();
-      const { email, password, orgId } = await seedMember(
-        databaseAdapter,
-        authService,
-        role
-      );
-      const session = await loginUserSession(app, email, password, orgId);
-
-      const response = await app.fetch(
-        new Request("http://localhost:4310/v1/settings/error-tracking", {
-          body: JSON.stringify({ dsn: DSN }),
-          headers: session.headers({
-            "Content-Type": "application/json",
-            "X-CSRF-Token": session.csrfToken,
-          }),
-          method: "PUT",
-        })
-      );
-
-      expect(response.status).toBe(403);
-    });
-  }
 
   test("the test event is refused before a DSN is saved", async () => {
     const { app, databaseAdapter } = await createApp();

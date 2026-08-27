@@ -1323,7 +1323,6 @@ export interface UpdateErrorTrackingSettingsRequest {
 
 export interface SendErrorTrackingTestResponse {
   delivered: boolean;
-  message: string;
 }
 
 export type NotificationDestinationChannel = "telegram";

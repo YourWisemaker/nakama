@@ -56,6 +56,12 @@ const GLOBAL_WRITES: Array<{ body?: unknown; method: string; path: string }> = [
     path: "/v1/settings/discord/handshake",
   },
   { body: { apiKey: "c" }, method: "PUT", path: "/v1/settings/composio" },
+  {
+    body: { dsn: "https://publickey@errors.example.com/42" },
+    method: "PUT",
+    path: "/v1/settings/error-tracking",
+  },
+  { method: "POST", path: "/v1/settings/error-tracking/test" },
   { body: { enabled: true }, method: "PUT", path: "/v1/settings/whatsapp" },
   {
     body: { phoneNumber: "1" },
@@ -81,8 +87,10 @@ function createApp() {
       deleteProvider: record("deleteProvider"),
       discoverModels: record("discoverModels"),
       listProfiles: async () => ({ profiles: [{ id: "default" }] }),
+      sendErrorTrackingTest: record("sendErrorTrackingTest"),
       setComposioSettings: record("setComposioSettings"),
       setDiscordSettings: record("setDiscordSettings"),
+      setErrorTrackingSettings: record("setErrorTrackingSettings"),
       setImageGenerationSettings: record("setImageGenerationSettings"),
       setTelegramSettings: record("setTelegramSettings"),
       setTranscriptionSettings: record("setTranscriptionSettings"),
