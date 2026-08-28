@@ -195,7 +195,6 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     if (!isAuthorized) {
       console.log("[discord] unauthorized", userId);
       if (isGuild) {
-        await messenger.send(LINK_IN_PRIVATE_REPLY);
         return;
       }
 
@@ -493,6 +492,11 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       }
 
       if (!authStore.isAuthorized(userId)) {
+        if (!interaction.channel?.isDMBased()) {
+          await interaction.deleteReply().catch(() => {});
+          return;
+        }
+
         if (
           interaction.commandName === "start" ||
           interaction.commandName === "help"
@@ -501,11 +505,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
           return;
         }
 
-        await messenger.send(
-          interaction.channel?.isDMBased()
-            ? PAIRING_PROMPT
-            : LINK_IN_PRIVATE_REPLY
-        );
+        await messenger.send(PAIRING_PROMPT);
         return;
       }
 
