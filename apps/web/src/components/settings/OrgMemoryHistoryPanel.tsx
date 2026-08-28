@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useOrgMembers } from "@/hooks/use-org-members";
+import { useOrgMemory } from "@/hooks/use-org-memory";
 import {
   useOrgMemoryHistory,
   useOrgMemoryHistoryRevision,
@@ -267,11 +268,25 @@ function HistoryTimelineItem({
 
 export function OrgMemoryHistoryPanel({ orgId }: { orgId: string }) {
   const { data, isLoading, error } = useOrgMemoryHistory(orgId);
+  const { data: memoryData } = useOrgMemory(orgId);
   const undoMutation = useUndoOrgMemoryChange(orgId);
   const { data: membersData } = useOrgMembers(orgId);
   const changes = data?.changes ?? [];
+  const { data: latestRevision } = useOrgMemoryHistoryRevision(
+    orgId,
+    changes[0]?.id ?? null
+  );
   const members = membersData?.members ?? [];
-  const canUndo = changes.length >= 2;
+  const liveContent = memoryData?.content;
+  const latestRevisionContent = latestRevision?.content;
+  const latestRevisionIsCurrent =
+    liveContent !== undefined &&
+    latestRevisionContent !== undefined &&
+    liveContent.trim() === latestRevisionContent.trim();
+  const canUndo =
+    liveContent !== undefined &&
+    latestRevisionContent !== undefined &&
+    changes.length >= (latestRevisionIsCurrent ? 2 : 1);
 
   async function handleUndo() {
     try {
@@ -327,7 +342,7 @@ export function OrgMemoryHistoryPanel({ orgId }: { orgId: string }) {
             <HistoryTimelineItem
               actorLabel={resolveActorLabel(change.actorUserId, members)}
               change={change}
-              isCurrent={index === 0}
+              isCurrent={index === 0 && latestRevisionIsCurrent}
               isLast={index === changes.length - 1}
               key={change.id}
               orgId={orgId}
