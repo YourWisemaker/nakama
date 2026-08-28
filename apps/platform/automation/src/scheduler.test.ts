@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import type { NakamaClient } from "@nakama/client";
 import type { AutomationSchedule } from "@nakama/core";
 import { AutomationWorkerScheduler } from "./scheduler";
@@ -12,6 +12,7 @@ function createMockClient(
   return {
     getTimezone: async () => "UTC",
     listAutomationSchedules: async () => [],
+    listSkillCuratorOrgs: async () => ({ orgs: [] }),
     runAutomationInternal: async () => {},
     ...overrides,
   } as unknown as NakamaClient;
@@ -37,5 +38,127 @@ describe("AutomationWorkerScheduler", () => {
 
     expect(scheduler.getStatus()).toEqual({ running: true, scheduledJobs: 1 });
     scheduler.stop();
+  });
+
+  test("falls back to UTC when timezone endpoint fails", async () => {
+    const client = createMockClient({
+      getTimezone: async () => {
+        throw new Error("unavailable");
+      },
+      listAutomationSchedules: async () => [
+        {
+          cron: "0 * * * *",
+          id: "a1",
+          orgId: "o1",
+          profileId: "p1",
+          timezone: null,
+        },
+      ],
+    });
+
+    const scheduler = new AutomationWorkerScheduler(client);
+    await scheduler.start();
+
+    expect(scheduler.getStatus().scheduledJobs).toBe(1);
+    scheduler.stop();
+  });
+
+  test("serializes complete poll cycles and resumes after failures", async () => {
+    const releaseFirstReload = Promise.withResolvers<void>();
+    const curatorStarted = Promise.withResolvers<void>();
+    const releaseCurator = Promise.withResolvers<void>();
+    const failingReload = Promise.withResolvers<AutomationSchedule[]>();
+    let intervalCallback: (() => Promise<void>) | undefined;
+    let listCalls = 0;
+    let statusChanges = 0;
+    const client = createMockClient({
+      listAutomationSchedules: async () => {
+        listCalls += 1;
+        if (listCalls === 1) {
+          return [];
+        }
+
+        if (listCalls === 2) {
+          await releaseFirstReload.promise;
+          return [];
+        }
+
+        if (listCalls === 3) {
+          return failingReload.promise;
+        }
+
+        return [];
+      },
+    });
+    const scheduler = new AutomationWorkerScheduler(client, () => {
+      statusChanges += 1;
+    });
+    const intervalSpy = spyOn(globalThis, "setInterval").mockImplementation(
+      (callback) => {
+        intervalCallback = callback as () => Promise<void>;
+        return {} as ReturnType<typeof setInterval>;
+      }
+    );
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+    const pendingPolls: Promise<void>[] = [];
+
+    try {
+      await scheduler.start();
+      client.listSkillCuratorOrgs = async () => {
+        curatorStarted.resolve();
+        await releaseCurator.promise;
+        return { orgs: [] };
+      };
+      scheduler.beginPolling(1000);
+      const poll = intervalCallback;
+      if (!poll) {
+        throw new Error("Polling callback was not registered.");
+      }
+
+      const firstPoll = poll();
+      pendingPolls.push(firstPoll);
+      expect(listCalls).toBe(2);
+
+      const reloadOverlap = poll();
+      pendingPolls.push(reloadOverlap);
+      expect(listCalls).toBe(2);
+
+      releaseFirstReload.resolve();
+      await curatorStarted.promise;
+      const curatorOverlap = poll();
+      pendingPolls.push(curatorOverlap);
+      expect(listCalls).toBe(2);
+      expect(statusChanges).toBe(1);
+
+      releaseCurator.resolve();
+      await Promise.all([firstPoll, reloadOverlap, curatorOverlap]);
+      expect(statusChanges).toBe(2);
+
+      const failedReloadPoll = poll();
+      const failedReloadOverlap = poll();
+      pendingPolls.push(failedReloadPoll, failedReloadOverlap);
+      expect(listCalls).toBe(3);
+
+      failingReload.reject(new Error("reload failed"));
+      await Promise.all([failedReloadPoll, failedReloadOverlap]);
+
+      const resumedPoll = poll();
+      pendingPolls.push(resumedPoll);
+      await resumedPoll;
+
+      expect(listCalls).toBe(4);
+      expect(statusChanges).toBe(3);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseFirstReload.resolve();
+      releaseCurator.resolve();
+      failingReload.resolve([]);
+      await Promise.all(
+        pendingPolls.map((pendingPoll) => pendingPoll.catch(() => undefined))
+      );
+      scheduler.stop();
+      errorSpy.mockRestore();
+      intervalSpy.mockRestore();
+    }
   });
 });
