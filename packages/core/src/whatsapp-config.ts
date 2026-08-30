@@ -178,7 +178,9 @@ export async function rememberWhatsAppPairedIdentities(
   );
   const lidJid = jids.find((jid) => whatsAppJidServer(jid) === "lid");
   const nextPairedJid =
-    phoneJid && isSameWhatsAppUserJid(phoneJid, config.pairedJid)
+    phoneJid &&
+    config.pairedJid &&
+    isSameWhatsAppUserJid(phoneJid, config.pairedJid)
       ? phoneJid
       : config.pairedJid;
   const nextPairedLid = lidJid ?? config.pairedLid;
