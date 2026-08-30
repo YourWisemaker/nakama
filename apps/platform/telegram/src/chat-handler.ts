@@ -780,10 +780,16 @@ export function createChatHandler(deps: ChatHandlerDeps) {
     const existing = sessionStore.get(chatId);
 
     if (existing) {
+      const hot = sessionStore.getHotSession<RemoteChatSession>(chatId);
+      if (hot) {
+        return hot;
+      }
+
       const session = client.createChatSession(existing.sessionId, "telegram");
 
       try {
         await session.getMessages();
+        sessionStore.setHotSession(chatId, session);
         return session;
       } catch {
         // Session missing on server; create a new one below
@@ -808,6 +814,7 @@ export function createChatHandler(deps: ChatHandlerDeps) {
       sessionId: session.id,
       updatedAt: new Date().toISOString(),
     });
+    sessionStore.setHotSession(chatId, session);
     await sessionStore.save();
 
     return session;
