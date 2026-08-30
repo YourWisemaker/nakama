@@ -166,6 +166,41 @@ describe("downloadTelegramFile", () => {
     ).rejects.toThrow("network down");
   });
 
+  test("fetches via URL with token as encoded path segment", async () => {
+    const token = "123456:ABC-DEF/ghi_jkl";
+    const filePath = "photos/file_0.jpg";
+    fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("pdf-bytes", {
+        headers: { "content-type": "application/pdf" },
+      })
+    );
+
+    const ctx = {
+      api: {
+        getFile: async () => ({
+          file_path: filePath,
+          file_size: 9,
+        }),
+        token,
+      },
+    } as unknown as Context;
+
+    const result = await downloadTelegramFile(
+      ctx,
+      "file-1",
+      MAX_DOCUMENT_BYTES
+    );
+
+    expect(result.filePath).toBe(filePath);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const fetched = fetchSpy.mock.calls[0]?.[0];
+    expect(fetched).toBeInstanceOf(URL);
+    expect((fetched as URL).pathname).toBe(
+      `/file/${encodeURIComponent(`bot${token}`)}/${filePath}`
+    );
+    expect((fetched as URL).href).not.toContain(token);
+  });
+
   test("aborts while streaming once the body exceeds the cap", async () => {
     const maxBytes = 8;
     let pulls = 0;

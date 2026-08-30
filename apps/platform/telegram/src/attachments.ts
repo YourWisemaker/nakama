@@ -36,6 +36,13 @@ export interface DownloadedTelegramFile {
   filePath: string;
 }
 
+function buildTelegramFileDownloadUrl(token: string, filePath: string): URL {
+  const path = ["file", `bot${token}`, ...filePath.split("/").filter(Boolean)]
+    .map(encodeURIComponent)
+    .join("/");
+  return new URL(path, "https://api.telegram.org/");
+}
+
 export async function downloadTelegramFile(
   ctx: Context,
   fileId: string,
@@ -51,8 +58,7 @@ export async function downloadTelegramFile(
     throw new OversizedTelegramFileError();
   }
 
-  const token = ctx.api.token;
-  const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
+  const url = buildTelegramFileDownloadUrl(ctx.api.token, file.file_path);
   const response = await fetch(url);
 
   if (!response.ok) {
