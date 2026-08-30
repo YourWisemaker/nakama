@@ -7,6 +7,7 @@ import type {
 import {
   createDebouncedEscAbortHandler,
   disableRawModeIfActive,
+  formatBusyDropLine,
   formatErrorLines,
   formatStatusLines,
   isEscInterruptKey,
@@ -26,6 +27,22 @@ describe("needsTrailingStreamNewline", () => {
   test("skips the newline when the stream already ended with one", () => {
     expect(needsTrailingStreamNewline("Hello.\n")).toBe(false);
     expect(needsTrailingStreamNewline("Hello.\r\n")).toBe(false);
+  });
+});
+
+describe("formatBusyDropLine", () => {
+  test("shows a short busy marker before the warn threshold", () => {
+    expect(formatBusyDropLine(1)).toBe("[busy]");
+    expect(formatBusyDropLine(2)).toBe("[busy]");
+  });
+
+  test("includes the drop count once the warn threshold is reached", () => {
+    expect(formatBusyDropLine(3)).toBe(
+      "[busy] ignored input (3 while processing)"
+    );
+    expect(formatBusyDropLine(5)).toBe(
+      "[busy] ignored input (5 while processing)"
+    );
   });
 });
 
