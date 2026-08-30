@@ -6,6 +6,7 @@ import {
   promptForProviderConfig,
   type UserProviderName,
 } from "@nakama/core";
+import { formatCliDisplayPath, isCliVerbose } from "./display-path";
 import { printLine } from "./terminal-safe";
 
 function readPassword(prompt: string): Promise<string> {
@@ -161,7 +162,9 @@ export async function ensureProviderConfiguredViaCli(
     printLine(
       `\nProvider configured (${result.provider}, ${result.currentModel}).`
     );
-    console.log(`Saved to ${getUserConfigPath()}\n`);
+    console.log(
+      `Saved to ${formatCliDisplayPath(getUserConfigPath(), isCliVerbose())}\n`
+    );
 
     return true;
   } finally {
