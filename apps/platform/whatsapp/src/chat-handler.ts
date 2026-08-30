@@ -669,8 +669,8 @@ export async function withChatLock(
   const current = new Promise<void>((resolve) => {
     release = resolve;
   });
-  // Keep the stored chain rejection-safe: a failed previous must not reject
-  // `chain` before `current` settles (unhandledRejection hazard).
+  // Second handler keeps the chain alive if `previous` rejects, so the stored
+  // promise does not become an unhandled rejection when nobody awaits `chain`.
   const chain = previous.then(
     () => current,
     () => current
@@ -686,4 +686,12 @@ export async function withChatLock(
       chatLocks.delete(jid);
     }
   }
+}
+
+/** @internal Test helper — seed a predecessor promise (rejection-safety tests). */
+export function seedChatLockForTests(
+  jid: string,
+  promise: Promise<void>
+): void {
+  chatLocks.set(jid, promise);
 }
