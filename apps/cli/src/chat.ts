@@ -63,6 +63,46 @@ export function needsTrailingStreamNewline(lastChunk: string | null): boolean {
   return lastChunk === null || !lastChunk.endsWith("\n");
 }
 
+/** Promise-based chat exit — no setInterval polling of an `exiting` flag. */
+export function createChatExitController(signal?: AbortSignal): {
+  readonly exiting: boolean;
+  requestExit: () => void;
+  wait: () => Promise<void>;
+} {
+  let exiting = false;
+  let resolveWait: (() => void) | null = null;
+
+  const requestExit = (): void => {
+    exiting = true;
+    resolveWait?.();
+    resolveWait = null;
+  };
+
+  return {
+    get exiting() {
+      return exiting;
+    },
+    requestExit,
+    async wait(): Promise<void> {
+      signal?.addEventListener("abort", requestExit);
+      try {
+        if (signal?.aborted) {
+          requestExit();
+        }
+        await new Promise<void>((resolve) => {
+          resolveWait = resolve;
+          if (exiting) {
+            resolveWait = null;
+            resolve();
+          }
+        });
+      } finally {
+        signal?.removeEventListener("abort", requestExit);
+      }
+    },
+  };
+}
+
 export function formatBusyDropLine(dropCount: number): string {
   if (dropCount >= 3) {
     return `[busy] ignored input (${dropCount} while processing)`;
@@ -166,6 +206,7 @@ async function runStickyChat(
   const sendQueue = createSerializedQueue();
   const thinkingIndicator = new ThinkingIndicator();
   let prompt: PersistentPrompt | null = null;
+  const chatExit = createChatExitController(options.signal);
   thinkingIndicator.setRenderer(renderer);
 
   async function refreshModelsCache() {
@@ -288,13 +329,13 @@ async function runStickyChat(
 
   async function startSend(message: PendingMessage): Promise<void> {
     await sendQueue.enqueue(async () => {
-      if (exiting) {
+      if (chatExit.exiting) {
         return;
       }
 
       let current: PendingMessage | undefined = message;
 
-      while (current && !exiting) {
+      while (current && !chatExit.exiting) {
         try {
           await runOneSend(current);
         } catch (error) {
@@ -757,15 +798,6 @@ async function runStickyChat(
     return "handled";
   }
 
-  let exiting = false;
-  let resolveExit: (() => void) | null = null;
-
-  const requestExit = (): void => {
-    exiting = true;
-    resolveExit?.();
-    resolveExit = null;
-  };
-
   prompt = new PersistentPrompt({
     getSuggestions: (input) => {
       const active = effectiveModelState(currentProfile, modelsCache);
@@ -790,7 +822,7 @@ async function runStickyChat(
         return;
       }
 
-      requestExit();
+      chatExit.requestExit();
     },
     onScrollHistory: (event) => {
       if (event === "line_up") {
@@ -832,7 +864,7 @@ async function runStickyChat(
         const outcome = await handleSlashCommand(line);
 
         if (outcome === "exit") {
-          requestExit();
+          chatExit.requestExit();
           return;
         }
 
@@ -856,21 +888,7 @@ async function runStickyChat(
     terminalInput.stop();
   }
 
-  function onAbortSignal(): void {
-    requestExit();
-  }
-
-  options.signal?.addEventListener("abort", onAbortSignal);
-
-  await new Promise<void>((resolve) => {
-    resolveExit = resolve;
-    if (exiting || options.signal?.aborted) {
-      resolveExit = null;
-      resolve();
-    }
-  });
-
-  options.signal?.removeEventListener("abort", onAbortSignal);
+  await chatExit.wait();
   cleanupChat();
 }
 
