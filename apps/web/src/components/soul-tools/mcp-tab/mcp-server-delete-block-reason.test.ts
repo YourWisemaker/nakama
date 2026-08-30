@@ -8,11 +8,13 @@ function summary(
 ): McpServerSummary {
   return {
     assignedProfileCount: 0,
+    createdAt: "2026-01-01T00:00:00.000Z",
     enabled: true,
     lastError: null,
     status: "disconnected",
     toolCount: 0,
     transport: "http",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
