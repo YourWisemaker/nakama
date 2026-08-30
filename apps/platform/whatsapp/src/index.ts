@@ -170,6 +170,19 @@ try {
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+  outboundServer?.stop();
+  try {
+    await socketHandle?.stop();
+  } catch {
+    // Socket stop best-effort on fatal path.
+  }
+  // Await before exit — void + process.exit can leave a stale heartbeat/QR file.
+  await clearWhatsAppWorkerHeartbeat();
+  await clearWhatsAppQrCode();
   stopSpawnedServer(spawnedChild);
   process.exit(1);
 }
