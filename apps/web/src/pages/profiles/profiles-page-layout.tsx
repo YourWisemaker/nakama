@@ -8,6 +8,7 @@ import { useSkillProposals } from "@/hooks/use-skill-proposals";
 import { resolveSuperBotChatProfileId } from "@/lib/profiles";
 import { cn } from "@/lib/utils";
 import { ProfileConfigTab } from "@/pages/profiles/profile-config-tab";
+import { ProfileHistoryTab } from "@/pages/profiles/profile-history-tab";
 import { sectionClass } from "@/pages/profiles/profiles-page.shared";
 import {
   PageState,
@@ -71,7 +72,7 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
               >
                 Config
               </ProfileDetailTabButton>
-              {canCreateProfile ? (
+              {canPack ? (
                 <ProfileDetailTabButton
                   active={detailTab === "prompt"}
                   controls="profile-detail-panel-prompt"
@@ -171,14 +172,15 @@ export function ProfilesPageLayout(state: ProfilesPageState) {
                 profileId={selectedId}
               />
             </div>
-          ) : detailTab === "prompt" && canCreateProfile ? (
+          ) : detailTab === "prompt" && canPack ? (
             <div
               aria-labelledby="profile-detail-tab-prompt"
-              className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5"
+              className="no-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-5"
               id="profile-detail-panel-prompt"
               role="tabpanel"
             >
-              <SoulTab profileId={selectedId} />
+              {canCreateProfile ? <SoulTab profileId={selectedId} /> : null}
+              <ProfileHistoryTab profileId={selectedId} />
             </div>
           ) : detailTab === "knowledge" ? (
             <div

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   type AgentChatSession,
   type AgentHarness,
@@ -170,9 +171,11 @@ import {
   saveUserTimezone,
   saveWhatsAppConfig,
   USER_CONTEXT_TEMPLATE,
+  WRITABLE_SOUL_FILES,
   writeArtifactFile,
   writeSoulFile,
 } from "@nakama/core";
+import { readTextIfExists } from "@nakama/core/fs";
 import { canAccessSuperBotProfile } from "@nakama/core/profiles";
 import {
   type DatabaseAdapter,
@@ -263,6 +266,11 @@ import type { McpClientManager } from "./mcp-client-manager";
 import type { McpService } from "./mcp-service";
 import { buildMcpToolDefinitions } from "./mcp-tool-bridge";
 import { OrgMemoryService } from "./org-memory-service";
+import type { ProfileChangeMeta } from "./profile-change-history";
+import {
+  recordProfileChangeEvent,
+  soulFieldFromKey,
+} from "./profile-change-history";
 import { ProfileService } from "./profile-service";
 import {
   applyProviderInstanceUpdate,
@@ -2545,12 +2553,14 @@ export class AgentService {
   async updateProfile(
     orgId: string,
     profileId: string,
-    request: UpdateProfileRequest
+    request: UpdateProfileRequest,
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
     const response = await this.profileService.updateProfile(
       orgId,
       profileId,
-      request
+      request,
+      meta
     );
 
     if (request.model !== undefined) {
@@ -2691,33 +2701,42 @@ export class AgentService {
   async assignTool(
     orgId: string,
     profileId: string,
-    request: AssignToolRequest
+    request: AssignToolRequest,
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
-    return this.profileService.assignTool(orgId, profileId, request);
+    return this.profileService.assignTool(orgId, profileId, request, meta);
   }
 
   async unassignTool(
     orgId: string,
     profileId: string,
-    toolId: string
+    toolId: string,
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
-    return this.profileService.unassignTool(orgId, profileId, toolId);
+    return this.profileService.unassignTool(orgId, profileId, toolId, meta);
   }
 
   async assignMcpServer(
     orgId: string,
     profileId: string,
-    request: { serverId: string }
+    request: { serverId: string },
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
-    return this.profileService.assignMcpServer(orgId, profileId, request);
+    return this.profileService.assignMcpServer(orgId, profileId, request, meta);
   }
 
   async unassignMcpServer(
     orgId: string,
     profileId: string,
-    serverId: string
+    serverId: string,
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
-    return this.profileService.unassignMcpServer(orgId, profileId, serverId);
+    return this.profileService.unassignMcpServer(
+      orgId,
+      profileId,
+      serverId,
+      meta
+    );
   }
 
   async listSkills(): Promise<ListSkillsResponse> {
@@ -2775,17 +2794,19 @@ export class AgentService {
   async assignSkill(
     orgId: string,
     profileId: string,
-    request: AssignSkillRequest
+    request: AssignSkillRequest,
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
-    return this.profileService.assignSkill(orgId, profileId, request);
+    return this.profileService.assignSkill(orgId, profileId, request, meta);
   }
 
   async unassignSkill(
     orgId: string,
     profileId: string,
-    skillId: string
+    skillId: string,
+    meta?: ProfileChangeMeta
   ): Promise<ProfileResponse> {
-    return this.profileService.unassignSkill(orgId, profileId, skillId);
+    return this.profileService.unassignSkill(orgId, profileId, skillId, meta);
   }
 
   async uploadProfileAvatar(
@@ -2908,7 +2929,8 @@ export class AgentService {
     orgId: string,
     profileId: string,
     key: string,
-    request: UpdateSoulFileRequest
+    request: UpdateSoulFileRequest,
+    meta?: ProfileChangeMeta
   ): Promise<void> {
     await this.requireProfile(orgId, profileId);
 
@@ -2916,10 +2938,35 @@ export class AgentService {
       throw new Error(`Invalid soul file key: ${key}`);
     }
 
-    await writeSoulFile(
-      getProfileSoulDir(orgId, profileId),
-      key,
-      request.content
+    const field = soulFieldFromKey(key);
+    const soulDir = getProfileSoulDir(orgId, profileId);
+    const before =
+      (await readTextIfExists(join(soulDir, WRITABLE_SOUL_FILES[key]))) ?? null;
+
+    await writeSoulFile(soulDir, key, request.content);
+
+    if (meta && field && before !== request.content) {
+      await recordProfileChangeEvent(this.db, {
+        actorUserId: meta.actorUserId,
+        afterValue: request.content,
+        beforeValue: before,
+        field,
+        orgId,
+        profileId,
+        source: meta.source,
+      });
+    }
+  }
+
+  async listProfileChangeHistory(
+    orgId: string,
+    profileId: string,
+    options: { limit?: number; offset?: number } = {}
+  ) {
+    return this.profileService.listProfileChangeHistory(
+      orgId,
+      profileId,
+      options
     );
   }
 

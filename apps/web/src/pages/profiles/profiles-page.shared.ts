@@ -20,7 +20,8 @@ export function resolveProfileDetailTab(
     return value;
   }
 
-  if (value === "soul") {
+  // Legacy History tab URL → Prompt (history lives under Prompt now)
+  if (value === "soul" || value === "history") {
     return "prompt";
   }
 
