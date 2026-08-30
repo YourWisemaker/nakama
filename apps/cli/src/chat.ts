@@ -40,6 +40,7 @@ import { sendStreamCancellable } from "./stream-abort";
 import { styledLine } from "./styled-text";
 import { TerminalInput } from "./terminal-input";
 import { TerminalRenderer } from "./terminal-renderer";
+import { printLine } from "./terminal-safe";
 import { ThinkingIndicator } from "./thinking-indicator";
 
 const HELP_TEXT = `${formatSlashCommands()}\n\n@/path/to/image.png [message]   attach an image from file\n/paste                            attach image from clipboard (recommended)\nCtrl+V / Cmd+V (empty paste)      attach image when terminal supports it\nPageUp/PageDown                   scroll conversation history\nHome/End                          jump to oldest/newest visible history`;
@@ -73,7 +74,7 @@ export async function runChat(options: RunChatOptions): Promise<void> {
   const renderer = new TerminalRenderer(terminalInput);
   const useStickyInput = renderer.apply();
 
-  console.log(`Profile: ${currentProfile.name} (${currentProfile.id})`);
+  printLine(`Profile: ${currentProfile.name} (${currentProfile.id})`);
   console.log("");
 
   if (options.offline) {
@@ -995,7 +996,7 @@ async function runBlockingChat(context: ChatContext): Promise<void> {
         try {
           await printStatus(
             options.client,
-            (text) => console.log(text),
+            printLine,
             currentProfile,
             modelsCache
           );
@@ -1046,7 +1047,7 @@ async function runBlockingChat(context: ChatContext): Promise<void> {
 
 async function printCurrentModel(
   client: NakamaClient,
-  write: (text: string) => void = (text) => console.log(text),
+  write: (text: string) => void = printLine,
   profile: ProfileSummary | null = null,
   cachedModels: ModelsResponse | null = null
 ): Promise<void> {
@@ -1111,7 +1112,7 @@ async function printStatus(
 
 async function printModels(
   client: NakamaClient,
-  write: (text: string) => void = (text) => console.log(text),
+  write: (text: string) => void = printLine,
   profile: ProfileSummary | null = null,
   cachedModels: ModelsResponse | null = null
 ): Promise<void> {
@@ -1253,7 +1254,7 @@ function startEscAbortListener(onAbort: () => void): () => void {
 
 function printError(error: unknown): void {
   for (const line of formatErrorLines(error)) {
-    console.log(line);
+    printLine(line);
   }
 }
 
